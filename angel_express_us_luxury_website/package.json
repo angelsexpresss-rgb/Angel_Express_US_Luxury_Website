@@ -1,0 +1,14 @@
+{
+  "name": "angel-express-us-luxury",
+  "version": "2.0.0",
+  "description": "Luxury mobile-friendly Angel Express US website with booking backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.3"
+  }
+}
