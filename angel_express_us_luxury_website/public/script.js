@@ -142,7 +142,7 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   if (!booking) return;
 
   try {
-    const res = await fetch("/.netlify/functions/create-booking", {
+    const res = await fetch("/.netlify/functions/create_booking", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(booking)
