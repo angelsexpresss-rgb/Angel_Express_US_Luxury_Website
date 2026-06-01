@@ -301,4 +301,12 @@ footer{
 
 .whatsapp-float:hover {
   transform: scale(1.05);
+}.testimonial-img {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 18px;
+  border: 3px solid rgba(255,255,255,.2);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
 }
