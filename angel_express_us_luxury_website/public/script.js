@@ -178,8 +178,7 @@ if (calendarBtn) {
 }
     successPanel.style.display = "block";
     successPanel.scrollIntoView({ behavior: "smooth", block: "center" });
-    loadBookings();
-    loadCustomers();
+    
   } catch (err) {
     alert("Booking could not be saved. Make sure the backend is running. " + err.message);
   }
@@ -228,8 +227,13 @@ async function loadCustomers() {
   }
 }
 
-document.getElementById("refreshBookings").onclick = loadBookings;
-document.getElementById("refreshCustomers").onclick = loadCustomers;
-document.getElementById("date").min = new Date().toISOString().split("T")[0];
-loadBookings();
-loadCustomers();
+const refreshBookingsBtn = document.getElementById("refreshBookings");
+const refreshCustomersBtn = document.getElementById("refreshCustomers");
+
+if (refreshBookingsBtn) {
+  refreshBookingsBtn.onclick = loadBookings;
+}
+
+if (refreshCustomersBtn) {
+  refreshCustomersBtn.onclick = loadCustomers;
+}
