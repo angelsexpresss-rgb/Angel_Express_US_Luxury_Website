@@ -46,15 +46,14 @@ body:before{
 .hero{
   min-height:90vh;
   display:grid;
-grid-template-columns: 1fr 1fr;
-gap: 70px;
-align-items: center;
+  grid-template-columns: 1.1fr 1fr;
+  gap:48px;
+  align-items:center;
   padding:70px 5.5% 54px;
 }
 
 .hero-right{
-  display:flex;
-  justify-content:flex-end;
+  width:100%;
 }
 
 .kicker{
@@ -108,11 +107,16 @@ align-items: center;
 .proof-row strong{display:block;font-size:24px}
 .proof-row span{display:block;margin-top:4px;color:#9ca3af;font-size:12px}
 .luxury-phone{
+  width: 100%;
+  max-width: 650px;
+
+  margin-left: auto;
+
   border:1px solid rgba(255,255,255,.14);
   background:linear-gradient(145deg,#1e1e21,#050505);
   border-radius:44px;
   padding:14px;
-  box-shadow:0 35px 110px rgba(0,0,0,.65),inset 0 0 0 1px rgba(255,255,255,.05);
+  box-shadow:0 35px 110px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255,255,255,.05);
 }
 .status-bar{
   display:flex;align-items:center;justify-content:space-between;
@@ -122,7 +126,7 @@ align-items: center;
 }
 .status-bar span:last-child{color:#86efac}
 .slider{
-  height:575px;
+  height:520px;
   position:relative;
   overflow:hidden;
   border-radius:34px;
@@ -406,4 +410,17 @@ footer{
 
 .fa-envelope {
   color: #4DA3FF;
+}@media (max-width: 900px){
+  .hero{
+    grid-template-columns:1fr;
+  }
+
+  .luxury-phone{
+    max-width:100%;
+    margin:0 auto;
+  }
+
+  .slider{
+    height:420px;
+  }
 }
