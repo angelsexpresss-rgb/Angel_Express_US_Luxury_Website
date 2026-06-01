@@ -1,3 +1,11 @@
+const SUPABASE_URL = "https://zlzastjpvbboniybyyjv.supabase.co";
+
+const SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 const OWNER_WHATSAPP = "12145550199"; // Change this to your Angel Express WhatsApp number, country code only.
 
 const routeEl = document.getElementById("route");
@@ -142,16 +150,15 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   if (!booking) return;
 
   try {
-    const res = await fetch("/.netlify/functions/create_booking", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(booking)
-    });
+    const { data, error } = await supabaseClient
+  .from("bookings")
+  .insert([booking])
+  .select()
+  .single();
 
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || "Booking failed");
+if (error) throw error;
 
-    latestBooking = data.booking;
+latestBooking = data;
     document.getElementById("bookingId").textContent = `Booking ID: ${latestBooking.id}`;
     document.getElementById("passengerWhatsApp").onclick = () => window.open(wa(latestBooking.phone, passengerMessage(latestBooking)), "_blank");
     document.getElementById("ownerWhatsApp").onclick = () => window.open(wa(OWNER_WHATSAPP, ownerMessage(latestBooking)), "_blank");
@@ -165,7 +172,6 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
     alert("Booking could not be saved. Make sure the backend is running. " + err.message);
   }
 });
-
 async function loadBookings() {
   const list = document.getElementById("bookingList");
   try {
