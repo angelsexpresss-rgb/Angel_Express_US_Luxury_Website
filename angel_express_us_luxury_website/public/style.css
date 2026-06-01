@@ -45,9 +45,18 @@ body:before{
 .nav-cta{background:#fff;color:#050505;font-weight:900;border-radius:999px;padding:12px 20px}
 .hero{
   min-height:90vh;
-  display:grid;grid-template-columns:1.03fr .97fr;gap:48px;align-items:center;
+  display:grid;
+grid-template-columns: 1fr 1fr;
+gap: 70px;
+align-items: center;
   padding:70px 5.5% 54px;
 }
+
+.hero-right{
+  display:flex;
+  justify-content:flex-end;
+}
+
 .kicker{
   display:inline-block;
   color:#d1d5db;
@@ -380,7 +389,7 @@ footer{
   padding-top: 20px;
   border-top: 1px solid rgba(255,255,255,.08);
   color: rgba(255,255,255,.5);
-  
+
 }.footer a i {
   width: 24px;
   margin-right: 8px;
