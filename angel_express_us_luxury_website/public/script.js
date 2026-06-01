@@ -161,10 +161,21 @@ if (error) throw error;
 
 latestBooking = data;
     document.getElementById("bookingId").textContent = `Booking ID: ${latestBooking.id}`;
-    document.getElementById("passengerWhatsApp").onclick = () => window.open(wa(latestBooking.phone, passengerMessage(latestBooking)), "_blank");
-    document.getElementById("ownerWhatsApp").onclick = () => window.open(wa(OWNER_WHATSAPP, ownerMessage(latestBooking)), "_blank");
-    document.getElementById("calendarBtn").onclick = () => window.open(calendarLink(latestBooking), "_blank");
+    const passengerBtn = document.getElementById("passengerWhatsApp");
+const ownerBtn = document.getElementById("ownerWhatsApp");
+const calendarBtn = document.getElementById("calendarBtn");
 
+if (passengerBtn) {
+  passengerBtn.onclick = () => window.open(wa(latestBooking.phone));
+}
+
+if (ownerBtn) {
+  ownerBtn.onclick = () => window.open(wa(OWNER_WHATSAPP));
+}
+
+if (calendarBtn) {
+  calendarBtn.onclick = () => window.open(calendarLink(latestBooking));
+}
     successPanel.style.display = "block";
     successPanel.scrollIntoView({ behavior: "smooth", block: "center" });
     loadBookings();
