@@ -153,7 +153,7 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
     const { data, error } = await supabaseClient
   .from("bookings")
   .insert([booking])
-  .select()
+  .select("*")
   .single();
 
 if (error) throw error;
