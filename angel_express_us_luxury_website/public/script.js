@@ -10,8 +10,6 @@ const supabaseClient = supabase.createClient(
 const OWNER_WHATSAPP = "12145550199"; // Change this to your Angel Express WhatsApp number, country code only.
 
 const routeEl = document.getElementById("route");
-const studentEl = document.getElementById("student");
-const referralEl = document.getElementById("referral");
 const successPanel = document.getElementById("successPanel");
 let latestBooking = null;
 
@@ -43,21 +41,23 @@ function cleanPhone(value) {
 }
 
 function getPrice() {
-  const selected = routeEl.options[routeEl.selectedIndex];
-  const miles = Number(selected.dataset.miles);
-  const base = miles;
-  const studentDiscount = studentEl.checked ? base * 0.20 : 0;
-  const referralDiscount = referralEl.checked ? 10 : 0;
-  const discount = studentDiscount + referralDiscount;
-  const total = Math.max(base - discount, 0);
-  return { route: selected.value, miles, base, studentDiscount, referralDiscount, discount, total };
-}
+    const selected = routeEl.options[routeEl.selectedIndex];
+    const miles = Number(selected.dataset.miles);
+    const base = miles;
 
+    const total = base;
+
+    return {
+        route: selected.value,
+        miles,
+        base,
+        total
+    };
+}
 function renderPrice() {
   const p = getPrice();
   document.getElementById("miles").textContent = p.miles;
   document.getElementById("base").textContent = `$${p.base.toFixed(2)}`;
-  document.getElementById("discount").textContent = `-$${p.discount.toFixed(2)}`;
   document.getElementById("total").textContent = `$${p.total.toFixed(2)}`;
 }
 
@@ -77,13 +77,8 @@ function buildBooking() {
     time: document.getElementById("time").value,
     pickup: document.getElementById("pickup").value.trim(),
     dropoff: document.getElementById("dropoff").value.trim(),
-    referralCode: document.getElementById("referralCode").value.trim(),
-    referrer: document.getElementById("referrer").value.trim(),
-    student: studentEl.checked,
-    referralReward: referralEl.checked,
     miles: price.miles,
     base: price.base,
-    discount: price.discount,
     total: price.total
   };
 
@@ -104,9 +99,6 @@ Time: ${b.time}
 Pickup Address: ${b.pickup}
 Drop-off Address: ${b.dropoff}
 Vehicle: 2020 Nissan Rogue
-Student Discount: ${b.student ? "Yes, 20% applied. Student ID required." : "No"}
-Referral Code: ${b.referralCode || "None"}
-Total: $${Number(b.total).toFixed(2)}
 
 Please keep your phone available for pickup updates.`;
 }
@@ -124,10 +116,6 @@ Time: ${b.time}
 Pickup: ${b.pickup}
 Drop-off: ${b.dropoff}
 Vehicle: 2020 Nissan Rogue
-Student Discount: ${b.student ? "YES" : "NO"}
-Referral Reward: ${b.referralReward ? "YES" : "NO"}
-Referral Code: ${b.referralCode || "None"}
-Referred By: ${b.referrer || "None"}
 Miles: ${b.miles}
 Total: $${Number(b.total).toFixed(2)}
 
