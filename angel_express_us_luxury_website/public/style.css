@@ -380,4 +380,21 @@ footer{
   padding-top: 20px;
   border-top: 1px solid rgba(255,255,255,.08);
   color: rgba(255,255,255,.5);
+  
+}.footer a i {
+  width: 24px;
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+.fa-instagram {
+  color: #E4405F;
+}
+
+.fa-whatsapp {
+  color: #25D366;
+}
+
+.fa-envelope {
+  color: #4DA3FF;
 }
