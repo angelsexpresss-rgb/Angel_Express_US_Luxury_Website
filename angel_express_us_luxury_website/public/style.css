@@ -423,4 +423,31 @@ footer{
   .slider{
     height:420px;
   }
+}@media (max-width: 768px) {
+
+  .footer-grid{
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .footer{
+    padding: 40px 20px;
+  }
+
+  .footer h3,
+  .footer h4{
+    font-size: 20px;
+  }
+
+  .footer p,
+  .footer a{
+    font-size: 15px;
+    word-break: break-word;
+  }
+
+  .footer-bottom{
+    text-align: center;
+    margin-top: 30px;
+  }
+
 }
