@@ -340,4 +340,44 @@ footer{
 .worldcup-banner .proof-row {
   margin: 30px auto;
   justify-content: center;
+}.footer {
+  margin-top: 100px;
+  padding: 60px 40px 20px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  background: #050505;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+  gap: 40px;
+  max-width: 1200px;
+  margin: auto;
+}
+
+.footer h3,
+.footer h4 {
+  margin-bottom: 15px;
+}
+
+.footer p {
+  color: rgba(255,255,255,.7);
+  line-height: 1.8;
+}
+
+.footer a {
+  color: white;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: #25D366;
+}
+
+.footer-bottom {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  color: rgba(255,255,255,.5);
 }
