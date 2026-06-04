@@ -56,9 +56,6 @@ function getPrice() {
 }
 function renderPrice() {
   const p = getPrice();
-  document.getElementById("miles").textContent = p.miles;
-  document.getElementById("base").textContent = `$${p.base.toFixed(2)}`;
-  document.getElementById("total").textContent = `$${p.total.toFixed(2)}`;
 }
 
 routeEl.addEventListener("change", renderPrice);
