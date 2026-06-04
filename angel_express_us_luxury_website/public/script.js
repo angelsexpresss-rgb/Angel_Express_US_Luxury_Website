@@ -62,8 +62,6 @@ function renderPrice() {
 }
 
 routeEl.addEventListener("change", renderPrice);
-studentEl.addEventListener("change", renderPrice);
-referralEl.addEventListener("change", renderPrice);
 renderPrice();
 
 function buildBooking() {
