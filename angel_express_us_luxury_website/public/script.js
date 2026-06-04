@@ -80,7 +80,7 @@ function buildBooking() {
     dropoff: document.getElementById("dropoff").value.trim(),
     miles: price.miles,
     base: price.base,
-    total: price.total
+    total: price.total,
     status: "pending"
   };
 
