@@ -137,17 +137,25 @@ function calendarLink(b) {
 
 document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const booking = buildBooking();
-  if (!booking) return;
 
   try {
     const { data, error } = await supabaseClient
-  .from("bookings")
-  .insert([booking])
-  .select("*")
-  .single();
+      .from("bookings")
+      .insert([booking])
+      .select("*")
+      .single();
 
-if (error) throw error;
+    if (error) throw error;
+
+    latestBooking = data;
+
+    alert("Booking saved successfully!");
+  } catch (err) {
+    alert("Booking could not be saved. " + err.message);
+  }
+});
 
 latestBooking = data;
     document.getElementById("bookingId").textContent = `Booking ID: ${latestBooking.id}`;
