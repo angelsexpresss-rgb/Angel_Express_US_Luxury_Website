@@ -157,30 +157,6 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   }
 });
 
-latestBooking = data;
-    document.getElementById("bookingId").textContent = `Booking ID: ${latestBooking.id}`;
-    const passengerBtn = document.getElementById("passengerWhatsApp");
-const ownerBtn = document.getElementById("ownerWhatsApp");
-const calendarBtn = document.getElementById("calendarBtn");
-
-if (passengerBtn) {
-  passengerBtn.onclick = () => window.open(wa(latestBooking.phone));
-}
-
-if (ownerBtn) {
-  ownerBtn.onclick = () => window.open(wa(OWNER_WHATSAPP));
-}
-
-if (calendarBtn) {
-  calendarBtn.onclick = () => window.open(calendarLink(latestBooking));
-}
-    successPanel.style.display = "block";
-    successPanel.scrollIntoView({ behavior: "smooth", block: "center" });
-    
-  } catch (err) {
-    alert("Booking could not be saved. Make sure the backend is running. " + err.message);
-  }
-});
 async function loadBookings() {
   const list = document.getElementById("bookingList");
   try {
