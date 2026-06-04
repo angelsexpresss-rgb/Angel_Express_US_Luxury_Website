@@ -142,14 +142,21 @@
 
       <form id="bookingForm" class="booking-card reveal">
         <div class="form-grid">
-          <label>Passenger Name
-            <input required id="name" placeholder="Full name" />
-          </label>
-          <label>Passenger WhatsApp
-            <input required id="phone" placeholder="12145550199" />
-            <small>Country code only, no + sign.</small>
-          </label>
-        </div>
+  <label>Passenger Name
+    <input required id="name" placeholder="Full name" />
+  </label>
+
+  <label>Passenger WhatsApp
+    <input required id="phone" placeholder="12145550199" />
+    <small>Country code only, no + sign.</small>
+  </label>
+</div>
+
+<div class="form-grid">
+  <label>Passenger Email
+    <input required id="email" type="email" placeholder="passenger@email.com" />
+  </label>
+</div>
 
         <div class="form-grid">
           <label>Route
@@ -195,7 +202,7 @@
         </div>
       </form>
     </section>
-    
+
     <section id="routes" class="section routes-section">
       <div class="route-copy reveal">
         <p class="kicker">Where Angel Express goes</p>
