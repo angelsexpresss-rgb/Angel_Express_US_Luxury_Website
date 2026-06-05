@@ -154,6 +154,26 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
 });
 
     latestBooking = data;
+const whatsappMessage = encodeURIComponent(
+`New Angel Express Booking
+
+Passenger: ${latestBooking.name}
+Phone: ${latestBooking.phone}
+Email: ${latestBooking.email}
+
+Route: ${latestBooking.route}
+Trip Type: ${latestBooking.trip_type}
+Date: ${latestBooking.date}
+Time: ${latestBooking.time}
+
+Pickup: ${latestBooking.pickup}
+Drop-off: ${latestBooking.dropoff}
+
+Miles: ${latestBooking.miles}
+Total: $${latestBooking.total}`
+);
+
+window.open(`https://wa.me/16176060679?text=${whatsappMessage}`, "_blank");
 
     alert("Booking saved successfully!");
   } catch (err) {
