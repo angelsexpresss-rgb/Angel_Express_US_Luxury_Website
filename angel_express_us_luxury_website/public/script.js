@@ -235,3 +235,34 @@ if (refreshBookingsBtn) {
 if (refreshCustomersBtn) {
   refreshCustomersBtn.onclick = loadCustomers;
 }
+function sendChat() {
+  const input = document.getElementById("chatInput");
+  const messages = document.getElementById("chatbotMessages");
+  const question = input.value.trim();
+
+  if (!question) return;
+
+  messages.innerHTML += `<p><strong>You:</strong> ${question}</p>`;
+
+  let answer = "Please contact Angel Express directly for this question.";
+
+  const q = question.toLowerCase();
+
+  if (q.includes("route") || q.includes("where")) {
+    answer = "We cover Dallas to Austin, Houston, San Antonio, Oklahoma, College Station, airports, events, and custom destinations.";
+  } else if (q.includes("price") || q.includes("cost") || q.includes("how much")) {
+    answer = "Angel Express pricing is based on distance. Students may receive a 20% discount.";
+  } else if (q.includes("book") || q.includes("reserve")) {
+    answer = "You can book your ride by filling out the reservation form on this website.";
+  } else if (q.includes("student")) {
+    answer = "Yes, students can receive a 20% discount when booking.";
+  } else if (q.includes("airport")) {
+    answer = "Yes, airport pickup and drop-off are available.";
+  } else if (q.includes("car") || q.includes("vehicle")) {
+    answer = "Angel Express currently uses a 2020 Nissan Rogue for private regional rides.";
+  }
+
+  messages.innerHTML += `<p><strong>Bot:</strong> ${answer}</p>`;
+  input.value = "";
+  messages.scrollTop = messages.scrollHeight;
+}
