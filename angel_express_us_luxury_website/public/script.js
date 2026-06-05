@@ -12,7 +12,11 @@ const supabaseClient = supabase.createClient(
 );
 const OWNER_WHATSAPP = "16176060679"; // Change this to your Angel Express WhatsApp number, country code only.
 
-const routeEl = document.getElementById("route");
+const pickupEl = document.getElementById("pickup");
+const dropoffEl = document.getElementById("dropoff");
+const pricePreview = document.getElementById("pricePreview");
+
+const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6IjliZjA4M2Q3NzA3NDQzY2Y4MzFlOGRlYmQ5YTVkYTRjIiwiaCI6Im11cm11cjY0In0=";
 const successPanel = document.getElementById("successPanel");
 let latestBooking = null;
 
@@ -42,27 +46,87 @@ setInterval(() => setSlide((active + 1) % slides.length), 5000);
 function cleanPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
+async function calculatePrice() {
+  const pickup = pickupEl.value.trim();
+  const dropoff = dropoffEl.value.trim();
+
+  if (!pickup || !dropoff) return;
+
+  try {
+    // Geocode pickup
+    const startRes = await fetch(
+      `https://api.openrouteservice.org/geocode/search?api_key=${ORS_API_KEY}&text=${encodeURIComponent(pickup)}`
+    );
+    const startData = await startRes.json();
+
+    // Geocode dropoff
+    const endRes = await fetch(
+      `https://api.openrouteservice.org/geocode/search?api_key=${ORS_API_KEY}&text=${encodeURIComponent(dropoff)}`
+    );
+    const endData = await endRes.json();
+
+    if (!startData.features.length || !endData.features.length) {
+      pricePreview.textContent = "Address not found.";
+      return;
+    }
+
+    const start = startData.features[0].geometry.coordinates;
+    const end = endData.features[0].geometry.coordinates;
+
+    // Get route distance
+    const routeRes = await fetch(
+      "https://api.openrouteservice.org/v2/directions/driving-car",
+      {
+        method: "POST",
+        headers: {
+          Authorization: ORS_API_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          coordinates: [start, end]
+        })
+      }
+    );
+
+    const routeData = await routeRes.json();
+
+    const meters =
+      routeData.routes[0].summary.distance;
+
+    const miles = meters * 0.000621371;
+    const total = Math.ceil(miles);
+
+    document.getElementById("miles").value = miles.toFixed(1);
+    document.getElementById("base").value = total;
+    document.getElementById("total").value = total;
+
+    pricePreview.textContent =
+      `${miles.toFixed(1)} miles • $${total}`;
+  } catch (err) {
+    console.error(err);
+    pricePreview.textContent =
+      "Unable to calculate route.";
+  }
+}
+pickupEl.addEventListener("blur", calculatePrice);
+dropoffEl.addEventListener("blur", calculatePrice);
 
 function getPrice() {
-    const selected = routeEl.options[routeEl.selectedIndex];
-    const miles = Number(selected.dataset.miles);
-    const base = miles;
+  return {
+    route: document.getElementById("pickup").value +
+           " → " +
+           document.getElementById("dropoff").value,
 
-    const total = base;
+    miles: Number(document.getElementById("miles").value || 0),
 
-    return {
-        route: selected.value,
-        miles,
-        base,
-        total
-    };
+    base: Number(document.getElementById("base").value || 0),
+
+    total: Number(document.getElementById("total").value || 0)
+  };
 }
 function renderPrice() {
   const p = getPrice();
 }
-
-routeEl.addEventListener("change", renderPrice);
-renderPrice();
 
 function buildBooking() {
   const price = getPrice();

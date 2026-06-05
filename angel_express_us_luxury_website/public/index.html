@@ -7,6 +7,10 @@
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 </head>
 <body>
   <div class="bg-orb orb-one"></div>
@@ -188,7 +192,13 @@
 
         <label>Pickup Address <input required id="pickup" placeholder="Exact pickup address" /></label>
         <label>Drop-off Address <input required id="dropoff" placeholder="Exact drop-off address" /></label>
+        <input type="hidden" id="miles" />
+        <input type="hidden" id="base" />
+        <input type="hidden" id="total" />
 
+        <p id="pricePreview" class="price-preview">
+        Enter pickup and drop-off address to calculate price.
+        </p>
         <button type="submit" class="btn btn-dark full">Save Booking</button>
 
         <div id="successPanel" class="success-panel">
