@@ -169,6 +169,8 @@ Time: ${latestBooking.time}
 Pickup: ${latestBooking.pickup}
 Drop-off: ${latestBooking.dropoff}
 
+Miles: ${latestBooking.miles}
+Total: $${latestBooking.total}`
 );
 
 window.open(`https://wa.me/16176060679?text=${whatsappMessage}`, "_blank");
