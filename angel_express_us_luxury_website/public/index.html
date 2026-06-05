@@ -365,13 +365,27 @@
     © 2026 Angel Express 
   </div>
 </footer>
-<div class="chatbot-box" id="chatbotBox">
-  <div class="chatbot-header">Angel Express Assistant</div>
+<!-- Chat Bubble -->
+<button id="chatToggle" class="chat-toggle">
+  💬
+</button>
+
+<!-- Chat Window -->
+<div class="chatbot-box" id="chatbotBox" style="display:none;">
+  <div class="chatbot-header">
+    Angel Express Assistant
+  </div>
+
   <div class="chatbot-messages" id="chatbotMessages">
     <p><strong>Bot:</strong> Hi! How can I help you with your ride today?</p>
   </div>
+
   <div class="chatbot-input">
-    <input type="text" id="chatInput" placeholder="Ask about routes, prices, booking..." />
+    <input
+      type="text"
+      id="chatInput"
+      placeholder="Ask about routes, prices, booking..."
+    />
     <button type="button" onclick="sendChat()">Send</button>
   </div>
 </div>
