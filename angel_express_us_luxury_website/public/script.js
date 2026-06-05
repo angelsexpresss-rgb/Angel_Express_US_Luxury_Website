@@ -266,3 +266,15 @@ function sendChat() {
   input.value = "";
   messages.scrollTop = messages.scrollHeight;
 }
+const chatToggle = document.getElementById("chatToggle");
+const chatbotBox = document.getElementById("chatbotBox");
+
+if (chatToggle && chatbotBox) {
+  chatToggle.addEventListener("click", () => {
+    if (chatbotBox.style.display === "none") {
+      chatbotBox.style.display = "block";
+    } else {
+      chatbotBox.style.display = "none";
+    }
+  });
+}

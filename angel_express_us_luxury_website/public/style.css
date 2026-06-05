@@ -514,47 +514,50 @@ footer{
     font-size: 15px;
   }
 }
+.chat-toggle {
+  position: fixed;
+  bottom: 110px;
+  right: 20px;
+
+  background: #22c55e;
+  color: white;
+
+  border: none;
+  border-radius: 999px;
+
+  padding: 14px 22px;
+
+  font-size: 15px;
+  font-weight: 700;
+
+  cursor: pointer;
+  z-index: 99999;
+
+  box-shadow: 0 8px 25px rgba(0,0,0,.25);
+
+  transition: all .3s ease;
+}
+
+.chat-toggle:hover {
+  transform: translateY(-2px);
+}
 .chatbot-box {
   position: fixed;
-  bottom: 90px;
+  bottom: 180px;
   right: 20px;
-  width: 320px;
+
+  width: 360px;
+  height: 520px;
+
   background: #111;
   color: white;
-  border: 1px solid #333;
-  border-radius: 16px;
+
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+
   overflow: hidden;
-  z-index: 9999;
-}
 
-.chatbot-header {
-  background: #22c55e;
-  padding: 12px;
-  font-weight: bold;
-}
+  z-index: 99998;
 
-.chatbot-messages {
-  height: 260px;
-  overflow-y: auto;
-  padding: 12px;
-  font-size: 14px;
-}
-
-.chatbot-input {
-  display: flex;
-  border-top: 1px solid #333;
-}
-
-.chatbot-input input {
-  flex: 1;
-  padding: 10px;
-  border: none;
-}
-
-.chatbot-input button {
-  padding: 10px;
-  border: none;
-  background: #22c55e;
-  color: white;
-  cursor: pointer;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
 }
