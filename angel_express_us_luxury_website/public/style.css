@@ -544,10 +544,10 @@ footer{
 .chatbot-box {
   display: none;
   position: fixed;
-  bottom: 180px;
+  bottom: 190px;
   right: 20px;
   width: 360px;
-  height: 520px;
+  height: 420px;
   background: #111;
   color: white;
   border: 1px solid rgba(255,255,255,0.08);
@@ -571,6 +571,7 @@ footer{
   flex: 1;
   padding: 15px;
   overflow-y: auto;
+  font-size: 15px;
 }
 
 .chatbot-input {
