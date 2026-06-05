@@ -93,7 +93,7 @@ function passengerMessage(b) {
   return `Thanks for booking your ride with Angel Express US.
 
 Ride: ${b.route}
-Trip Type: ${b.tripType}
+Trip Type: ${b.trip_type || "Not specified"}
 Date: ${b.date}
 Time: ${b.time}
 Pickup Address: ${b.pickup}
@@ -110,7 +110,7 @@ Booking ID: ${b.id || "Pending"}
 Passenger: ${b.name}
 Phone: ${b.phone}
 Route: ${b.route}
-Trip Type: ${b.tripType}
+Trip Type: ${b.trip_type || "Not specified"}
 Date: ${b.date}
 Time: ${b.time}
 Pickup: ${b.pickup}
