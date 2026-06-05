@@ -147,11 +147,9 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
 
     if (error) throw error;
 
-    await fetch(GOOGLE_SCRIPT_URL, {
+   await fetch(GOOGLE_SCRIPT_URL, {
   method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
+  mode: "no-cors",
   body: JSON.stringify(booking)
 });
 
