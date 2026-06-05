@@ -3,11 +3,14 @@ console.log("SUPABASE_URL =", SUPABASE_URL);
 
 const SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
 
+const GOOGLE_SCRIPT_URL =
+"https://script.google.com/macros/s/AKfycbzfjXYUphz8-nyETcdMYOpHCPoBY33V17OkAZMODpBRVT2V6m8H9DTG5iBM63QqbHtR/exec";
+
 const supabaseClient = supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
-const OWNER_WHATSAPP = "12145550199"; // Change this to your Angel Express WhatsApp number, country code only.
+const OWNER_WHATSAPP = "16176060679"; // Change this to your Angel Express WhatsApp number, country code only.
 
 const routeEl = document.getElementById("route");
 const successPanel = document.getElementById("successPanel");
@@ -143,6 +146,14 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
       .single();
 
     if (error) throw error;
+
+    await fetch(GOOGLE_SCRIPT_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(booking)
+});
 
     latestBooking = data;
 
