@@ -542,22 +542,53 @@ footer{
   transform: translateY(-2px);
 }
 .chatbot-box {
+  display: none;
   position: fixed;
   bottom: 180px;
   right: 20px;
-
   width: 360px;
   height: 520px;
-
   background: #111;
   color: white;
-
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 20px;
-
-  overflow: hidden;
-
   z-index: 99998;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chatbot-box.open {
+  display: flex;
+}
 
-  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+.chatbot-header {
+  background: #22c55e;
+  color: white;
+  padding: 15px;
+  font-weight: 700;
+}
+
+.chatbot-messages {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+}
+
+.chatbot-input {
+  display: flex;
+  border-top: 1px solid #333;
+}
+
+.chatbot-input input {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  outline: none;
+}
+
+.chatbot-input button {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 12px 18px;
+  cursor: pointer;
 }
