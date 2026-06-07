@@ -91,7 +91,7 @@ async function generateInvoicePDF(booking) {
 
   doc.setTextColor("#ffffff");
   doc.setFontSize(12);
-  doc.text("GO FAR. ARRIVE WELL.", 306, 34, { align: "center" });
+  doc.text("ANGEL EXPRESS.", 306, 34, { align: "center" });
 
   doc.setTextColor(navy);
   doc.setFontSize(18);
@@ -105,12 +105,14 @@ async function generateInvoicePDF(booking) {
   doc.text("Phone: 617-606-0679 | Email: angelsexpresss@gmail.com", 50, 155);
   doc.text("Reservation Link: https://angel-express-us-luxury-website.pages.dev/", 50, 170);
 
-  doc.setFontSize(11);
-  doc.setFont(undefined, "bold");
-  doc.text(`Invoice #: ${invoiceNo}`, 360, 95);
-  doc.text(`Date: ${invoiceDate}`, 360, 115);
-  doc.setTextColor("#d68910");
-  doc.text("Status: PENDING", 360, 135);
+doc.setFontSize(11);
+doc.setFont(undefined, "bold");
+
+doc.text(`Invoice #: ${invoiceNo}`, 390, 95);
+doc.text(`Date: ${invoiceDate}`, 390, 120);
+
+doc.setTextColor("#d68910");
+doc.text("Status: PENDING", 390, 145);
 
   doc.setTextColor(navy);
   doc.setFontSize(13);
@@ -186,35 +188,47 @@ async function generateInvoicePDF(booking) {
   doc.text("Balance Due", 60, 585);
   doc.text(`$${balanceDue.toFixed(2)}`, 500, 585);
 
-  doc.setTextColor(navy);
-  doc.setFontSize(13);
-  doc.text("PAYMENT & AUTHORIZATION", 50, 630);
+ doc.setTextColor(navy);
+doc.setFontSize(13);
+doc.setFont(undefined, "bold");
+doc.text("PAYMENT & AUTHORIZATION", 50, 630);
 
-  doc.addImage(qrDataUrl, "PNG", 60, 645, 110, 110);
+doc.addImage(qrDataUrl, "PNG", 60, 650, 100, 100);
 
-  doc.setFontSize(10);
-  doc.setTextColor("#000000");
-  doc.text("Pay via Zelle", 190, 665);
-  doc.text("Scan the QR code with your bank or Zelle app.", 190, 682);
-  doc.text("Recipient: tjayekeh@gmail.com", 190, 699);
-  doc.text(`Reference: Invoice ${invoiceNo}`, 190, 716);
+doc.setFontSize(10);
+doc.setTextColor("#000000");
 
-  doc.text("Authorized by: Angel Express", 360, 680);
+doc.setFont(undefined, "bold");
+doc.text("Pay via Zelle", 180, 670);
 
-  doc.setTextColor(navy);
-  doc.setFontSize(13);
-  doc.setFont(undefined, "bold");
-  doc.text("TERMS & CONDITIONS", 50, 780);
+doc.setFont(undefined, "normal");
+doc.text("Scan the QR code with your bank or Zelle app.", 180, 688, {
+  maxWidth: 220
+});
 
-  doc.setFontSize(8);
-  doc.setFont(undefined, "normal");
-  doc.setTextColor("#333333");
-  doc.text(
-    "1. Payment is due upon receipt unless otherwise agreed. 2. Reservations are confirmed after payment or deposit. 3. Cancellations should be made at least 24 hours before pickup. 4. Angel Express is not liable for delays caused by traffic, weather, road closures, or events beyond reasonable control. 5. By booking, the passenger agrees to provide accurate pickup and drop-off information and to be available at the scheduled pickup time.",
-    50,
-    798,
-    { maxWidth: 512 }
-  );
+doc.setFont(undefined, "bold");
+doc.text("Recipient: tjayekeh@gmail.com", 180, 718);
+doc.text(`Reference: Invoice ${invoiceNo}`, 180, 735);
+
+doc.setTextColor(navy);
+doc.setFont(undefined, "bold");
+doc.text("Authorized by:", 420, 690);
+doc.text("Angel Express", 420, 710);
+
+doc.setTextColor(navy);
+doc.setFontSize(13);
+doc.setFont(undefined, "bold");
+doc.text("TERMS & CONDITIONS", 50, 770);
+
+doc.setFontSize(8);
+doc.setFont(undefined, "normal");
+doc.setTextColor("#333333");
+doc.text(
+  "1. Payment is due upon receipt unless otherwise agreed. 2. Reservations are confirmed after payment or deposit. 3. Cancellations should be made at least 24 hours before pickup. 4. Angel Express is not liable for delays caused by traffic, weather, road closures, or events beyond reasonable control. 5. By booking, the passenger agrees to provide accurate pickup and drop-off information and to be available at the scheduled pickup time.",
+  50,
+  790,
+  { maxWidth: 512 }
+);
 
   return {
     invoiceNo,
