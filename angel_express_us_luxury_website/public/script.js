@@ -193,7 +193,7 @@ doc.setFontSize(13);
 doc.setFont(undefined, "bold");
 doc.text("PAYMENT & AUTHORIZATION", 50, 630);
 
-doc.addImage(qrDataUrl, "PNG", 60, 650, 100, 100);
+doc.addImage(qrDataUrl, "PNG", 60, 640, 90, 90);
 
 doc.setFontSize(10);
 doc.setTextColor("#000000");
@@ -218,17 +218,18 @@ doc.text("Angel Express", 420, 710);
 doc.setTextColor(navy);
 doc.setFontSize(13);
 doc.setFont(undefined, "bold");
-doc.text("TERMS & CONDITIONS", 50, 770);
+doc.text("TERMS & CONDITIONS", 50, 765);
 
-doc.setFontSize(8);
+doc.setFontSize(7);
 doc.setFont(undefined, "normal");
 doc.setTextColor("#333333");
-doc.text(
-  "1. Payment is due upon receipt unless otherwise agreed. 2. Reservations are confirmed after payment or deposit. 3. Cancellations should be made at least 24 hours before pickup. 4. Angel Express is not liable for delays caused by traffic, weather, road closures, or events beyond reasonable control. 5. By booking, the passenger agrees to provide accurate pickup and drop-off information and to be available at the scheduled pickup time.",
-  50,
-  790,
-  { maxWidth: 512 }
-);
+
+const terms =
+  "1. Payment is due upon receipt unless otherwise agreed. 2. Reservations are confirmed after payment or deposit. 3. Cancellations must be made at least 24 hours before pickup. 4. Angel Express is not liable for delays caused by traffic, weather, road closures, or events beyond our control. 5. By booking, the passenger confirms that all pickup and drop-off details are accurate.";
+
+doc.text(terms, 50, 782, {
+  maxWidth: 512
+});
 
   return {
     invoiceNo,
@@ -416,6 +417,8 @@ const emailBooking = {
   mode: "no-cors",
   body: JSON.stringify(emailBooking)
 });
+
+window.location.href = "success.html";
 
     latestBooking = data;
 const whatsappMessage = encodeURIComponent(
