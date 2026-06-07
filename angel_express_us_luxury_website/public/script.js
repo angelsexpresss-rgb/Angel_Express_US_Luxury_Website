@@ -46,6 +46,180 @@ setInterval(() => setSlide((active + 1) % slides.length), 5000);
 function cleanPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
+function generateInvoiceNumber() {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  const uniqueCode = Date.now().toString().slice(-6);
+
+  return `AE-${year}${month}${day}-${uniqueCode}`;
+}
+
+async function generateInvoicePDF(booking) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF("p", "pt", "letter");
+
+  const invoiceNo = generateInvoiceNumber();
+
+  const invoiceDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+
+  const miles = Number(booking.miles || 0);
+  const total = Number(booking.total || 0);
+  const amountPaid = Number(booking.amount_paid || 0);
+  const balanceDue = total - amountPaid;
+
+  const zelleEmail = "tjayekeh@gmail.com";
+  const paymentText = `Pay Angel Express via Zelle\nRecipient: ${zelleEmail}\nInvoice: ${invoiceNo}\nAmount: $${balanceDue.toFixed(2)}`;
+  const qrDataUrl = await QRCode.toDataURL(paymentText);
+
+  const navy = "#0f2f4f";
+  const lightBlue = "#eaf1f7";
+  const green = "#22c55e";
+  const red = "#c0392b";
+
+  doc.setFillColor(navy);
+  doc.rect(0, 0, 612, 55, "F");
+
+  doc.setTextColor("#ffffff");
+  doc.setFontSize(12);
+  doc.text("GO FAR. ARRIVE WELL.", 306, 34, { align: "center" });
+
+  doc.setTextColor(navy);
+  doc.setFontSize(18);
+  doc.setFont(undefined, "bold");
+  doc.text("PROFESSIONAL TRANSPORTATION", 50, 95);
+  doc.text("INVOICE", 50, 117);
+
+  doc.setFontSize(10);
+  doc.setFont(undefined, "normal");
+  doc.text("Angel Express", 50, 140);
+  doc.text("Phone: 617-606-0679 | Email: angelsexpresss@gmail.com", 50, 155);
+  doc.text("Reservation Link: https://angel-express-us-luxury-website.pages.dev/", 50, 170);
+
+  doc.setFontSize(11);
+  doc.setFont(undefined, "bold");
+  doc.text(`Invoice #: ${invoiceNo}`, 360, 95);
+  doc.text(`Date: ${invoiceDate}`, 360, 115);
+  doc.setTextColor("#d68910");
+  doc.text("Status: PENDING", 360, 135);
+
+  doc.setTextColor(navy);
+  doc.setFontSize(13);
+  doc.text("TRIP DETAILS", 50, 210);
+
+  doc.setFillColor(lightBlue);
+  doc.rect(50, 225, 512, 70, "F");
+
+  doc.setFillColor(navy);
+  doc.rect(50, 225, 110, 35, "F");
+  doc.rect(50, 260, 110, 35, "F");
+
+  doc.setTextColor("#ffffff");
+  doc.setFontSize(10);
+  doc.text("Pickup", 60, 247);
+  doc.text("Drop-off", 60, 282);
+
+  doc.setTextColor("#000000");
+  doc.text(booking.pickup || "", 170, 247, { maxWidth: 370 });
+  doc.text(booking.dropoff || "", 170, 282, { maxWidth: 370 });
+
+  doc.setTextColor(navy);
+  doc.setFontSize(13);
+  doc.setFont(undefined, "bold");
+  doc.text("MILEAGE BREAKDOWN", 50, 330);
+
+  doc.setFillColor(navy);
+  doc.rect(50, 345, 512, 25, "F");
+
+  doc.setTextColor("#ffffff");
+  doc.setFontSize(10);
+  doc.text("Segment", 60, 362);
+  doc.text("Miles", 510, 362);
+
+  doc.setTextColor("#000000");
+  doc.setFillColor("#ffffff");
+  doc.rect(50, 370, 512, 30, "S");
+  doc.text("Pickup → Drop-off", 60, 390);
+  doc.text(String(miles), 510, 390);
+
+  doc.setFillColor("#dfe6e9");
+  doc.rect(50, 400, 512, 28, "F");
+  doc.setFont(undefined, "bold");
+  doc.text("TOTAL MILES", 60, 418);
+  doc.text(String(miles), 510, 418);
+
+  doc.setTextColor(navy);
+  doc.setFontSize(13);
+  doc.text("CHARGES & PAYMENT SUMMARY", 50, 465);
+
+  doc.setFillColor(navy);
+  doc.rect(50, 480, 512, 25, "F");
+
+  doc.setTextColor("#ffffff");
+  doc.text("Description", 60, 497);
+  doc.text("Amount", 500, 497);
+
+  doc.setTextColor("#000000");
+  doc.setFillColor("#fff9e6");
+  doc.rect(50, 505, 512, 30, "F");
+  doc.text("Angel Express Transportation Service", 60, 525);
+  doc.text(`$${total.toFixed(2)}`, 500, 525);
+
+  doc.setFillColor("#ffffff");
+  doc.rect(50, 535, 512, 30, "F");
+  doc.setTextColor(green);
+  doc.text("Amount Paid", 60, 555);
+  doc.text(`$${amountPaid.toFixed(2)}`, 500, 555);
+
+  doc.setFillColor("#fdecea");
+  doc.rect(50, 565, 512, 30, "F");
+  doc.setTextColor(red);
+  doc.text("Balance Due", 60, 585);
+  doc.text(`$${balanceDue.toFixed(2)}`, 500, 585);
+
+  doc.setTextColor(navy);
+  doc.setFontSize(13);
+  doc.text("PAYMENT & AUTHORIZATION", 50, 630);
+
+  doc.addImage(qrDataUrl, "PNG", 60, 645, 110, 110);
+
+  doc.setFontSize(10);
+  doc.setTextColor("#000000");
+  doc.text("Pay via Zelle", 190, 665);
+  doc.text("Scan the QR code with your bank or Zelle app.", 190, 682);
+  doc.text("Recipient: tjayekeh@gmail.com", 190, 699);
+  doc.text(`Reference: Invoice ${invoiceNo}`, 190, 716);
+
+  doc.text("Authorized by: Angel Express", 360, 680);
+
+  doc.setTextColor(navy);
+  doc.setFontSize(13);
+  doc.setFont(undefined, "bold");
+  doc.text("TERMS & CONDITIONS", 50, 780);
+
+  doc.setFontSize(8);
+  doc.setFont(undefined, "normal");
+  doc.setTextColor("#333333");
+  doc.text(
+    "1. Payment is due upon receipt unless otherwise agreed. 2. Reservations are confirmed after payment or deposit. 3. Cancellations should be made at least 24 hours before pickup. 4. Angel Express is not liable for delays caused by traffic, weather, road closures, or events beyond reasonable control. 5. By booking, the passenger agrees to provide accurate pickup and drop-off information and to be available at the scheduled pickup time.",
+    50,
+    798,
+    { maxWidth: 512 }
+  );
+
+  return {
+    invoiceNo,
+    pdfBase64: doc.output("datauristring").split(",")[1]
+  };
+}
+
 async function calculatePrice() {
   const pickup = pickupEl.value.trim();
   const dropoff = dropoffEl.value.trim();
@@ -201,6 +375,17 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const booking = buildBooking();
+
+  const invoice = await generateInvoicePDF(booking);
+
+booking.invoice_no = invoice.invoiceNo;
+booking.invoice_pdf = invoice.pdfBase64;
+
+console.log("Invoice Created:", invoice.invoiceNo);
+console.log("PDF Length:", invoice.pdfBase64.length);
+
+booking.amount_paid = booking.amount_paid || 0;
+booking.balance_due = booking.total;
 
   try {
     const { data, error } = await supabaseClient
