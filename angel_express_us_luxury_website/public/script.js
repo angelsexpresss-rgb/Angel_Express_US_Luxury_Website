@@ -386,8 +386,6 @@ booking.invoice_pdf = invoice.pdfBase64;
 console.log("Invoice Created:", invoice.invoiceNo);
 console.log("PDF Length:", invoice.pdfBase64.length);
 
-booking.amount_paid = booking.amount_paid || 0;
-booking.balance_due = booking.total;
 
   try {
     const { data, error } = await supabaseClient
