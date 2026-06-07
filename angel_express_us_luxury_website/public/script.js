@@ -394,6 +394,8 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
 
 const invoice = await generateInvoicePDF(booking);
 
+booking.invoice_no = invoice.invoiceNo;
+
 const emailBooking = {
   ...booking,
   trip_type: document.getElementById("tripType").value,
@@ -402,7 +404,10 @@ const emailBooking = {
   amount_paid: 0,
   balance_due: booking.total
 };
+ const invoice = await generateInvoicePDF(booking);
 
+booking.invoice_no = invoice.invoiceNo;
+booking.invoice_status = "Pending";
   try {
     const { data, error } = await supabaseClient
       .from("bookings")
