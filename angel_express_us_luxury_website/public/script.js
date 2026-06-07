@@ -404,9 +404,7 @@ const emailBooking = {
   amount_paid: 0,
   balance_due: booking.total
 };
- const invoice = await generateInvoicePDF(booking);
-
-booking.invoice_no = invoice.invoiceNo;
+ 
 booking.invoice_status = "Pending";
   try {
     const { data, error } = await supabaseClient
