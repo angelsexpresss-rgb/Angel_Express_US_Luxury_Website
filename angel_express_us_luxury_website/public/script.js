@@ -376,16 +376,17 @@ function calendarLink(b) {
 document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const booking = buildBooking();
+ const booking = buildBooking();
 
-  const invoice = await generateInvoicePDF(booking);
+const invoice = await generateInvoicePDF(booking);
 
-booking.invoice_no = invoice.invoiceNo;
-booking.invoice_pdf = invoice.pdfBase64;
-
-console.log("Invoice Created:", invoice.invoiceNo);
-console.log("PDF Length:", invoice.pdfBase64.length);
-
+const emailBooking = {
+  ...booking,
+  invoice_no: invoice.invoiceNo,
+  invoice_pdf: invoice.pdfBase64,
+  amount_paid: 0,
+  balance_due: booking.total
+};
 
   try {
     const { data, error } = await supabaseClient
