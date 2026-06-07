@@ -311,7 +311,6 @@ function buildBooking() {
     phone: cleanPhone(document.getElementById("phone").value.trim()),
     email: document.getElementById("email").value.trim(),
     route: price.route,
-    trip_type: document.getElementById("tripType").value,
     date: document.getElementById("date").value,
     time: document.getElementById("time").value,
     pickup: document.getElementById("pickup").value.trim(),
@@ -382,6 +381,7 @@ const invoice = await generateInvoicePDF(booking);
 
 const emailBooking = {
   ...booking,
+  trip_type: document.getElementById("tripType").value,
   invoice_no: invoice.invoiceNo,
   invoice_pdf: invoice.pdfBase64,
   amount_paid: 0,
