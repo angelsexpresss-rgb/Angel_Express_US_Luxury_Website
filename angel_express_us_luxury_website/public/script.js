@@ -400,7 +400,7 @@ const emailBooking = {
    await fetch(GOOGLE_SCRIPT_URL, {
   method: "POST",
   mode: "no-cors",
-  body: JSON.stringify(booking)
+  body: JSON.stringify(emailBooking)
 });
 
     latestBooking = data;
