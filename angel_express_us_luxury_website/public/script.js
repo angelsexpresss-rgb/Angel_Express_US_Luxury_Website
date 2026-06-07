@@ -77,7 +77,9 @@ async function generateInvoicePDF(booking) {
 
   const zelleEmail = "tjayekeh@gmail.com";
   const paymentText = `Pay Angel Express via Zelle\nRecipient: ${zelleEmail}\nInvoice: ${invoiceNo}\nAmount: $${balanceDue.toFixed(2)}`;
-  const qrDataUrl = await QRCode.toDataURL(paymentText);
+ const qrDataUrl =
+  "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" +
+  encodeURIComponent(paymentText);
 
   const navy = "#0f2f4f";
   const lightBlue = "#eaf1f7";
