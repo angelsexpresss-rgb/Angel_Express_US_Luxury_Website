@@ -104,7 +104,7 @@ async function generateInvoicePDF(booking) {
   doc.text("Angel Express", 50, 140);
   doc.text("Phone: 617-606-0679 | Email: angelsexpresss@gmail.com", 50, 155);
   doc.text("Reservation Link: https://angelexpressus.com/", 50, 170);
-  
+
 doc.setFontSize(11);
 doc.setFont(undefined, "bold");
 
