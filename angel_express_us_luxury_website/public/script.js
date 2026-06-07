@@ -311,7 +311,7 @@ function buildBooking() {
     phone: cleanPhone(document.getElementById("phone").value.trim()),
     email: document.getElementById("email").value.trim(),
     route: price.route,
-    tripType: document.getElementById("tripType").value,
+    trip_type: document.getElementById("tripType").value,
     date: document.getElementById("date").value,
     time: document.getElementById("time").value,
     pickup: document.getElementById("pickup").value.trim(),
