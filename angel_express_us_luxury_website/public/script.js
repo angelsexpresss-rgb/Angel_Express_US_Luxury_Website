@@ -102,7 +102,7 @@ async function generateInvoicePDF(booking) {
   doc.setFontSize(10);
   doc.setFont(undefined, "normal");
   doc.text("Angel Express", 50, 140);
-  doc.text("Phone: 972-836-7910 | Email: angelsexpresss@gmail.com", 50, 155);
+  doc.text("Phone:972-836-7910 | Email: angelsexpresss@gmail.com", 50, 155);
   doc.text("Reservation Link: https://angelexpressus.com/", 50, 170);
 
 doc.setFontSize(11);
