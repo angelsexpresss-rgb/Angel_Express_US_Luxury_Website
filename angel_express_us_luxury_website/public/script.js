@@ -10,7 +10,7 @@ const supabaseClient = supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
 );
-const OWNER_WHATSAPP = "16176060679"; // Change this to your Angel Express WhatsApp number, country code only.
+const OWNER_WHATSAPP = "19728367910"; // Change this to your Angel Express WhatsApp number, country code only.
 
 const pickupEl = document.getElementById("pickup");
 const dropoffEl = document.getElementById("dropoff");
@@ -102,7 +102,7 @@ async function generateInvoicePDF(booking) {
   doc.setFontSize(10);
   doc.setFont(undefined, "normal");
   doc.text("Angel Express", 50, 140);
-  doc.text("Phone: 617-606-0679 | Email: angelsexpresss@gmail.com", 50, 155);
+  doc.text("Phone: 972-836-7910 | Email: angelsexpresss@gmail.com", 50, 155);
   doc.text("Reservation Link: https://angelexpressus.com/", 50, 170);
 
 doc.setFontSize(11);
@@ -443,7 +443,7 @@ Miles: ${latestBooking.miles}
 Total: $${latestBooking.total}`
 );
 
-window.open(`https://wa.me/16176060679?text=${whatsappMessage}`, "_blank");
+window.open(`https://wa.me/19728367910?text=${whatsappMessage}`, "_blank");
 
     alert("Booking saved successfully!");
   } catch (err) {
