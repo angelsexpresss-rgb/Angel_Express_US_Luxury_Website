@@ -17,7 +17,7 @@ export default function HomeScreen() {
     >
       <View style={styles.overlay}>
         <Image
-          source={require("../../assets/images/angel-logo.png")}
+          source={require("../../assets/images/angel-logo-transparent.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -33,24 +33,24 @@ export default function HomeScreen() {
         <View style={styles.divider} />
 
         <Text style={styles.subtitle}>
-          Premium regional transportation{"\n"}across Texas and beyond.
+          Premium regional transportation across{"\n"}Texas and beyond.
         </Text>
 
         <TouchableOpacity
-          style={styles.button}
+          style={styles.primaryButton}
           onPress={() => router.push("/signup" as any)}
         >
-          <Text style={styles.buttonText}>Create an Account</Text>
+          <Text style={styles.primaryButtonText}>Create an Account</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.button}
+          style={styles.secondaryButton}
           onPress={() => router.push("/login" as any)}
         >
-          <Text style={styles.buttonText}>Sign In</Text>
+          <Text style={styles.secondaryButtonText}>Sign In</Text>
         </TouchableOpacity>
 
-        <Text style={styles.safeText}>Safe. Reliable. Professional.</Text>
+        <Text style={styles.footerText}>Safe. Reliable. Professional.</Text>
 
         <TouchableOpacity onPress={() => router.push("/privacy" as any)}>
           <Text style={styles.privacy}>Privacy Policy</Text>
@@ -67,81 +67,114 @@ const styles = StyleSheet.create({
 
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(4, 12, 24, 0.65)",
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 28,
+    paddingHorizontal: 30,
   },
 
   logo: {
-    width: 320,
-    height: 190,
-    marginBottom: 25,
+    width: 360,
+    height: 210,
+    marginBottom: 18,
   },
 
   headline: {
     color: "#FFFFFF",
-    fontSize: 30,
-    fontWeight: "800",
+    fontSize: 36,
+    fontWeight: "900",
     textAlign: "center",
-    lineHeight: 42,
-    marginBottom: 12,
+    lineHeight: 44,
+    marginBottom: 14,
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 5,
   },
 
   brandLine: {
     color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "700",
+    fontSize: 23,
+    fontWeight: "600",
     textAlign: "center",
-    marginBottom: 18,
+    marginBottom: 16,
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 
   gold: {
     color: "#D4AF37",
+    fontWeight: "900",
   },
 
   divider: {
-    width: 65,
+    width: 75,
     height: 4,
-    borderRadius: 4,
+    borderRadius: 5,
     backgroundColor: "#D4AF37",
     marginBottom: 22,
   },
 
   subtitle: {
-    color: "#E0E0E0",
-    fontSize: 18,
+    color: "#FFFFFF",
+    fontSize: 20,
     textAlign: "center",
-    lineHeight: 28,
-    marginBottom: 80,
+    lineHeight: 30,
+    marginBottom: 50,
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 
-  button: {
+  primaryButton: {
     width: "100%",
     backgroundColor: "#D4AF37",
     paddingVertical: 18,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#F5D76E",
   },
 
-  buttonText: {
+  primaryButtonText: {
     color: "#071426",
-    fontSize: 21,
-    fontWeight: "800",
+    fontSize: 22,
+    fontWeight: "900",
   },
 
-  safeText: {
+  secondaryButton: {
+    width: "100%",
+    paddingVertical: 18,
+    borderRadius: 14,
+    alignItems: "center",
+    marginBottom: 34,
+    borderWidth: 2,
+    borderColor: "#D4AF37",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+
+  secondaryButtonText: {
+    color: "#D4AF37",
+    fontSize: 22,
+    fontWeight: "900",
+  },
+
+  footerText: {
     color: "#FFFFFF",
     fontSize: 18,
-    marginTop: 18,
-    marginBottom: 18,
+    marginBottom: 14,
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 
   privacy: {
     color: "#FFFFFF",
     fontSize: 17,
     textDecorationLine: "underline",
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 });

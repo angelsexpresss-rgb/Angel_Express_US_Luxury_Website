@@ -1,4 +1,3 @@
-import React from "react";
 import {
   View,
   Text,
@@ -12,13 +11,13 @@ import { router } from "expo-router";
 export default function HomeScreen() {
   return (
     <ImageBackground
-      source={require("../assets/images/gmc-background.png")}
+      source={require("./assets/images/gmc-background.png")}
       style={styles.background}
       resizeMode="cover"
     >
       <View style={styles.overlay}>
         <Image
-          source={require("../assets/images/angel-logo.png")}
+         source={require("./assets/images/angel-logo-transparent.png")}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -34,37 +33,27 @@ export default function HomeScreen() {
         <View style={styles.divider} />
 
         <Text style={styles.subtitle}>
-          Premium regional transportation across Texas and beyond.
+          Premium regional transportation across{"\n"}Texas and beyond.
         </Text>
 
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() => router.push("/signup" as any)}
         >
-          <Text style={styles.primaryButtonText}>
-            Create an Account
-          </Text>
+          <Text style={styles.primaryButtonText}>Create an Account</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push("/login" as any)}
         >
-          <Text style={styles.secondaryButtonText}>
-            Sign In
-          </Text>
+          <Text style={styles.secondaryButtonText}>Sign In</Text>
         </TouchableOpacity>
 
-        <Text style={styles.footerText}>
-          Safe. Reliable. Professional.
-        </Text>
+        <Text style={styles.footerText}>Safe. Reliable. Professional.</Text>
 
-        <TouchableOpacity
-          onPress={() => router.push("/privacy" as any)}
-        >
-          <Text style={styles.privacy}>
-            Privacy Policy
-          </Text>
+        <TouchableOpacity onPress={() => router.push("/privacy" as any)}>
+          <Text style={styles.privacy}>Privacy Policy</Text>
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -78,95 +67,114 @@ const styles = StyleSheet.create({
 
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 30,
   },
 
   logo: {
-    width: 280,
-    height: 160,
-    marginBottom: 20,
+    width: 360,
+    height: 210,
+    marginBottom: 18,
   },
 
   headline: {
     color: "#FFFFFF",
-    fontSize: 32,
-    fontWeight: "bold",
+    fontSize: 36,
+    fontWeight: "900",
     textAlign: "center",
-    marginBottom: 10,
+    lineHeight: 44,
+    marginBottom: 14,
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 5,
   },
 
   brandLine: {
     color: "#FFFFFF",
-    fontSize: 22,
+    fontSize: 23,
+    fontWeight: "600",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 16,
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 
   gold: {
     color: "#D4AF37",
-    fontWeight: "bold",
+    fontWeight: "900",
   },
 
   divider: {
-    width: 70,
+    width: 75,
     height: 4,
+    borderRadius: 5,
     backgroundColor: "#D4AF37",
-    marginBottom: 20,
-    borderRadius: 4,
+    marginBottom: 22,
   },
 
   subtitle: {
-    color: "#F5F5F5",
-    fontSize: 18,
+    color: "#FFFFFF",
+    fontSize: 20,
     textAlign: "center",
-    lineHeight: 28,
+    lineHeight: 30,
     marginBottom: 50,
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 
   primaryButton: {
     width: "100%",
     backgroundColor: "#D4AF37",
     paddingVertical: 18,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#F5D76E",
   },
 
   primaryButtonText: {
     color: "#071426",
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "900",
   },
 
   secondaryButton: {
     width: "100%",
+    paddingVertical: 18,
+    borderRadius: 14,
+    alignItems: "center",
+    marginBottom: 34,
     borderWidth: 2,
     borderColor: "#D4AF37",
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 30,
     backgroundColor: "rgba(0,0,0,0.35)",
   },
 
   secondaryButtonText: {
     color: "#D4AF37",
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 22,
+    fontWeight: "900",
   },
 
   footerText: {
     color: "#FFFFFF",
-    fontSize: 17,
-    marginBottom: 15,
+    fontSize: 18,
+    marginBottom: 14,
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 
   privacy: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 17,
     textDecorationLine: "underline",
+    textShadowColor: "rgba(0,0,0,0.7)",
+    textShadowOffset: { width: 1, height: 2 },
+    textShadowRadius: 4,
   },
 });
