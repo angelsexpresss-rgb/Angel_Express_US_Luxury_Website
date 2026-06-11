@@ -390,8 +390,23 @@ function calendarLink(b) {
 document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   e.preventDefault();
 
- const booking = buildBooking();
+  const loader = document.getElementById("bookingLoader");
+const submitBtn = document.querySelector("#bookingForm button[type='submit']");
 
+if (submitBtn.disabled) return;
+
+submitBtn.disabled = true;
+submitBtn.textContent = "Processing...";
+loader.classList.add("show");
+
+ const booking = buildBooking();
+ 
+if (!booking) {
+  loader.classList.remove("show");
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Save Booking";
+  return;
+}
 const invoice = await generateInvoicePDF(booking);
 
 booking.invoice_no = invoice.invoiceNo;
@@ -445,10 +460,21 @@ Total: $${latestBooking.total}`
 
 window.open(`https://wa.me/19728367910?text=${whatsappMessage}`, "_blank");
 
-    alert("Booking saved successfully!");
-  } catch (err) {
-    alert("Booking could not be saved. " + err.message);
-  }
+loader.classList.remove("show");
+window.location.href = "success.html";
+
+ } catch (err) {
+
+  console.error(err);
+
+  loader.classList.remove("show");
+
+  submitBtn.disabled = false;
+
+  submitBtn.textContent = "Save Booking";
+
+  alert("Booking could not be saved. " + err.message);
+}
 });
 
 async function loadBookings() {

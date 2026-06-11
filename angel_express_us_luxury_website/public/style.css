@@ -632,3 +632,55 @@ footer{
   justify-content: center;
   flex-wrap: wrap;
 }
+.booking-loader {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 5, 0.88);
+  z-index: 999999;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.booking-loader.show {
+  display: flex;
+}
+
+.loader-card {
+  background: #111;
+  color: white;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  padding: 36px 28px;
+  border-radius: 22px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+}
+
+.loader-card h2 {
+  color: #ffffff;
+  margin: 18px 0 10px;
+}
+
+.loader-card p {
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.spinner {
+  width: 56px;
+  height: 56px;
+  border: 5px solid rgba(255,255,255,0.18);
+  border-top-color: #22c55e;
+  border-radius: 50%;
+  margin: 0 auto;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
