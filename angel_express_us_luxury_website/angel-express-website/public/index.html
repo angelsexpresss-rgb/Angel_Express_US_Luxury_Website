@@ -231,30 +231,50 @@
     </div>
   </footer>
 
-  <button id="chatToggle" class="chat-toggle">
-    <i class="fa-solid fa-message"></i>
-    AI Assistant
-  </button>
+  <!-- AI Assistant -->
 
-  <div class="chatbot-box" id="chatbotBox">
-    <div class="chatbot-header">Angel Express Assistant</div>
-    <div class="chatbot-messages" id="chatbotMessages">
-      <p><strong>Bot:</strong> Hi! How can I help you with your ride today?</p>
-    </div>
-    <div class="chatbot-input">
-      <input type="text" id="chatInput" placeholder="Ask about routes, prices, booking..." />
-      <button type="button" onclick="sendChat()">Send</button>
-    </div>
+<button id="chatToggle" class="chat-toggle">
+  💬 AI Assistant
+</button>
+
+<div class="chatbot-box" id="chatbotBox">
+
+  <div class="chatbot-header">
+    Angel Express Assistant
   </div>
 
-  <a
-    href="https://wa.me/19728367910?text=Hello%20Angel%20Express,%20I%20would%20like%20to%20book%20a%20ride."
-    class="whatsapp-float"
-    target="_blank"
-  >
-    <i class="fab fa-whatsapp"></i>
-    WhatsApp
-  </a>
+  <div class="chatbot-messages" id="chatbotMessages">
+    <p>
+      <strong>Angel Assistant:</strong>
+      Hi! How can I help you today?
+    </p>
+  </div>
+
+  <div class="chatbot-input">
+
+    <input
+      type="text"
+      id="chatInput"
+      placeholder="Ask about booking, pricing, routes..."
+    >
+
+    <button onclick="sendChat()">
+      Send
+    </button>
+
+  </div>
+
+</div>
+
+<!-- Chat With Us -->
+
+<a
+href="https://wa.me/19728367910"
+target="_blank"
+class="whatsapp-float"
+>
+💬 Chat With Us
+</a>
 
   <script src="script.js"></script>
 </body>

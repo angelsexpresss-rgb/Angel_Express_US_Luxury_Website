@@ -626,4 +626,90 @@ function sendChat() {
 
   input.value = "";
   messages.scrollTop = messages.scrollHeight;
+}const chatToggle =
+document.getElementById("chatToggle");
+
+const chatbotBox =
+document.getElementById("chatbotBox");
+
+if(chatToggle){
+
+chatToggle.addEventListener(
+"click",
+() => {
+
+chatbotBox.classList.toggle("open");
+
+});
+
+}
+
+function sendChat(){
+
+const input =
+document.getElementById("chatInput");
+
+const messages =
+document.getElementById("chatbotMessages");
+
+const question =
+input.value.trim();
+
+if(!question) return;
+
+messages.innerHTML += `
+<p><strong>You:</strong> ${question}</p>
+`;
+
+let answer =
+"Thank you for contacting Angel Express.";
+
+const q =
+question.toLowerCase();
+
+if(q.includes("book")){
+
+answer =
+'You can start booking by visiting the Book Ride page.';
+
+}
+
+else if(q.includes("price") ||
+q.includes("fare")){
+
+answer =
+'Use our Fare Estimate tool to calculate your trip cost.';
+
+}
+
+else if(q.includes("airport")){
+
+answer =
+'Angel Express provides airport transportation including DFW and Dallas Love Field.';
+
+}
+
+else if(q.includes("student")){
+
+answer =
+'Student rides and group transportation are available across Texas.';
+
+}
+
+else if(q.includes("driver")){
+
+answer =
+'Visit the Drivers page to become an Angel Express Chauffeur.';
+
+}
+
+messages.innerHTML += `
+<p><strong>Angel Assistant:</strong> ${answer}</p>
+`;
+
+input.value = "";
+
+messages.scrollTop =
+messages.scrollHeight;
+
 }
