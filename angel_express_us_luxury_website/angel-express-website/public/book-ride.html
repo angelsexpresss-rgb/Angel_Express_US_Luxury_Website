@@ -9,196 +9,30 @@
 <link rel="stylesheet" href="style.css">
 
 <style>
-.booking-page{
-max-width:800px;
-margin:40px auto;
-padding:20px;
-}
-
-.back-btn{
-display:inline-flex;
-align-items:center;
-gap:10px;
-padding:14px 22px;
-border-radius:50px;
-background:rgba(11,20,38,.9);
-border:1px solid rgba(212,175,55,.25);
-color:white;
-text-decoration:none;
-font-weight:700;
-margin-bottom:25px;
-transition:.3s;
-}
-
-.back-btn:hover{
-border-color:#D4AF37;
-transform:translateY(-2px);
-}
-
-.booking-card{
-background:rgba(16,24,39,.82);
-border:1px solid rgba(212,175,55,.25);
-border-radius:24px;
-padding:30px;
-backdrop-filter:blur(16px);
-}
-
-.booking-title{
-font-size:48px;
-font-weight:900;
-margin-bottom:10px;
-}
-
-.booking-subtitle{
-color:#B8C1CC;
-margin-bottom:40px;
-}
-
-.section-title{
-font-size:28px;
-font-weight:800;
-color:#D4AF37;
-margin-top:30px;
-margin-bottom:15px;
-}
-
-label{
-display:block;
-margin-bottom:8px;
-margin-top:18px;
-font-weight:700;
-}
-
-input,
-textarea{
-width:100%;
-padding:16px;
-border-radius:16px;
-border:1px solid rgba(212,175,55,.25);
-background:#0B1426;
-color:white;
-font-size:16px;
-margin-bottom:10px;
-}
-
-textarea{
-min-height:120px;
-resize:vertical;
-}
-
-.address-wrapper{
-position:relative;
-}
-
-.suggestions-box{
-position:absolute;
-top:100%;
-left:0;
-right:0;
-z-index:50;
-background:#0B1426;
-border:1px solid rgba(212,175,55,.35);
-border-radius:16px;
-overflow:hidden;
-box-shadow:0 18px 45px rgba(0,0,0,.45);
-display:none;
-}
-
-.suggestion-item{
-padding:14px 16px;
-cursor:pointer;
-border-bottom:1px solid rgba(255,255,255,.08);
-color:white;
-font-size:14px;
-line-height:1.4;
-}
-
-.suggestion-item:hover{
-background:rgba(212,175,55,.14);
-}
-
-.location-status{
-font-size:13px;
-color:#38d46f;
-margin-top:-4px;
-margin-bottom:12px;
-display:none;
-}
-
-.location-status.error{
-color:#ff6b6b;
-}
-
-.option-grid{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:12px;
-}
-
-.option-btn{
-height:58px;
-border-radius:16px;
-border:1px solid rgba(212,175,55,.25);
-background:#0B1426;
-color:white;
-font-weight:700;
-cursor:pointer;
-transition:.2s;
-}
-
-.option-btn.active{
-background:#D4AF37;
-color:#050A14;
-}
-
-.category-grid{
-display:grid;
-gap:12px;
-}
-
-.category-btn{
-height:60px;
-border-radius:16px;
-border:1px solid rgba(212,175,55,.25);
-background:#0B1426;
-color:white;
-font-weight:700;
-cursor:pointer;
-transition:.2s;
-}
-
-.category-btn.active{
-background:#D4AF37;
-color:#050A14;
-}
-
-.continue-btn{
-margin-top:30px;
-width:100%;
-height:60px;
-border:none;
-border-radius:18px;
-background:#D4AF37;
-color:#050A14;
-font-size:20px;
-font-weight:900;
-cursor:pointer;
-transition:.3s;
-}
-
-.continue-btn:hover{
-transform:translateY(-2px);
-}
-
-@media(max-width:768px){
-.option-grid{
-grid-template-columns:1fr;
-}
-
-.booking-title{
-font-size:38px;
-}
-}
+.booking-page{max-width:800px;margin:40px auto;padding:20px;}
+.back-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:50px;background:rgba(11,20,38,.9);border:1px solid rgba(212,175,55,.25);color:white;text-decoration:none;font-weight:700;margin-bottom:25px;transition:.3s;}
+.back-btn:hover{border-color:#D4AF37;transform:translateY(-2px);}
+.booking-card{background:rgba(16,24,39,.82);border:1px solid rgba(212,175,55,.25);border-radius:24px;padding:30px;backdrop-filter:blur(16px);}
+.booking-title{font-size:48px;font-weight:900;margin-bottom:10px;}
+.booking-subtitle{color:#B8C1CC;margin-bottom:40px;}
+.section-title{font-size:28px;font-weight:800;color:#D4AF37;margin-top:30px;margin-bottom:15px;}
+label{display:block;margin-bottom:8px;margin-top:18px;font-weight:700;}
+input,textarea{width:100%;padding:16px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-size:16px;margin-bottom:10px;}
+textarea{min-height:120px;resize:vertical;}
+.address-wrapper{position:relative;}
+.suggestions-box{position:absolute;top:100%;left:0;right:0;z-index:50;background:#0B1426;border:1px solid rgba(212,175,55,.35);border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(0,0,0,.45);display:none;}
+.suggestion-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08);color:white;font-size:14px;line-height:1.4;}
+.suggestion-item:hover{background:rgba(212,175,55,.14);}
+.location-status{font-size:13px;color:#38d46f;margin-top:-4px;margin-bottom:12px;display:none;}
+.location-status.error{color:#ff6b6b;}
+.helper-note{font-size:13px;color:#B8C1CC;margin-top:-4px;margin-bottom:12px;}
+.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.option-btn,.category-btn{height:58px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-weight:700;cursor:pointer;transition:.2s;}
+.option-btn.active,.category-btn.active{background:#D4AF37;color:#050A14;}
+.category-grid{display:grid;gap:12px;}
+.continue-btn{margin-top:30px;width:100%;height:60px;border:none;border-radius:18px;background:#D4AF37;color:#050A14;font-size:20px;font-weight:900;cursor:pointer;transition:.3s;}
+.continue-btn:hover{transform:translateY(-2px);}
+@media(max-width:768px){.option-grid{grid-template-columns:1fr;}.booking-title{font-size:38px;}}
 </style>
 </head>
 
@@ -206,18 +40,25 @@ font-size:38px;
 
 <div class="booking-page">
 
-<a href="index.html" class="back-btn">
-← Back to Home
-</a>
+<a href="index.html" class="back-btn">← Back to Home</a>
 
 <div class="booking-card">
 
-<h1 class="booking-title">
-Book a Ride
-</h1>
+<h1 class="booking-title">Book a Ride</h1>
 
 <p class="booking-subtitle">
 Enter your trip details. Your fare estimate will be calculated next.
+</p>
+
+<label>Email Address</label>
+<input
+type="email"
+id="email"
+placeholder="Enter the email you will use in the Angel Express app"
+required
+>
+<p class="helper-note">
+Use the same email when registering in the app so this ride appears in your trip history.
 </p>
 
 <label>Pickup Address</label>
@@ -252,87 +93,31 @@ required
 <label>Time</label>
 <input type="time" id="tripTime">
 
-<div class="section-title">
-Trip Type
-</div>
+<div class="section-title">Trip Type</div>
 
 <div class="option-grid">
-
-<button
-type="button"
-class="option-btn active"
-data-type="One Way">
-One Way
-</button>
-
-<button
-type="button"
-class="option-btn"
-data-type="Round Trip">
-Round Trip
-</button>
-
+<button type="button" class="option-btn active" data-type="One Way">One Way</button>
+<button type="button" class="option-btn" data-type="Round Trip">Round Trip</button>
 </div>
 
-<div class="section-title">
-Ride Category
-</div>
+<div class="section-title">Ride Category</div>
 
 <div class="category-grid">
-
-<button
-type="button"
-class="category-btn active"
-data-category="Standard Ride">
-Standard Ride
-</button>
-
-<button
-type="button"
-class="category-btn"
-data-category="Airport Transfer">
-Airport Transfer
-</button>
-
-<button
-type="button"
-class="category-btn"
-data-category="Student Group Ride">
-Student Group Ride
-</button>
-
-<button
-type="button"
-class="category-btn"
-data-category="Tourist/Event Ride">
-Tourist/Event Ride
-</button>
-
+<button type="button" class="category-btn active" data-category="Standard Ride">Standard Ride</button>
+<button type="button" class="category-btn" data-category="Airport Transfer">Airport Transfer</button>
+<button type="button" class="category-btn" data-category="Student Group Ride">Student Group Ride</button>
+<button type="button" class="category-btn" data-category="Tourist/Event Ride">Tourist/Event Ride</button>
 </div>
 
-<div class="section-title">
-Passengers & Luggage
-</div>
+<div class="section-title">Passengers & Luggage</div>
 
 <label>Passengers</label>
-<input
-type="number"
-id="passengers"
-value="1"
-min="1"
->
+<input type="number" id="passengers" value="1" min="1">
 
 <label>Luggage</label>
-<input
-type="number"
-id="luggage"
-value="0"
-min="0"
->
+<input type="number" id="luggage" value="0" min="0">
 
-<div class="section-title">
-Extra Details
-</div>
+<div class="section-title">Extra Details</div>
 
 <textarea
 id="notes"
@@ -340,21 +125,13 @@ placeholder="Notes e.g. flight number, pickup instructions, luggage details"
 ></textarea>
 
 <label>Promo / Referral Code</label>
-<input
-type="text"
-id="referral"
-placeholder="Promo / Referral Code"
->
+<input type="text" id="referral" placeholder="Promo / Referral Code">
 
-<button
-type="button"
-class="continue-btn"
-onclick="continueToEstimate()">
+<button type="button" class="continue-btn" onclick="continueToEstimate()">
 Continue to Fare Estimate
 </button>
 
 </div>
-
 </div>
 
 <script>
@@ -368,177 +145,179 @@ let pickupTimer = null;
 let dropoffTimer = null;
 
 document.querySelectorAll(".option-btn").forEach(btn => {
-btn.addEventListener("click", () => {
-document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("active"));
-btn.classList.add("active");
-tripType = btn.dataset.type;
-});
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    tripType = btn.dataset.type;
+  });
 });
 
 document.querySelectorAll(".category-btn").forEach(btn => {
-btn.addEventListener("click", () => {
-document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
-btn.classList.add("active");
-rideCategory = btn.dataset.category;
-});
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    rideCategory = btn.dataset.category;
+  });
 });
 
 function showStatus(type, message, isError = false){
-const status = document.getElementById(type + "Status");
-status.textContent = message;
-status.style.display = "block";
-status.classList.toggle("error", isError);
+  const status = document.getElementById(type + "Status");
+  status.textContent = message;
+  status.style.display = "block";
+  status.classList.toggle("error", isError);
 }
 
 function hideSuggestions(type){
-const box = document.getElementById(type + "Suggestions");
-box.style.display = "none";
-box.innerHTML = "";
+  const box = document.getElementById(type + "Suggestions");
+  box.style.display = "none";
+  box.innerHTML = "";
 }
 
 async function searchAddress(query, type){
-if(!query || query.length < 3){
-hideSuggestions(type);
-return;
-}
+  if(!query || query.length < 3){
+    hideSuggestions(type);
+    return;
+  }
 
-const box = document.getElementById(type + "Suggestions");
+  const box = document.getElementById(type + "Suggestions");
 
-try{
-const url =
-`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=us&q=${encodeURIComponent(query)}`;
+  try{
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=us&q=${encodeURIComponent(query)}`;
 
-const response = await fetch(url, {
-headers:{
-"Accept":"application/json"
-}
-});
+    const response = await fetch(url, {
+      headers:{ "Accept":"application/json" }
+    });
 
-const results = await response.json();
+    const results = await response.json();
 
-if(!results.length){
-box.innerHTML = `<div class="suggestion-item">No address found. Try adding city and state.</div>`;
-box.style.display = "block";
-return;
-}
+    if(!results.length){
+      box.innerHTML = `<div class="suggestion-item">No address found. Try adding city and state.</div>`;
+      box.style.display = "block";
+      return;
+    }
 
-box.innerHTML = results.map((item, index) => `
-<div class="suggestion-item" onclick="selectAddress('${type}', ${index})">
-${item.display_name}
-</div>
-`).join("");
+    box.innerHTML = results.map((item, index) => `
+      <div class="suggestion-item" onclick="selectAddress('${type}', ${index})">
+        ${item.display_name}
+      </div>
+    `).join("");
 
-window[type + "Results"] = results;
-box.style.display = "block";
+    window[type + "Results"] = results;
+    box.style.display = "block";
 
-}catch(error){
-console.error(error);
-box.innerHTML = `<div class="suggestion-item">Unable to search address right now.</div>`;
-box.style.display = "block";
-}
+  }catch(error){
+    console.error(error);
+    box.innerHTML = `<div class="suggestion-item">Unable to search address right now.</div>`;
+    box.style.display = "block";
+  }
 }
 
 function selectAddress(type, index){
-const results = window[type + "Results"] || [];
-const selected = results[index];
+  const results = window[type + "Results"] || [];
+  const selected = results[index];
 
-if(!selected) return;
+  if(!selected) return;
 
-const input = document.getElementById(type === "pickup" ? "pickup" : "dropoff");
+  const input = document.getElementById(type === "pickup" ? "pickup" : "dropoff");
 
-input.value = selected.display_name;
+  input.value = selected.display_name;
 
-const locationData = {
-address: selected.display_name,
-latitude: Number(selected.lat),
-longitude: Number(selected.lon),
-placeId: selected.place_id,
-osmType: selected.osm_type,
-osmId: selected.osm_id
-};
+  const locationData = {
+    address: selected.display_name,
+    latitude: Number(selected.lat),
+    longitude: Number(selected.lon),
+    placeId: selected.place_id,
+    osmType: selected.osm_type,
+    osmId: selected.osm_id
+  };
 
-if(type === "pickup"){
-pickupLocation = locationData;
-showStatus("pickup", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
-}else{
-dropoffLocation = locationData;
-showStatus("dropoff", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
-}
+  if(type === "pickup"){
+    pickupLocation = locationData;
+    showStatus("pickup", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
+  }else{
+    dropoffLocation = locationData;
+    showStatus("dropoff", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
+  }
 
-hideSuggestions(type);
+  hideSuggestions(type);
 }
 
 document.getElementById("pickup").addEventListener("input", (e) => {
-pickupLocation = null;
-showStatus("pickup", "Select an address from the suggestions to save GPS.", true);
-clearTimeout(pickupTimer);
-pickupTimer = setTimeout(() => searchAddress(e.target.value, "pickup"), 450);
+  pickupLocation = null;
+  showStatus("pickup", "Select an address from the suggestions to save GPS.", true);
+  clearTimeout(pickupTimer);
+  pickupTimer = setTimeout(() => searchAddress(e.target.value, "pickup"), 450);
 });
 
 document.getElementById("dropoff").addEventListener("input", (e) => {
-dropoffLocation = null;
-showStatus("dropoff", "Select an address from the suggestions to save GPS.", true);
-clearTimeout(dropoffTimer);
-dropoffTimer = setTimeout(() => searchAddress(e.target.value, "dropoff"), 450);
+  dropoffLocation = null;
+  showStatus("dropoff", "Select an address from the suggestions to save GPS.", true);
+  clearTimeout(dropoffTimer);
+  dropoffTimer = setTimeout(() => searchAddress(e.target.value, "dropoff"), 450);
 });
 
 document.addEventListener("click", (e) => {
-if(!e.target.closest(".address-wrapper")){
-hideSuggestions("pickup");
-hideSuggestions("dropoff");
-}
+  if(!e.target.closest(".address-wrapper")){
+    hideSuggestions("pickup");
+    hideSuggestions("dropoff");
+  }
 });
 
 function continueToEstimate(){
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const pickupValue = document.getElementById("pickup").value.trim();
+  const dropoffValue = document.getElementById("dropoff").value.trim();
 
-const pickupValue = document.getElementById("pickup").value.trim();
-const dropoffValue = document.getElementById("dropoff").value.trim();
+  if(!email){
+    alert("Please enter your email address.");
+    return;
+  }
 
-if(!pickupValue || !dropoffValue){
-alert("Please enter pickup and drop-off addresses.");
-return;
-}
+  if(!pickupValue || !dropoffValue){
+    alert("Please enter pickup and drop-off addresses.");
+    return;
+  }
 
-if(!pickupLocation){
-alert("Please select a pickup address from the suggestions so GPS can be saved.");
-return;
-}
+  if(!pickupLocation){
+    alert("Please select a pickup address from the suggestions so GPS can be saved.");
+    return;
+  }
 
-if(!dropoffLocation){
-alert("Please select a drop-off address from the suggestions so GPS can be saved.");
-return;
-}
+  if(!dropoffLocation){
+    alert("Please select a drop-off address from the suggestions so GPS can be saved.");
+    return;
+  }
 
-const bookingData = {
-pickup: pickupLocation.address,
-dropoff: dropoffLocation.address,
+  const bookingData = {
+    email,
 
-pickupLatitude: pickupLocation.latitude,
-pickupLongitude: pickupLocation.longitude,
-dropoffLatitude: dropoffLocation.latitude,
-dropoffLongitude: dropoffLocation.longitude,
+    pickup: pickupLocation.address,
+    dropoff: dropoffLocation.address,
 
-pickupPlaceId: pickupLocation.placeId,
-dropoffPlaceId: dropoffLocation.placeId,
+    pickupLatitude: pickupLocation.latitude,
+    pickupLongitude: pickupLocation.longitude,
+    dropoffLatitude: dropoffLocation.latitude,
+    dropoffLongitude: dropoffLocation.longitude,
 
-date: document.getElementById("tripDate").value,
-time: document.getElementById("tripTime").value,
+    pickupPlaceId: pickupLocation.placeId,
+    dropoffPlaceId: dropoffLocation.placeId,
 
-tripType,
-rideCategory,
+    date: document.getElementById("tripDate").value,
+    time: document.getElementById("tripTime").value,
 
-passengers: document.getElementById("passengers").value,
-luggage: document.getElementById("luggage").value,
-notes: document.getElementById("notes").value,
-referral: document.getElementById("referral").value
-};
+    tripType,
+    rideCategory,
 
-localStorage.setItem(
-"angelBooking",
-JSON.stringify(bookingData)
-);
+    passengers: document.getElementById("passengers").value,
+    luggage: document.getElementById("luggage").value,
+    notes: document.getElementById("notes").value,
+    referral: document.getElementById("referral").value
+  };
 
-window.location.href = "fare-estimate.html";
+  localStorage.setItem("angelBooking", JSON.stringify(bookingData));
+
+  window.location.href = "fare-estimate.html";
 }
 </script>
 
@@ -547,15 +326,10 @@ window.location.href = "fare-estimate.html";
 </button>
 
 <div class="chatbot-box" id="chatbotBox">
-  <div class="chatbot-header">
-    Angel Express Assistant
-  </div>
+  <div class="chatbot-header">Angel Express Assistant</div>
 
   <div class="chatbot-messages" id="chatbotMessages">
-    <p>
-      <strong>Angel Assistant:</strong>
-      Hi! How can I help you today?
-    </p>
+    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
   </div>
 
   <div class="chatbot-input">
@@ -565,9 +339,7 @@ window.location.href = "fare-estimate.html";
       placeholder="Ask about booking, pricing, routes..."
     >
 
-    <button type="button" onclick="sendChat()">
-      Send
-    </button>
+    <button type="button" onclick="sendChat()">Send</button>
   </div>
 </div>
 
