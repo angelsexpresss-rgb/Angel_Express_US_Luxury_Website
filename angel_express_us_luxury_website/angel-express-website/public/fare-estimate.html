@@ -7,10 +7,37 @@
   <title>Fare Estimate | Angel Express</title>
 
   <link rel="stylesheet" href="style.css" />
+
+  <style>
+    .back-btn{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:14px 22px;
+      margin-bottom:25px;
+      border-radius:50px;
+      background:rgba(11,20,38,.95);
+      border:1px solid rgba(212,175,55,.25);
+      color:white;
+      text-decoration:none;
+      font-weight:700;
+      transition:.3s;
+    }
+
+    .back-btn:hover{
+      border-color:#D4AF37;
+      transform:translateY(-2px);
+    }
+  </style>
 </head>
 
 <body>
   <main class="booking-page">
+
+    <a href="book-ride.html" class="back-btn">
+      ← Back to Booking Form
+    </a>
+
     <div class="booking-card">
       <h1 class="booking-title">Fare Estimate</h1>
 
@@ -106,7 +133,7 @@
       </button>
 
       <a href="book-ride.html" class="back-link">
-        Back to Booking Form
+        ← Back to Booking Form
       </a>
     </div>
   </main>

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -9,10 +10,31 @@
 <link rel="stylesheet" href="style.css">
 
 <style>
+
 .booking-page{
 max-width:800px;
 margin:40px auto;
 padding:20px;
+}
+
+.back-btn{
+display:inline-flex;
+align-items:center;
+gap:10px;
+padding:14px 22px;
+border-radius:50px;
+background:rgba(11,20,38,.9);
+border:1px solid rgba(212,175,55,.25);
+color:white;
+text-decoration:none;
+font-weight:700;
+margin-bottom:25px;
+transition:.3s;
+}
+
+.back-btn:hover{
+border-color:#D4AF37;
+transform:translateY(-2px);
 }
 
 .booking-card{
@@ -40,6 +62,30 @@ font-weight:800;
 color:#D4AF37;
 margin-top:30px;
 margin-bottom:15px;
+}
+
+label{
+display:block;
+margin-bottom:8px;
+margin-top:18px;
+font-weight:700;
+}
+
+input,
+textarea{
+width:100%;
+padding:16px;
+border-radius:16px;
+border:1px solid rgba(212,175,55,.25);
+background:#0B1426;
+color:white;
+font-size:16px;
+margin-bottom:10px;
+}
+
+textarea{
+min-height:120px;
+resize:vertical;
 }
 
 .option-grid{
@@ -96,22 +142,35 @@ color:#050A14;
 font-size:20px;
 font-weight:900;
 cursor:pointer;
+transition:.3s;
+}
+
+.continue-btn:hover{
+transform:translateY(-2px);
 }
 
 @media(max-width:768px){
+
 .option-grid{
 grid-template-columns:1fr;
 }
+
 .booking-title{
 font-size:38px;
 }
+
 }
+
 </style>
 
 </head>
 <body>
 
 <div class="booking-page">
+
+<a href="index.html" class="back-btn">
+← Back to Home
+</a>
 
 <div class="booking-card">
 
@@ -129,6 +188,7 @@ type="text"
 id="pickup"
 placeholder="Start typing pickup address"
 required
+
 >
 
 <label>Drop-off Address</label>
@@ -137,13 +197,12 @@ type="text"
 id="dropoff"
 placeholder="Start typing drop-off address"
 required
+
 >
 
-<label>Date</label>
-<input type="date" id="tripDate">
+<label>Date</label> <input type="date" id="tripDate">
 
-<label>Time</label>
-<input type="time" id="tripTime">
+<label>Time</label> <input type="time" id="tripTime">
 
 <div class="section-title">
 Trip Type
@@ -154,14 +213,12 @@ Trip Type
 <button
 class="option-btn active"
 data-type="One Way">
-One Way
-</button>
+One Way </button>
 
 <button
 class="option-btn"
 data-type="Round Trip">
-Round Trip
-</button>
+Round Trip </button>
 
 </div>
 
@@ -174,26 +231,22 @@ Ride Category
 <button
 class="category-btn active"
 data-category="Standard Ride">
-Standard Ride
-</button>
+Standard Ride </button>
 
 <button
 class="category-btn"
 data-category="Airport Transfer">
-Airport Transfer
-</button>
+Airport Transfer </button>
 
 <button
 class="category-btn"
 data-category="Student Group Ride">
-Student Group Ride
-</button>
+Student Group Ride </button>
 
 <button
 class="category-btn"
 data-category="Tourist/Event Ride">
-Tourist/Event Ride
-</button>
+Tourist/Event Ride </button>
 
 </div>
 
@@ -207,6 +260,7 @@ type="number"
 id="passengers"
 value="1"
 min="1"
+
 >
 
 <label>Luggage</label>
@@ -215,6 +269,7 @@ type="number"
 id="luggage"
 value="0"
 min="0"
+
 >
 
 <div class="section-title">
@@ -231,13 +286,13 @@ placeholder="Notes e.g. flight number, pickup instructions, luggage details"
 type="text"
 id="referral"
 placeholder="Promo / Referral Code"
+
 >
 
 <button
 class="continue-btn"
 onclick="continueToEstimate()">
-Continue to Fare Estimate
-</button>
+Continue to Fare Estimate </button>
 
 </div>
 
@@ -249,6 +304,7 @@ let tripType = "One Way";
 let rideCategory = "Standard Ride";
 
 document.querySelectorAll(".option-btn").forEach(btn => {
+
 btn.addEventListener("click", () => {
 
 document
@@ -260,6 +316,7 @@ btn.classList.add("active");
 tripType = btn.dataset.type;
 
 });
+
 });
 
 document.querySelectorAll(".category-btn").forEach(btn => {
