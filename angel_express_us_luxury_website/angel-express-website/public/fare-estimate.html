@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Fare Estimate | Angel Express</title>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <main class="booking-page">
+    <div class="booking-card">
+      <h1 class="booking-title">Fare Estimate</h1>
+
+      <p class="booking-subtitle">
+        Review your estimated trip distance, price, and ride details.
+      </p>
+
+      <div class="fare-box">
+        <h2>Trip Route</h2>
+
+        <p class="fare-label">Pickup</p>
+        <p id="pickupText">Loading...</p>
+
+        <p class="fare-label">Drop-off</p>
+        <p id="dropoffText">Loading...</p>
+
+        <p class="fare-label">Date & Time</p>
+        <p id="dateTimeText">Loading...</p>
+
+        <p class="gps-note">
+          GPS coordinates saved for chauffeur navigation ✓
+        </p>
+      </div>
+
+      <div class="fare-box">
+        <h2>Estimate Summary</h2>
+
+        <div class="summary-row">
+          <span>Pricing Tier</span>
+          <strong id="pricingTier">Long Distance Trip</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Distance</span>
+          <strong id="distanceText">Calculating...</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Estimated Drive Time</span>
+          <strong id="driveTimeText">Calculating...</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Fare Method</span>
+          <strong>$35.00 base + $1.10/mile</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Trip Type</span>
+          <strong id="tripTypeText">One Way</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Ride Category</span>
+          <strong id="rideCategoryText">Standard Ride</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Mileage Fare</span>
+          <strong id="mileageFareText">$0.00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Base + Mileage</span>
+          <strong id="baseMileageText">$0.00</strong>
+        </div>
+
+        <div class="summary-row" id="roundTripRow">
+          <span>Round-trip Adjustment</span>
+          <strong id="roundTripText">$0.00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Student Discount</span>
+          <strong id="studentDiscountText">-$0.00</strong>
+        </div>
+
+        <hr class="fare-divider" />
+
+        <div class="final-row">
+          <span>Final Price</span>
+          <strong id="finalPriceText">$0.00</strong>
+        </div>
+      </div>
+
+      <p class="estimate-disclaimer">
+        This is an estimate. Angel Express may review and confirm the final fare based on route,
+        wait time, airport pickup, event traffic, and special requests.
+      </p>
+
+      <button class="continue-btn" onclick="continueToConfirm()">
+        Continue to Confirm Booking
+      </button>
+
+      <a href="book-ride.html" class="back-link">
+        Back to Booking Form
+      </a>
+    </div>
+  </main>
+
+  <script>
+    const booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
+
+    const BASE_FARE = 35;
+    const RATE_PER_MILE = 1.10;
+
+    function money(value) {
+      return "$" + Number(value || 0).toFixed(2);
+    }
+
+    function estimateMiles(pickup, dropoff) {
+      const text = `${pickup} ${dropoff}`.toLowerCase();
+
+      if (text.includes("austin")) return 221.5;
+      if (text.includes("houston")) return 240;
+      if (text.includes("san antonio")) return 275;
+      if (text.includes("oklahoma")) return 205;
+      if (text.includes("college station")) return 180;
+      if (text.includes("dfw")) return 25;
+      if (text.includes("love field")) return 15;
+
+      return 100;
+    }
+
+    function estimateDriveTime(miles) {
+      const hours = miles / 55;
+      const h = Math.floor(hours);
+      const m = Math.round((hours - h) * 60);
+
+      if (h <= 0) return `${m} min`;
+      return `${h}h ${m}m`;
+    }
+
+    function calculateFare() {
+      if (!booking.pickup || !booking.dropoff) {
+        window.location.href = "book-ride.html";
+        return;
+      }
+
+      const miles = estimateMiles(booking.pickup, booking.dropoff);
+      const mileageFare = miles * RATE_PER_MILE;
+      const baseMileage = BASE_FARE + mileageFare;
+
+      const isRoundTrip = booking.tripType === "Round Trip";
+      const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
+
+      const isStudentRide =
+        booking.rideCategory === "Student Group Ride" ||
+        String(booking.referral || "").toLowerCase().includes("student");
+
+      const studentDiscount = isStudentRide ? beforeDiscount * 0.20 : 0;
+      const finalPrice = beforeDiscount - studentDiscount;
+
+      const updatedBooking = {
+        ...booking,
+        miles: miles.toFixed(1),
+        base: BASE_FARE,
+        mileageFare: mileageFare.toFixed(2),
+        total: finalPrice.toFixed(2),
+        estimatedDriveTime: estimateDriveTime(miles),
+        pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
+        fareMethod: "$35.00 base + $1.10/mile",
+        studentDiscount: studentDiscount.toFixed(2)
+      };
+
+      localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
+
+      document.getElementById("pickupText").textContent = booking.pickup;
+      document.getElementById("dropoffText").textContent = booking.dropoff;
+      document.getElementById("dateTimeText").textContent =
+        `${booking.date || "No date selected"} at ${booking.time || "No time selected"}`;
+
+      document.getElementById("pricingTier").textContent = updatedBooking.pricingTier;
+      document.getElementById("distanceText").textContent = `${updatedBooking.miles} miles`;
+      document.getElementById("driveTimeText").textContent = updatedBooking.estimatedDriveTime;
+      document.getElementById("tripTypeText").textContent = booking.tripType || "One Way";
+      document.getElementById("rideCategoryText").textContent = booking.rideCategory || "Standard Ride";
+      document.getElementById("mileageFareText").textContent = money(mileageFare);
+      document.getElementById("baseMileageText").textContent = money(baseMileage);
+
+      document.getElementById("roundTripText").textContent = isRoundTrip
+        ? money(beforeDiscount)
+        : money(baseMileage);
+
+      document.getElementById("studentDiscountText").textContent =
+        "-$" + studentDiscount.toFixed(2);
+
+      document.getElementById("finalPriceText").textContent = money(finalPrice);
+    }
+
+    function continueToConfirm() {
+      window.location.href = "confirm-booking.html";
+    }
+
+    calculateFare();
+  </script>
+</body>
+</html>
