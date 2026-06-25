@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -10,7 +9,6 @@
 <link rel="stylesheet" href="style.css">
 
 <style>
-
 .booking-page{
 max-width:800px;
 margin:40px auto;
@@ -88,6 +86,49 @@ min-height:120px;
 resize:vertical;
 }
 
+.address-wrapper{
+position:relative;
+}
+
+.suggestions-box{
+position:absolute;
+top:100%;
+left:0;
+right:0;
+z-index:50;
+background:#0B1426;
+border:1px solid rgba(212,175,55,.35);
+border-radius:16px;
+overflow:hidden;
+box-shadow:0 18px 45px rgba(0,0,0,.45);
+display:none;
+}
+
+.suggestion-item{
+padding:14px 16px;
+cursor:pointer;
+border-bottom:1px solid rgba(255,255,255,.08);
+color:white;
+font-size:14px;
+line-height:1.4;
+}
+
+.suggestion-item:hover{
+background:rgba(212,175,55,.14);
+}
+
+.location-status{
+font-size:13px;
+color:#38d46f;
+margin-top:-4px;
+margin-bottom:12px;
+display:none;
+}
+
+.location-status.error{
+color:#ff6b6b;
+}
+
 .option-grid{
 display:grid;
 grid-template-columns:1fr 1fr;
@@ -150,7 +191,6 @@ transform:translateY(-2px);
 }
 
 @media(max-width:768px){
-
 .option-grid{
 grid-template-columns:1fr;
 }
@@ -158,12 +198,10 @@ grid-template-columns:1fr;
 .booking-title{
 font-size:38px;
 }
-
 }
-
 </style>
-
 </head>
+
 <body>
 
 <div class="booking-page">
@@ -183,26 +221,36 @@ Enter your trip details. Your fare estimate will be calculated next.
 </p>
 
 <label>Pickup Address</label>
+<div class="address-wrapper">
 <input
 type="text"
 id="pickup"
 placeholder="Start typing pickup address"
+autocomplete="off"
 required
-
 >
+<div id="pickupSuggestions" class="suggestions-box"></div>
+</div>
+<div id="pickupStatus" class="location-status"></div>
 
 <label>Drop-off Address</label>
+<div class="address-wrapper">
 <input
 type="text"
 id="dropoff"
 placeholder="Start typing drop-off address"
+autocomplete="off"
 required
-
 >
+<div id="dropoffSuggestions" class="suggestions-box"></div>
+</div>
+<div id="dropoffStatus" class="location-status"></div>
 
-<label>Date</label> <input type="date" id="tripDate">
+<label>Date</label>
+<input type="date" id="tripDate">
 
-<label>Time</label> <input type="time" id="tripTime">
+<label>Time</label>
+<input type="time" id="tripTime">
 
 <div class="section-title">
 Trip Type
@@ -211,14 +259,18 @@ Trip Type
 <div class="option-grid">
 
 <button
+type="button"
 class="option-btn active"
 data-type="One Way">
-One Way </button>
+One Way
+</button>
 
 <button
+type="button"
 class="option-btn"
 data-type="Round Trip">
-Round Trip </button>
+Round Trip
+</button>
 
 </div>
 
@@ -229,24 +281,32 @@ Ride Category
 <div class="category-grid">
 
 <button
+type="button"
 class="category-btn active"
 data-category="Standard Ride">
-Standard Ride </button>
+Standard Ride
+</button>
 
 <button
+type="button"
 class="category-btn"
 data-category="Airport Transfer">
-Airport Transfer </button>
+Airport Transfer
+</button>
 
 <button
+type="button"
 class="category-btn"
 data-category="Student Group Ride">
-Student Group Ride </button>
+Student Group Ride
+</button>
 
 <button
+type="button"
 class="category-btn"
 data-category="Tourist/Event Ride">
-Tourist/Event Ride </button>
+Tourist/Event Ride
+</button>
 
 </div>
 
@@ -260,7 +320,6 @@ type="number"
 id="passengers"
 value="1"
 min="1"
-
 >
 
 <label>Luggage</label>
@@ -269,7 +328,6 @@ type="number"
 id="luggage"
 value="0"
 min="0"
-
 >
 
 <div class="section-title">
@@ -286,87 +344,193 @@ placeholder="Notes e.g. flight number, pickup instructions, luggage details"
 type="text"
 id="referral"
 placeholder="Promo / Referral Code"
-
 >
 
 <button
+type="button"
 class="continue-btn"
 onclick="continueToEstimate()">
-Continue to Fare Estimate </button>
+Continue to Fare Estimate
+</button>
 
 </div>
 
 </div>
 
 <script>
-
 let tripType = "One Way";
 let rideCategory = "Standard Ride";
 
+let pickupLocation = null;
+let dropoffLocation = null;
+
+let pickupTimer = null;
+let dropoffTimer = null;
+
 document.querySelectorAll(".option-btn").forEach(btn => {
-
 btn.addEventListener("click", () => {
-
-document
-.querySelectorAll(".option-btn")
-.forEach(b => b.classList.remove("active"));
-
+document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("active"));
 btn.classList.add("active");
-
 tripType = btn.dataset.type;
-
 });
-
 });
 
 document.querySelectorAll(".category-btn").forEach(btn => {
-
 btn.addEventListener("click", () => {
-
-document
-.querySelectorAll(".category-btn")
-.forEach(b => b.classList.remove("active"));
-
+document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
 btn.classList.add("active");
-
 rideCategory = btn.dataset.category;
-
+});
 });
 
+function showStatus(type, message, isError = false){
+const status = document.getElementById(type + "Status");
+status.textContent = message;
+status.style.display = "block";
+status.classList.toggle("error", isError);
+}
+
+function hideSuggestions(type){
+const box = document.getElementById(type + "Suggestions");
+box.style.display = "none";
+box.innerHTML = "";
+}
+
+async function searchAddress(query, type){
+if(!query || query.length < 3){
+hideSuggestions(type);
+return;
+}
+
+const box = document.getElementById(type + "Suggestions");
+
+try{
+const url =
+`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=us&q=${encodeURIComponent(query)}`;
+
+const response = await fetch(url, {
+headers:{
+"Accept":"application/json"
+}
+});
+
+const results = await response.json();
+
+if(!results.length){
+box.innerHTML = `<div class="suggestion-item">No address found. Try adding city and state.</div>`;
+box.style.display = "block";
+return;
+}
+
+box.innerHTML = results.map((item, index) => `
+<div class="suggestion-item" onclick="selectAddress('${type}', ${index})">
+${item.display_name}
+</div>
+`).join("");
+
+window[type + "Results"] = results;
+box.style.display = "block";
+
+}catch(error){
+console.error(error);
+box.innerHTML = `<div class="suggestion-item">Unable to search address right now.</div>`;
+box.style.display = "block";
+}
+}
+
+function selectAddress(type, index){
+const results = window[type + "Results"] || [];
+const selected = results[index];
+
+if(!selected) return;
+
+const input = document.getElementById(type === "pickup" ? "pickup" : "dropoff");
+
+input.value = selected.display_name;
+
+const locationData = {
+address: selected.display_name,
+latitude: Number(selected.lat),
+longitude: Number(selected.lon),
+placeId: selected.place_id,
+osmType: selected.osm_type,
+osmId: selected.osm_id
+};
+
+if(type === "pickup"){
+pickupLocation = locationData;
+showStatus("pickup", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
+}else{
+dropoffLocation = locationData;
+showStatus("dropoff", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
+}
+
+hideSuggestions(type);
+}
+
+document.getElementById("pickup").addEventListener("input", (e) => {
+pickupLocation = null;
+showStatus("pickup", "Select an address from the suggestions to save GPS.", true);
+clearTimeout(pickupTimer);
+pickupTimer = setTimeout(() => searchAddress(e.target.value, "pickup"), 450);
+});
+
+document.getElementById("dropoff").addEventListener("input", (e) => {
+dropoffLocation = null;
+showStatus("dropoff", "Select an address from the suggestions to save GPS.", true);
+clearTimeout(dropoffTimer);
+dropoffTimer = setTimeout(() => searchAddress(e.target.value, "dropoff"), 450);
+});
+
+document.addEventListener("click", (e) => {
+if(!e.target.closest(".address-wrapper")){
+hideSuggestions("pickup");
+hideSuggestions("dropoff");
+}
 });
 
 function continueToEstimate(){
 
+const pickupValue = document.getElementById("pickup").value.trim();
+const dropoffValue = document.getElementById("dropoff").value.trim();
+
+if(!pickupValue || !dropoffValue){
+alert("Please enter pickup and drop-off addresses.");
+return;
+}
+
+if(!pickupLocation){
+alert("Please select a pickup address from the suggestions so GPS can be saved.");
+return;
+}
+
+if(!dropoffLocation){
+alert("Please select a drop-off address from the suggestions so GPS can be saved.");
+return;
+}
+
 const bookingData = {
+pickup: pickupLocation.address,
+dropoff: dropoffLocation.address,
 
-pickup:
-document.getElementById("pickup").value,
+pickupLatitude: pickupLocation.latitude,
+pickupLongitude: pickupLocation.longitude,
+dropoffLatitude: dropoffLocation.latitude,
+dropoffLongitude: dropoffLocation.longitude,
 
-dropoff:
-document.getElementById("dropoff").value,
+pickupPlaceId: pickupLocation.placeId,
+dropoffPlaceId: dropoffLocation.placeId,
 
-date:
-document.getElementById("tripDate").value,
-
-time:
-document.getElementById("tripTime").value,
+date: document.getElementById("tripDate").value,
+time: document.getElementById("tripTime").value,
 
 tripType,
-
 rideCategory,
 
-passengers:
-document.getElementById("passengers").value,
-
-luggage:
-document.getElementById("luggage").value,
-
-notes:
-document.getElementById("notes").value,
-
-referral:
-document.getElementById("referral").value
-
+passengers: document.getElementById("passengers").value,
+luggage: document.getElementById("luggage").value,
+notes: document.getElementById("notes").value,
+referral: document.getElementById("referral").value
 };
 
 localStorage.setItem(
@@ -374,20 +538,15 @@ localStorage.setItem(
 JSON.stringify(bookingData)
 );
 
-window.location.href =
-"fare-estimate.html";
-
+window.location.href = "fare-estimate.html";
 }
-
 </script>
-<!-- AI Assistant -->
 
 <button id="chatToggle" class="chat-toggle">
   💬 AI Assistant
 </button>
 
 <div class="chatbot-box" id="chatbotBox">
-
   <div class="chatbot-header">
     Angel Express Assistant
   </div>
@@ -400,22 +559,17 @@ window.location.href =
   </div>
 
   <div class="chatbot-input">
-
     <input
       type="text"
       id="chatInput"
       placeholder="Ask about booking, pricing, routes..."
     >
 
-    <button onclick="sendChat()">
+    <button type="button" onclick="sendChat()">
       Send
     </button>
-
   </div>
-
 </div>
-
-<!-- Chat With Us -->
 
 <a
 href="https://wa.me/19728367910"
@@ -424,6 +578,7 @@ class="whatsapp-float"
 >
 💬 Chat With Us
 </a>
+
 <script src="script.js"></script>
 </body>
 </html>
