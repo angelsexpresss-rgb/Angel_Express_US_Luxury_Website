@@ -56,7 +56,7 @@ export default function LiveTripsScreen() {
           )
         ) || [];
 
-      setTrips(activeTrips);
+      setTrips(data || []);
     } catch (error: any) {
       Alert.alert("Error", error.message || "Unable to load live trips.");
     } finally {
