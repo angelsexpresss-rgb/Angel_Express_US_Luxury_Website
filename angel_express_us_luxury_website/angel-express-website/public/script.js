@@ -569,4 +569,61 @@ if (chatToggle && chatbotBox) {
   chatToggle.addEventListener("click", () => {
     chatbotBox.classList.toggle("open");
   });
+}const chatToggle = document.getElementById("chatToggle");
+const chatbotBox = document.getElementById("chatbotBox");
+
+if (chatToggle && chatbotBox) {
+  chatToggle.addEventListener("click", () => {
+    chatbotBox.classList.toggle("open");
+  });
+}
+
+function sendChat() {
+  const input = document.getElementById("chatInput");
+  const messages = document.getElementById("chatbotMessages");
+
+  if (!input || !messages) return;
+
+  const question = input.value.trim();
+  if (!question) return;
+
+  messages.innerHTML += `<p><strong>You:</strong> ${question}</p>`;
+
+  const q = question.toLowerCase();
+
+  let answer =
+    "Thanks for contacting Angel Express. You can book a ride, ask about routes, airport transfers, student travel, pricing, or chauffeur support.";
+
+  if (q.includes("book") || q.includes("reserve")) {
+    answer = `You can start your booking here: <a href="book-ride.html">Book a Ride</a>.`;
+  } else if (q.includes("price") || q.includes("fare") || q.includes("cost")) {
+    answer = `Angel Express uses distance-based pricing. Start here to calculate your estimate: <a href="book-ride.html">Get Fare Estimate</a>.`;
+  } else if (q.includes("airport") || q.includes("dfw") || q.includes("love field")) {
+    answer =
+      "Yes, Angel Express supports airport pickups and drop-offs, including DFW and Dallas Love Field.";
+  } else if (q.includes("student")) {
+    answer =
+      "Yes, Angel Express supports student travel, campus movement, and student group rides. Student discounts may apply when verified.";
+  } else if (q.includes("route") || q.includes("where") || q.includes("cities")) {
+    answer =
+      "Angel Express supports Dallas to Austin, Houston, San Antonio, Oklahoma City, College Station, airports, events, and custom routes.";
+  } else if (q.includes("world cup") || q.includes("fifa")) {
+    answer =
+      "Angel Express provides private transportation support for World Cup 2026 visitors, fans, tourists, hotels, airports, and regional Texas travel.";
+  } else if (q.includes("driver") || q.includes("chauffeur") || q.includes("drive")) {
+    answer = `You can learn about driving with Angel Express here: <a href="driver.html">Drive With Us</a>.`;
+  } else if (q.includes("contact") || q.includes("support") || q.includes("whatsapp")) {
+    answer = `You can contact Angel Express on WhatsApp here: <a href="https://wa.me/19728367910" target="_blank">Message Us</a>.`;
+  } else if (q.includes("payment") || q.includes("pay")) {
+    answer =
+      "Payment is collected after the ride is completed unless Angel Express confirms otherwise.";
+  } else if (q.includes("cancel")) {
+    answer =
+      "Please contact Angel Express as early as possible for cancellations or changes. WhatsApp is the fastest support option.";
+  }
+
+  messages.innerHTML += `<p><strong>Angel Assistant:</strong> ${answer}</p>`;
+
+  input.value = "";
+  messages.scrollTop = messages.scrollHeight;
 }
