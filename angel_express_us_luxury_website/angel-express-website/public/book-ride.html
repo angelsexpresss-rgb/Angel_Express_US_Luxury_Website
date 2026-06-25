@@ -1,387 +1,307 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book a Ride | Angel Express</title>
+<link rel="stylesheet" href="style.css">
 
-  <title>Confirm Booking | Angel Express</title>
-
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <style>
-    .back-btn{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:14px 22px;
-      margin-bottom:25px;
-      border-radius:50px;
-      background:rgba(11,20,38,.95);
-      border:1px solid rgba(212,175,55,.25);
-      color:white;
-      text-decoration:none;
-      font-weight:700;
-      transition:.3s;
-    }
-
-    .back-btn:hover{
-      border-color:#D4AF37;
-      transform:translateY(-2px);
-    }
-  </style>
+<style>
+.booking-page{max-width:800px;margin:40px auto;padding:20px;}
+.back-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:50px;background:rgba(11,20,38,.9);border:1px solid rgba(212,175,55,.25);color:white;text-decoration:none;font-weight:700;margin-bottom:25px;transition:.3s;}
+.back-btn:hover{border-color:#D4AF37;transform:translateY(-2px);}
+.booking-card{background:rgba(16,24,39,.82);border:1px solid rgba(212,175,55,.25);border-radius:24px;padding:30px;backdrop-filter:blur(16px);}
+.booking-title{font-size:48px;font-weight:900;margin-bottom:10px;}
+.booking-subtitle{color:#B8C1CC;margin-bottom:40px;}
+.section-title{font-size:28px;font-weight:800;color:#D4AF37;margin-top:30px;margin-bottom:15px;}
+label{display:block;margin-bottom:8px;margin-top:18px;font-weight:700;}
+input,textarea,select{width:100%;padding:16px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-size:16px;margin-bottom:10px;}
+select{appearance:auto;cursor:pointer;}
+textarea{min-height:120px;resize:vertical;}
+.helper-note{font-size:13px;color:#B8C1CC;margin-top:-4px;margin-bottom:12px;line-height:1.5;}
+.address-wrapper{position:relative;}
+.suggestions-box{position:absolute;top:100%;left:0;right:0;z-index:50;background:#0B1426;border:1px solid rgba(212,175,55,.35);border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(0,0,0,.45);display:none;}
+.suggestion-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08);color:white;font-size:14px;line-height:1.4;}
+.suggestion-item:hover{background:rgba(212,175,55,.14);}
+.location-status{font-size:13px;color:#38d46f;margin-top:-4px;margin-bottom:12px;display:none;}
+.location-status.error{color:#ff6b6b;}
+.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.option-btn,.category-btn{height:58px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-weight:700;cursor:pointer;transition:.2s;}
+.option-btn.active,.category-btn.active{background:#D4AF37;color:#050A14;}
+.category-grid{display:grid;gap:12px;}
+.continue-btn{margin-top:30px;width:100%;height:60px;border:none;border-radius:18px;background:#D4AF37;color:#050A14;font-size:20px;font-weight:900;cursor:pointer;transition:.3s;}
+.continue-btn:hover{transform:translateY(-2px);}
+@media(max-width:768px){.option-grid{grid-template-columns:1fr;}.booking-title{font-size:38px;}}
+</style>
 </head>
 
 <body>
-  <main class="booking-page">
 
-    <a href="fare-estimate.html" class="back-btn">
-      ← Back to Fare Estimate
-    </a>
+<div class="booking-page">
+<a href="index.html" class="back-btn">← Back to Home</a>
 
-    <div class="booking-card">
-      <h1 class="booking-title">Confirm Booking</h1>
+<div class="booking-card">
+<h1 class="booking-title">Book a Ride</h1>
+<p class="booking-subtitle">Enter your trip details. Your fare estimate will be calculated next.</p>
 
-      <p class="booking-subtitle">
-        Review your trip details before submitting your ride request.
-      </p>
+<label>Email Address</label>
+<input type="email" id="email" placeholder="Enter the email you will use in the Angel Express app" required>
+<p class="helper-note">Use the same email when registering in the Angel Express app so this ride appears in your trip history.</p>
 
-      <div class="fare-box">
-        <h2>Trip Details</h2>
+<label>Pickup Address</label>
+<div class="address-wrapper">
+<input type="text" id="pickup" placeholder="Start typing pickup address" autocomplete="off" required>
+<div id="pickupSuggestions" class="suggestions-box"></div>
+</div>
+<div id="pickupStatus" class="location-status"></div>
 
-        <p class="fare-label">Email</p>
-        <p id="emailText"></p>
+<label>Drop-off Address</label>
+<div class="address-wrapper">
+<input type="text" id="dropoff" placeholder="Start typing drop-off address" autocomplete="off" required>
+<div id="dropoffSuggestions" class="suggestions-box"></div>
+</div>
+<div id="dropoffStatus" class="location-status"></div>
 
-        <p class="fare-label">Pickup</p>
-        <p id="pickupText"></p>
+<label>Pickup Date</label>
+<input type="date" id="tripDate" required>
 
-        <p class="fare-label">Drop-off</p>
-        <p id="dropoffText"></p>
+<label>Pickup Time</label>
+<select id="tripTime" required>
+<option value="">Select pickup time</option>
+<option value="05:00">5:00 AM</option><option value="05:30">5:30 AM</option>
+<option value="06:00">6:00 AM</option><option value="06:30">6:30 AM</option>
+<option value="07:00">7:00 AM</option><option value="07:30">7:30 AM</option>
+<option value="08:00">8:00 AM</option><option value="08:30">8:30 AM</option>
+<option value="09:00">9:00 AM</option><option value="09:30">9:30 AM</option>
+<option value="10:00">10:00 AM</option><option value="10:30">10:30 AM</option>
+<option value="11:00">11:00 AM</option><option value="11:30">11:30 AM</option>
+<option value="12:00">12:00 PM</option><option value="12:30">12:30 PM</option>
+<option value="13:00">1:00 PM</option><option value="13:30">1:30 PM</option>
+<option value="14:00">2:00 PM</option><option value="14:30">2:30 PM</option>
+<option value="15:00">3:00 PM</option><option value="15:30">3:30 PM</option>
+<option value="16:00">4:00 PM</option><option value="16:30">4:30 PM</option>
+<option value="17:00">5:00 PM</option><option value="17:30">5:30 PM</option>
+<option value="18:00">6:00 PM</option><option value="18:30">6:30 PM</option>
+<option value="19:00">7:00 PM</option><option value="19:30">7:30 PM</option>
+<option value="20:00">8:00 PM</option><option value="20:30">8:30 PM</option>
+<option value="21:00">9:00 PM</option><option value="21:30">9:30 PM</option>
+<option value="22:00">10:00 PM</option><option value="22:30">10:30 PM</option>
+<option value="23:00">11:00 PM</option><option value="23:30">11:30 PM</option>
+<option value="00:00">12:00 AM</option><option value="00:30">12:30 AM</option>
+<option value="01:00">1:00 AM</option><option value="01:30">1:30 AM</option>
+<option value="02:00">2:00 AM</option><option value="02:30">2:30 AM</option>
+<option value="03:00">3:00 AM</option><option value="03:30">3:30 AM</option>
+<option value="04:00">4:00 AM</option><option value="04:30">4:30 AM</option>
+</select>
 
-        <p class="fare-label">Pickup GPS</p>
-        <p id="pickupGpsText"></p>
+<div class="section-title">Trip Type</div>
+<div class="option-grid">
+<button type="button" class="option-btn active" data-type="One Way">One Way</button>
+<button type="button" class="option-btn" data-type="Round Trip">Round Trip</button>
+</div>
 
-        <p class="fare-label">Drop-off GPS</p>
-        <p id="dropoffGpsText"></p>
+<div class="section-title">Ride Category</div>
+<div class="category-grid">
+<button type="button" class="category-btn active" data-category="Standard Ride">Standard Ride</button>
+<button type="button" class="category-btn" data-category="Airport Transfer">Airport Transfer</button>
+<button type="button" class="category-btn" data-category="Student Group Ride">Student Group Ride</button>
+<button type="button" class="category-btn" data-category="Tourist/Event Ride">Tourist/Event Ride</button>
+</div>
 
-        <p class="fare-label">Date</p>
-        <p id="dateText"></p>
+<div class="section-title">Passengers & Luggage</div>
+<label>Passengers</label>
+<input type="number" id="passengers" value="1" min="1">
 
-        <p class="fare-label">Time</p>
-        <p id="timeText"></p>
+<label>Luggage</label>
+<input type="number" id="luggage" value="0" min="0">
 
-        <p class="fare-label">Trip Type</p>
-        <p id="tripTypeText"></p>
+<div class="section-title">Extra Details</div>
+<textarea id="notes" placeholder="Notes e.g. flight number, pickup instructions, luggage details"></textarea>
 
-        <p class="fare-label">Ride Category</p>
-        <p id="rideCategoryText"></p>
+<label>Promo / Referral Code</label>
+<input type="text" id="referral" placeholder="Promo / Referral Code">
 
-        <p class="fare-label">Passengers</p>
-        <p id="passengersText"></p>
+<button type="button" class="continue-btn" onclick="continueToEstimate()">Continue to Fare Estimate</button>
+</div>
+</div>
 
-        <p class="fare-label">Luggage</p>
-        <p id="luggageText"></p>
+<script>
+localStorage.removeItem("angelBooking");
+sessionStorage.removeItem("angelBookingCompleted");
 
-        <p class="fare-label">Extra Details</p>
-        <p id="notesText"></p>
+let tripType = "One Way";
+let rideCategory = "Standard Ride";
+let pickupLocation = null;
+let dropoffLocation = null;
+let pickupTimer = null;
+let dropoffTimer = null;
 
-        <p class="fare-label">Promo / Referral Code</p>
-        <p id="referralText"></p>
+document.querySelectorAll(".option-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    tripType = btn.dataset.type;
+  });
+});
+
+document.querySelectorAll(".category-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    rideCategory = btn.dataset.category;
+  });
+});
+
+function showStatus(type, message, isError = false){
+  const status = document.getElementById(type + "Status");
+  status.textContent = message;
+  status.style.display = "block";
+  status.classList.toggle("error", isError);
+}
+
+function hideSuggestions(type){
+  const box = document.getElementById(type + "Suggestions");
+  box.style.display = "none";
+  box.innerHTML = "";
+}
+
+async function searchAddress(query, type){
+  if(!query || query.length < 3){
+    hideSuggestions(type);
+    return;
+  }
+
+  const box = document.getElementById(type + "Suggestions");
+
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=us&q=${encodeURIComponent(query)}`;
+    const response = await fetch(url, { headers:{ "Accept":"application/json" } });
+    const results = await response.json();
+
+    if(!results.length){
+      box.innerHTML = `<div class="suggestion-item">No address found. Try adding city and state.</div>`;
+      box.style.display = "block";
+      return;
+    }
+
+    box.innerHTML = results.map((item, index) => `
+      <div class="suggestion-item" onclick="selectAddress('${type}', ${index})">
+        ${item.display_name}
       </div>
+    `).join("");
 
-      <div class="fare-box">
-        <h2>Fare Summary</h2>
+    window[type + "Results"] = results;
+    box.style.display = "block";
+  }catch(error){
+    console.error(error);
+    box.innerHTML = `<div class="suggestion-item">Unable to search address right now.</div>`;
+    box.style.display = "block";
+  }
+}
 
-        <p class="fare-label">Pricing Tier</p>
-        <p id="pricingTierText"></p>
+function selectAddress(type, index){
+  const results = window[type + "Results"] || [];
+  const selected = results[index];
+  if(!selected) return;
 
-        <p class="fare-label">Distance</p>
-        <p id="distanceText"></p>
+  const input = document.getElementById(type === "pickup" ? "pickup" : "dropoff");
+  input.value = selected.display_name;
 
-        <p class="fare-label">Drive Time</p>
-        <p id="driveTimeText"></p>
+  const locationData = {
+    address: selected.display_name,
+    latitude: Number(selected.lat),
+    longitude: Number(selected.lon),
+    placeId: selected.place_id,
+    osmType: selected.osm_type,
+    osmId: selected.osm_id
+  };
 
-        <p class="fare-label">Base Fare</p>
-        <p id="baseFareText"></p>
+  if(type === "pickup"){
+    pickupLocation = locationData;
+    showStatus("pickup", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
+  }else{
+    dropoffLocation = locationData;
+    showStatus("dropoff", `GPS saved: ${locationData.latitude}, ${locationData.longitude}`);
+  }
 
-        <p class="fare-label">Mileage Rate</p>
-        <p id="mileageRateText"></p>
+  hideSuggestions(type);
+}
 
-        <p class="fare-label">Mileage Fare</p>
-        <p id="mileageFareText"></p>
+document.getElementById("pickup").addEventListener("input", (e) => {
+  pickupLocation = null;
+  showStatus("pickup", "Select an address from the suggestions to save GPS.", true);
+  clearTimeout(pickupTimer);
+  pickupTimer = setTimeout(() => searchAddress(e.target.value, "pickup"), 450);
+});
 
-        <p class="fare-label">Student Discount</p>
-        <p id="studentDiscountText"></p>
+document.getElementById("dropoff").addEventListener("input", (e) => {
+  dropoffLocation = null;
+  showStatus("dropoff", "Select an address from the suggestions to save GPS.", true);
+  clearTimeout(dropoffTimer);
+  dropoffTimer = setTimeout(() => searchAddress(e.target.value, "dropoff"), 450);
+});
 
-        <hr class="fare-divider" />
+document.addEventListener("click", (e) => {
+  if(!e.target.closest(".address-wrapper")){
+    hideSuggestions("pickup");
+    hideSuggestions("dropoff");
+  }
+});
 
-        <div class="final-row">
-          <span>Final Price</span>
-          <strong id="finalPriceText"></strong>
-        </div>
-      </div>
+function continueToEstimate(){
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const pickupValue = document.getElementById("pickup").value.trim();
+  const dropoffValue = document.getElementById("dropoff").value.trim();
+  const tripDate = document.getElementById("tripDate").value;
+  const tripTime = document.getElementById("tripTime").value;
 
-      <p class="estimate-disclaimer">
-        Payment is collected after your ride is completed.
-      </p>
+  if(!email){ alert("Please enter your email address."); return; }
+  if(!pickupValue || !dropoffValue){ alert("Please enter pickup and drop-off addresses."); return; }
+  if(!pickupLocation){ alert("Please select a pickup address from the suggestions so GPS can be saved."); return; }
+  if(!dropoffLocation){ alert("Please select a drop-off address from the suggestions so GPS can be saved."); return; }
+  if(!tripDate){ alert("Please select a pickup date."); return; }
+  if(!tripTime){ alert("Please select a pickup time."); return; }
 
-      <button id="confirmBtn" class="continue-btn" onclick="confirmBooking()">
-        Confirm Booking
-      </button>
+  const bookingData = {
+    email,
+    pickup: pickupLocation.address,
+    dropoff: dropoffLocation.address,
+    pickupLatitude: pickupLocation.latitude,
+    pickupLongitude: pickupLocation.longitude,
+    dropoffLatitude: dropoffLocation.latitude,
+    dropoffLongitude: dropoffLocation.longitude,
+    pickupPlaceId: pickupLocation.placeId,
+    dropoffPlaceId: dropoffLocation.placeId,
+    date: tripDate,
+    time: tripTime,
+    tripType,
+    rideCategory,
+    passengers: document.getElementById("passengers").value,
+    luggage: document.getElementById("luggage").value,
+    notes: document.getElementById("notes").value,
+    referral: document.getElementById("referral").value
+  };
 
-      <a href="fare-estimate.html" class="back-link">
-        ← Back to Fare Estimate
-      </a>
-    </div>
-  </main>
+  localStorage.setItem("angelBooking", JSON.stringify(bookingData));
+  window.location.href = "fare-estimate.html";
+}
+</script>
 
-  <div id="bookingLoader" class="booking-loader">
-    <div class="loader-card">
-      <div class="spinner"></div>
-      <h2>Confirming Your Booking</h2>
-      <p>Please wait while Angel Express registers your ride.</p>
-    </div>
+<button id="chatToggle" class="chat-toggle">💬 AI Assistant</button>
+
+<div class="chatbot-box" id="chatbotBox">
+  <div class="chatbot-header">Angel Express Assistant</div>
+  <div class="chatbot-messages" id="chatbotMessages">
+    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
   </div>
-
-  <script>
-    const SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
-
-    const GOOGLE_SCRIPT_URL =
-      "https://script.google.com/macros/s/AKfycbzfjXYUphz8-nyETcdMYOpHCPoBY33V17OkAZMODpBRVT2V6m8H9DTG5iBM63QqbHtR/exec";
-
-    const OWNER_WHATSAPP = "19728367910";
-
-    const supabaseClient = supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY
-    );
-
-    const booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
-
-    function money(value) {
-      return "$" + Number(value || 0).toFixed(2);
-    }
-
-    function generateInvoiceNumber() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const day = String(now.getDate()).padStart(2, "0");
-      const uniqueCode = Date.now().toString().slice(-6);
-      return `AE-${year}${month}${day}-${uniqueCode}`;
-    }
-
-    function ownerMessage(b) {
-      return `NEW ANGEL EXPRESS BOOKING
-
-Email: ${b.email || "Not provided"}
-
-Pickup: ${b.pickup_address || b.pickup || "Not provided"}
-Drop-off: ${b.dropoff_address || b.dropoff || "Not provided"}
-
-Date: ${b.ride_date || b.date || "Not provided"}
-Time: ${b.ride_time || b.time || "Not provided"}
-
-Trip Type: ${b.trip_type || "Not specified"}
-Ride Category: ${b.ride_category || "Not specified"}
-
-Passengers: ${b.passengers || 1}
-Luggage: ${b.luggage_count || 0}
-
-Miles: ${b.estimated_miles || b.miles || 0}
-Total Fare: $${Number(b.total_fare || b.total || 0).toFixed(2)}
-
-Notes: ${b.notes || "None"}
-Promo Code: ${b.promo_code || "None"}
-
-Please confirm availability.`;
-    }
-
-    function renderConfirmPage() {
-      if (!booking.pickup || !booking.dropoff) {
-        window.location.href = "book-ride.html";
-        return;
-      }
-
-      document.getElementById("emailText").textContent = booking.email || "Not provided";
-      document.getElementById("pickupText").textContent = booking.pickup || "Not provided";
-      document.getElementById("dropoffText").textContent = booking.dropoff || "Not provided";
-
-      document.getElementById("pickupGpsText").textContent =
-        booking.pickupLatitude && booking.pickupLongitude
-          ? `${booking.pickupLatitude}, ${booking.pickupLongitude}`
-          : "Not saved";
-
-      document.getElementById("dropoffGpsText").textContent =
-        booking.dropoffLatitude && booking.dropoffLongitude
-          ? `${booking.dropoffLatitude}, ${booking.dropoffLongitude}`
-          : "Not saved";
-
-      document.getElementById("dateText").textContent = booking.date || "Not provided";
-      document.getElementById("timeText").textContent = booking.time || "Not provided";
-      document.getElementById("tripTypeText").textContent = booking.tripType || "One Way";
-      document.getElementById("rideCategoryText").textContent = booking.rideCategory || "Standard Ride";
-      document.getElementById("passengersText").textContent = booking.passengers || "1";
-      document.getElementById("luggageText").textContent = booking.luggage || "0";
-      document.getElementById("notesText").textContent = booking.notes || "None";
-      document.getElementById("referralText").textContent = booking.referral || "None";
-
-      document.getElementById("pricingTierText").textContent = booking.pricingTier || "Long Distance Trip";
-      document.getElementById("distanceText").textContent = `${booking.miles || 0} miles`;
-      document.getElementById("driveTimeText").textContent = booking.estimatedDriveTime || "Not calculated";
-      document.getElementById("baseFareText").textContent = money(booking.base || 35);
-      document.getElementById("mileageRateText").textContent = "$1.10 / mile";
-      document.getElementById("mileageFareText").textContent = money(booking.mileageFare || 0);
-      document.getElementById("studentDiscountText").textContent =
-        "-$" + Number(booking.studentDiscount || 0).toFixed(2);
-      document.getElementById("finalPriceText").textContent = money(booking.total || 0);
-    }
-
-    async function confirmBooking() {
-      const loader = document.getElementById("bookingLoader");
-      const confirmBtn = document.getElementById("confirmBtn");
-
-      if (confirmBtn.disabled) return;
-
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = "Processing...";
-      loader.classList.add("show");
-
-      try {
-        const invoiceNo = generateInvoiceNumber();
-
-        const finalBooking = {
-          email: booking.email || "",
-
-          route: `${booking.pickup || ""} → ${booking.dropoff || ""}`,
-
-          pickup: booking.pickup || "",
-          dropoff: booking.dropoff || "",
-
-          pickup_address: booking.pickup || "",
-          dropoff_address: booking.dropoff || "",
-
-          pickup_lat: booking.pickupLatitude || null,
-          pickup_lng: booking.pickupLongitude || null,
-          dropoff_lat: booking.dropoffLatitude || null,
-          dropoff_lng: booking.dropoffLongitude || null,
-
-          date: booking.date || null,
-          time: booking.time || "",
-
-          ride_date: booking.date || "",
-          ride_time: booking.time || "",
-
-          trip_type: booking.tripType || "One Way",
-          ride_category: booking.rideCategory || "Standard Ride",
-
-          passengers: Number(booking.passengers || 1),
-          luggage_count: Number(booking.luggage || 0),
-
-          notes: booking.notes || "",
-          promo_code: booking.referral || "",
-          referral_code_used: booking.referral || "",
-
-          miles: Number(booking.miles || 0),
-          estimated_miles: Number(booking.miles || 0),
-
-          base: Number(booking.base || 35),
-          base_fare: Number(booking.base || 35),
-          base_fare_amount: Number(booking.base || 35),
-
-          mileage_rate: 1.10,
-          mileage_fare: Number(booking.mileageFare || 0),
-
-          student_discount: Number(booking.studentDiscount || 0),
-          total: Number(booking.total || 0),
-          total_fare: Number(booking.total || 0),
-          balance_due: Number(booking.total || 0),
-
-          pricing_tier: booking.pricingTier || "",
-          pricing_model: "tiered",
-          duration_text: booking.estimatedDriveTime || "",
-
-          source: "website",
-          status: "pending",
-
-          payment_status: "unpaid",
-
-          invoice_no: invoiceNo,
-          invoice_status: "Pending"
-        };
-
-        const { data, error } = await supabaseClient
-          .from("bookings")
-          .insert([finalBooking])
-          .select("*")
-          .single();
-
-        if (error) throw error;
-
-        await fetch(GOOGLE_SCRIPT_URL, {
-          method: "POST",
-          mode: "no-cors",
-          body: JSON.stringify(finalBooking)
-        });
-
-        const whatsappText = encodeURIComponent(
-          ownerMessage({
-            ...finalBooking,
-            id: data?.id
-          })
-        );
-
-        window.open(
-          `https://wa.me/${OWNER_WHATSAPP}?text=${whatsappText}`,
-          "_blank"
-        );
-
-        localStorage.removeItem("angelBooking");
-        window.location.href = "success.html";
-
-      } catch (err) {
-        console.error(err);
-        loader.classList.remove("show");
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = "Confirm Booking";
-        alert("Booking could not be saved. " + err.message);
-      }
-    }
-
-    renderConfirmPage();
-  </script>
-
-  <button id="chatToggle" class="chat-toggle">
-    💬 AI Assistant
-  </button>
-
-  <div class="chatbot-box" id="chatbotBox">
-    <div class="chatbot-header">Angel Express Assistant</div>
-
-    <div class="chatbot-messages" id="chatbotMessages">
-      <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
-    </div>
-
-    <div class="chatbot-input">
-      <input
-        type="text"
-        id="chatInput"
-        placeholder="Ask about booking, pricing, routes..."
-      >
-
-      <button type="button" onclick="sendChat()">Send</button>
-    </div>
+  <div class="chatbot-input">
+    <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
+    <button type="button" onclick="sendChat()">Send</button>
   </div>
+</div>
 
-  <a
-    href="https://wa.me/19728367910"
-    target="_blank"
-    class="whatsapp-float"
-  >
-    💬 Chat With Us
-  </a>
+<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">💬 Chat With Us</a>
 
-  <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
