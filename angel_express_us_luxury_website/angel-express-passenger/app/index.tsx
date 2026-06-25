@@ -11,13 +11,13 @@ import { router } from "expo-router";
 export default function HomeScreen() {
   return (
     <ImageBackground
-      source={require("./assets/images/gmc-background.png")}
+      source={require("../assets/images/gmc-background.png")}
       style={styles.background}
       resizeMode="cover"
     >
       <View style={styles.overlay}>
         <Image
-         source={require("./assets/images/angel-logo-transparent.png")}
+         source={require("../assets/images/angel-logo-transparent.png")}
           style={styles.logo}
           resizeMode="contain"
         />

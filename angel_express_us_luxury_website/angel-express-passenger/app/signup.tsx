@@ -22,22 +22,21 @@ export default function SignupScreen() {
     if (loading) return;
 
     if (!firstName || !lastName || !email || !phone || !password) {
-      Alert.alert(
-        "Missing Information",
-        "Please complete all fields."
-      );
+      Alert.alert("Missing Information", "Please complete all fields.");
       return;
     }
 
     try {
       setLoading(true);
 
+      const cleanFirstName = firstName.trim();
+      const cleanLastName = lastName.trim();
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPhone = phone.trim();
+
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: cleanEmail,
         password,
-        options: {
-          emailRedirectTo: "angel-express-passenger://login",
-        },
       });
 
       if (error) {
@@ -51,32 +50,40 @@ export default function SignupScreen() {
           .from("passengers")
           .insert({
             id: userId,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            email: email.trim(),
-            phone: phone.trim(),
+            first_name: cleanFirstName,
+            last_name: cleanLastName,
+            email: cleanEmail,
+            phone: cleanPhone,
           });
 
         if (profileError) {
           throw profileError;
         }
+
+        try {
+          await fetch("https://angel-welcome-email.angelsexpresss.workers.dev", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              firstName: cleanFirstName,
+              email: cleanEmail,
+            }),
+          });
+        } catch (emailError) {
+          console.log("Welcome email failed:", emailError);
+        }
       }
 
-      Alert.alert(
-        "Verify Your Email",
-        "Your account has been created. Please check your email and confirm your account before signing in.",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace("/login" as any),
-          },
-        ]
-      );
+      Alert.alert("Account Created", "Welcome to Angel Express Mobility.", [
+        {
+          text: "Continue",
+          onPress: () => router.replace("/login" as any),
+        },
+      ]);
     } catch (error: any) {
-      Alert.alert(
-        "Signup Error",
-        error.message || "Something went wrong."
-      );
+      Alert.alert("Signup Error", error.message || "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -135,10 +142,7 @@ export default function SignupScreen() {
       />
 
       <TouchableOpacity
-        style={[
-          styles.button,
-          loading && styles.buttonDisabled,
-        ]}
+        style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleSignup}
         disabled={loading}
       >
@@ -147,12 +151,8 @@ export default function SignupScreen() {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={() => router.replace("/login" as any)}
-      >
-        <Text style={styles.loginText}>
-          Already have an account? Sign In
-        </Text>
+      <TouchableOpacity onPress={() => router.replace("/login" as any)}>
+        <Text style={styles.loginText}>Already have an account? Sign In</Text>
       </TouchableOpacity>
     </ScrollView>
   );

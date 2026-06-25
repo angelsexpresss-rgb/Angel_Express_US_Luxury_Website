@@ -15,6 +15,60 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  async function syncWebsiteBookings(userId: string, userEmail: string) {
+    const cleanEmail = userEmail.trim().toLowerCase();
+
+    const { data: websiteBookings, error: fetchError } = await supabase
+      .from("bookings")
+      .select("*")
+      .ilike("email", cleanEmail);
+
+    if (fetchError) throw fetchError;
+
+    if (!websiteBookings || websiteBookings.length === 0) return;
+
+    for (const booking of websiteBookings) {
+      const updatedBooking = {
+        user_id: userId,
+
+        passenger_name: booking.passenger_name || booking.name || "",
+
+        pickup_address: booking.pickup_address || booking.pickup || "",
+
+        dropoff_address: booking.dropoff_address || booking.dropoff || "",
+
+        ride_date: booking.ride_date || booking.date || "",
+
+        ride_time: booking.ride_time || booking.time || "",
+
+        trip_type: booking.trip_type || booking.tripType || "One Way",
+
+        ride_category: booking.ride_category || "Website Booking",
+
+        estimated_miles: Number(
+          booking.estimated_miles || booking.miles || 0
+        ),
+
+        base_fare: Number(booking.base_fare || booking.base || 0),
+
+        total_fare: Number(booking.total_fare || booking.total || 0),
+
+        balance_due: Number(
+          booking.balance_due || booking.total_fare || booking.total || 0
+        ),
+
+        source: booking.source || "website",
+      };
+
+      const { error: updateError } = await supabase
+        .from("bookings")
+        .update(updatedBooking)
+        .eq("id", booking.id);
+
+      if (updateError) throw updateError;
+    }
+  }
+
   async function handleLogin() {
     if (loading) return;
 
@@ -34,46 +88,14 @@ export default function LoginScreen() {
       if (error) throw error;
 
       const userId = data.user?.id;
-      const userEmail = data.user?.email?.trim().toLowerCase();
+      const userEmail = data.user?.email;
 
       if (!userId || !userEmail) {
         Alert.alert("Login Error", "Unable to find user account.");
         return;
       }
 
-      await supabase
-        .from("bookings")
-        .update({ user_id: userId })
-        .ilike("email", userEmail)
-        .is("user_id", null);
-
-      const { data: websiteBookings, error: bookingFetchError } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("user_id", userId);
-
-      if (bookingFetchError) throw bookingFetchError;
-
-      if (websiteBookings && websiteBookings.length > 0) {
-        for (const booking of websiteBookings) {
-          const updatedBooking = {
-            passenger_name: booking.passenger_name || booking.name || "",
-            pickup_address: booking.pickup_address || booking.pickup || "",
-            dropoff_address: booking.dropoff_address || booking.dropoff || "",
-            estimated_miles:
-              Number(booking.estimated_miles || booking.miles || 0),
-            base_fare: Number(booking.base_fare || booking.base || 0),
-            total_fare: Number(booking.total_fare || booking.total || 0),
-            balance_due: Number(booking.balance_due || booking.total || 0),
-            source: booking.source || "website",
-          };
-
-          await supabase
-            .from("bookings")
-            .update(updatedBooking)
-            .eq("id", booking.id);
-        }
-      }
+      await syncWebsiteBookings(userId, userEmail);
 
       const { data: profile, error: profileError } = await supabase
         .from("passenger_profiles")
@@ -133,7 +155,7 @@ export default function LoginScreen() {
         disabled={loading}
       >
         <Text style={styles.buttonText}>
-          {loading ? "Syncing Trips..." : "Sign In"}
+          {loading ? "Signing In..." : "Sign In"}
         </Text>
       </TouchableOpacity>
 
