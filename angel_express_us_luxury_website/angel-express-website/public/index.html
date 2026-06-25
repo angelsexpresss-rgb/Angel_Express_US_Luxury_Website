@@ -3,427 +3,257 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Angel Express US | Premium Private Regional Rides</title>
+  <title>Angel Express Mobility | Premium Private Rides Across Texas</title>
+
   <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-
 </head>
+
 <body>
   <div class="bg-orb orb-one"></div>
   <div class="bg-orb orb-two"></div>
 
   <header class="navbar">
-    <a href="#home" class="logo">
+    <a href="index.html" class="logo">
       <div class="logo-mark">A</div>
       <div>
-        <h1>ANGEL EXPRESS MOBILITY</h1>
-        <span>US Private Rides</span>
+        <h1>ANGEL EXPRESS</h1>
+        <span>Mobility Ecosystem</span>
       </div>
     </a>
 
     <nav>
-      <a href="#experience">Experience</a>
-      <a href="#routes">Routes</a>
-      <a href="#book">Book</a>
+      <a href="index.html">Home</a>
+      <a href="passenger.html">Passengers</a>
+      <a href="driver.html">Drivers</a>
+      <a href="blog.html">Blog</a>
+      <a href="contact.html">Contact</a>
     </nav>
 
-    <a href="#book" class="nav-cta">Reserve</a>
-
-</header>
+    <a href="fare-estimate.html" class="nav-cta">Book a Ride</a>
+  </header>
 
   <main>
-    <section id="home" class="hero">
-      <div class="hero-left reveal">
-        <p class="kicker">Dallas-based private regional ride service</p>
-        <h2>Clean, safe, premium rides for students, travelers & airport passengers.</h2>
+    <section class="ae-hero">
+      <div class="hero-copy reveal">
+        <p class="kicker">Dallas-based private transportation</p>
+        <h2>Premium private rides for students, travelers, airport trips, and events.</h2>
         <p class="hero-sub">
-          Book the whole car for a one-way or round-trip ride from Dallas to Austin, Houston,
-          San Antonio, Oklahoma, College Station, airports, events, and custom destinations.
+          Angel Express connects passengers, chauffeurs, and operations into one seamless mobility ecosystem across Texas.
         </p>
 
         <div class="hero-actions">
-          <a href="#book" class="btn btn-light">Book Your Ride</a>
-          <a href="#experience" class="btn btn-glass">See Experience</a>
+          <a href="fare-estimate.html" class="btn btn-primary">
+            <i class="fa-solid fa-route"></i>
+            Get Fare Estimate
+          </a>
+          <a href="passenger.html" class="btn btn-secondary">
+            Explore Services
+          </a>
         </div>
 
-
-      <div class="hero-right reveal">
-        <div class="luxury-phone">
-          <div class="status-bar"><span>Angel Express Mobility</span><span>● Live</span></div>
-          <div class="slider" id="slider">
-            <div class="slide active">
-              <img src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=1400&q=90" alt="Premium car on road">
-              <div class="slide-content">
-                <span>Featured Vehicle</span>
-                <b>2020 Nissan Rogue</b>
-                <p>Clean, smooth, luggage-friendly private ride experience.</p>
-              </div>
-            </div>
-            <div class="slide">
-              <img src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1400&q=90" alt="Road trip">
-              <div class="slide-content">
-                <span>Regional Routes</span>
-                <b>Texas + Oklahoma</b>
-                <p>Dallas to Austin, Houston, San Antonio, College Station and more.</p>
-              </div>
-            </div>
-            <div class="slide">
-              <video muted loop playsinline>
-                <source src="https://videos.pexels.com/video-files/2103099/2103099-hd_1280_720_30fps.mp4" type="video/mp4">
-              </video>
-              <div class="slide-content">
-                <span>Travel Feel</span>
-                <b>Private. Calm. Direct.</b>
-                <p>A more personal alternative to crowded buses and unpredictable rides.</p>
-              </div>
-            </div>
+        <div class="hero-stats">
+          <div>
+            <strong>Private</strong>
+            <span>Whole-car rides</span>
           </div>
-          <div class="slider-dots" id="dots"></div>
+          <div>
+            <strong>Texas</strong>
+            <span>Regional routes</span>
+          </div>
+          <div>
+            <strong>24/7</strong>
+            <span>By reservation</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-visual reveal">
+        <div class="media-card">
+          <video autoplay muted loop playsinline>
+            <source src="https://videos.pexels.com/video-files/2103099/2103099-hd_1280_720_30fps.mp4" type="video/mp4">
+          </video>
+          <div class="media-overlay">
+            <span>Angel Express Live</span>
+            <h3>Private. Clean. Reliable.</h3>
+            <p>Designed for airport transfers, student travel, long-distance rides, and World Cup visitors.</p>
+          </div>
         </div>
       </div>
     </section>
-<section class="worldcup-banner">
-  <div class="banner-content reveal">
-    <p class="kicker">WORLD CUP 2026</p>
-    <h2>Private Travel Across Texas During FIFA World Cup 2026 ⚽</h2>
-    <p>
-      Visiting Dallas, Houston, Austin, San Antonio, or nearby cities?
-      Angel Express provides clean, safe, private transportation for football fans,
-      tourists, airport travelers, and groups.
-    </p>
 
-    <div class="proof-row">
-      <div><strong>Dallas</strong><span>Host City Access</span></div>
-      <div><strong>Airport</strong><span>Pickup & Dropoff</span></div>
-      <div><strong>Private</strong><span>No Crowded Buses</span></div>
-      <div><strong>Texas</strong><span>Regional Travel</span></div>
-    </div>
-
-    <a href="#book" class="btn btn-light">Reserve World Cup Ride</a>
-  </div>
-</section>
-    <section id="experience" class="section">
+    <section class="section ecosystem-section">
       <div class="section-top reveal">
-        <p class="kicker">The Angel Express promise</p>
-        <h3>More than a ride — a better travel experience.</h3>
-      </div>
-
-      <div class="promise-grid reveal">
-        <article>
-          <div class="icon">✦</div>
-          <h4>Clean Ride</h4>
-          <p>Fresh cabin presentation, organized pickup, and a polished private-car experience.</p>
-        </article>
-        <article>
-          <div class="icon">⌁</div>
-          <h4>Reliable Scheduling</h4>
-          <p>Google Calendar scheduling, booking records, and route confirmation before the trip.</p>
-        </article>
-        <article>
-          <div class="icon">✓</div>
-          <h4>Safe & Direct</h4>
-          <p>Door-to-door travel, verified pickup and drop-off addresses, and direct communication.</p>
-        </article>
-        <article>
-          <div class="icon">♡</div>
-          <h4>Customer Care</h4>
-          <p>WhatsApp communication, student-friendly pricing, and follow-up after every ride.</p>
-        </article>
-      </div>
-    </section>
-    <section id="book" class="section booking-section">
-      <div class="booking-copy reveal">
-        <p class="kicker">Online booking</p>
-        <h3>Reserve your ride in under one minute.</h3>
+        <p class="kicker">One connected platform</p>
+        <h3>A complete Angel Express ecosystem.</h3>
         <p>
-          The booking form saves trip details into the backend, updates the customer database,
-          opens WhatsApp messages, and creates a Google Calendar event.
+          The website, passenger app, driver app, and owner app are designed to work together with one shared booking, trip, safety, and payment flow.
         </p>
       </div>
 
-      <form id="bookingForm" class="booking-card reveal">
-        <div class="form-grid">
-  <label>Passenger Name
-    <input required id="name" placeholder="Full name" />
-  </label>
+      <div class="ecosystem-grid reveal">
+        <article>
+          <i class="fa-solid fa-user"></i>
+          <h4>Passenger Experience</h4>
+          <p>Book rides, estimate fares, confirm trips, track rides, and receive support.</p>
+          <a href="passenger.html">View passenger page</a>
+        </article>
 
-  <label>Passenger WhatsApp
-    <input required id="phone" placeholder="12145550199" />
-    <small>Country code only, no + sign.</small>
-  </label>
-</div>
+        <article>
+          <i class="fa-solid fa-car"></i>
+          <h4>Chauffeur Network</h4>
+          <p>Approved drivers accept rides, manage trips, track earnings, and serve passengers professionally.</p>
+          <a href="driver.html">Drive with us</a>
+        </article>
 
-<div class="form-grid">
-  <label>Passenger Email
-    <input required id="email" type="email" placeholder="passenger@email.com" />
-  </label>
-</div>
-
-        <div class="form-grid">
-          <label>Route
-            <select id="route">
-              <option value="Dallas to Austin" data-miles="195">Dallas to Austin (~195 miles)</option>
-              <option value="Dallas to Houston" data-miles="240">Dallas to Houston (~240 miles)</option>
-              <option value="Dallas to San Antonio" data-miles="275">Dallas to San Antonio (~275 miles)</option>
-              <option value="Dallas to Oklahoma City" data-miles="205">Dallas to Oklahoma City (~205 miles)</option>
-              <option value="Dallas to College Station" data-miles="180">Dallas to College Station (~180 miles)</option>
-              <option value="Custom Destination" data-miles="100">Custom Destination</option>
-            </select>
-          </label>
-          <label>Trip Type
-            <select id="tripType">
-              <option>One-way private car booking</option>
-              <option>Round-trip private car booking</option>
-              <option>Airport transfer</option>
-              <option>Student group ride</option>
-              <option>Tourist/event ride</option>
-            </select>
-          </label>
-        </div>
-
-        <div class="form-grid">
-          <label>Date <input required id="date" type="date" /></label>
-          <label>Pickup Time <input required id="time" type="time" /></label>
-        </div>
-
-        <label>Pickup Address <input required id="pickup" placeholder="Exact pickup address" /></label>
-        <label>Drop-off Address <input required id="dropoff" placeholder="Exact drop-off address" /></label>
-        <input type="hidden" id="miles" />
-        <input type="hidden" id="base" />
-        <input type="hidden" id="total" />
-
-        <p id="pricePreview" class="price-preview">
-        Enter pickup and drop-off address to calculate price.
-        </p>
-        <button type="submit" class="btn btn-dark full">Save Booking</button>
-
-        <div id="successPanel" class="success-panel">
-          <h4>Booking saved ✅</h4>
-          <p id="bookingId"></p>
-          <div class="success-actions">
-            <button type="button" id="passengerWhatsApp" class="btn whatsapp">Send Passenger WhatsApp</button>
-            <button type="button" id="ownerWhatsApp" class="btn whatsapp-dark">Send Booking to My WhatsApp</button>
-            <button type="button" id="calendarBtn" class="btn calendar">Add to Google Calendar</button>
-      
-          </div>
-        </div>
-      </form>
+        <article>
+          <i class="fa-solid fa-map-location-dot"></i>
+          <h4>Owner Operations</h4>
+          <p>Live trip oversight, driver management, passenger management, and payment visibility.</p>
+          <a href="contact.html">Contact operations</a>
+        </article>
+      </div>
     </section>
 
-    <section id="routes" class="section routes-section">
+    <section class="section routes-showcase">
       <div class="route-copy reveal">
-        <p class="kicker">Where Angel Express goes</p>
-        <h3>Dallas to your destination.</h3>
+        <p class="kicker">Where we go</p>
+        <h3>Private rides across Texas and nearby cities.</h3>
         <p>
-          Designed for students, airport travelers, tourists, long-distance riders, World Cup visitors,
-          and private groups who want the whole-car experience.
+          Built for students, airport travelers, tourists, private groups, long-distance passengers, and event visitors.
         </p>
+        <a href="fare-estimate.html" class="btn btn-primary">Start Booking</a>
       </div>
 
       <div class="route-cards reveal">
-        <div class="route-card"><span>01</span><b>Dallas → Austin</b><p>Student and weekend travel corridor.</p></div>
-        <div class="route-card"><span>02</span><b>Dallas → Houston</b><p>Business, airport, and family trips.</p></div>
-        <div class="route-card"><span>03</span><b>Dallas → San Antonio</b><p>Tourist and event travel.</p></div>
-        <div class="route-card"><span>04</span><b>Dallas → Oklahoma</b><p>Interstate private ride requests.</p></div>
-        <div class="route-card"><span>05</span><b>Dallas → College Station</b><p>Student travel and campus movement.</p></div>
+        <div class="route-card"><span>01</span><b>Dallas → Austin</b><p>Student and weekend travel.</p></div>
+        <div class="route-card"><span>02</span><b>Dallas → Houston</b><p>Airport, business, and family trips.</p></div>
+        <div class="route-card"><span>03</span><b>Dallas → San Antonio</b><p>Tourism and long-distance rides.</p></div>
+        <div class="route-card"><span>04</span><b>Dallas → Oklahoma City</b><p>Regional interstate travel.</p></div>
+        <div class="route-card"><span>05</span><b>Dallas → College Station</b><p>Campus and student movement.</p></div>
         <div class="route-card"><span>06</span><b>Custom Routes</b><p>Airport, hotel, event, and private destinations.</p></div>
       </div>
     </section>
 
-<section id="faq" class="section faq-section">
-  <div class="section-top reveal">
-    <p class="kicker">FAQ</p>
-    <h3>Frequently Asked Questions</h3>
-    <p>Quick answers about booking, routes, payments, and ride preparation.</p>
-  </div>
+    <section class="worldcup-banner reveal">
+      <div>
+        <p class="kicker">World Cup 2026</p>
+        <h2>Private transportation for fans, tourists, and groups visiting Texas.</h2>
+        <p>
+          Plan airport transfers, city-to-city travel, hotel pickups, and game-day movement with Angel Express.
+        </p>
+        <a href="fare-estimate.html" class="btn btn-primary">Reserve World Cup Ride</a>
+      </div>
+    </section>
 
-  <div class="faq-accordion reveal">
-    <details>
-      <summary>How do I book a ride?</summary>
-      <p>Fill out the booking form with your trip details. Once submitted, Angel Express will receive your booking and follow up for confirmation.</p>
-    </details>
+    <section class="section safety-section">
+      <div class="section-top reveal">
+        <p class="kicker">Safety Promise</p>
+        <h3>Simple, clean, and professionally managed.</h3>
+      </div>
 
-    <details>
-      <summary>What routes do you cover?</summary>
-      <p>We currently cover Dallas to Austin, Houston, San Antonio, College Station, Oklahoma, airport trips, events, and custom routes by request.</p>
-    </details>
+      <div class="promise-grid reveal">
+        <article>
+          <i class="fa-solid fa-shield-heart"></i>
+          <h4>Safe Ride Flow</h4>
+          <p>Passenger information, emergency contacts, trip records, and live ride updates are part of the ecosystem.</p>
+        </article>
 
-    <details>
-      <summary>How much does a ride cost?</summary>
-      <p>Pricing is based on distance, route, trip type, and special requests. You will receive confirmation after submitting your booking.</p>
-    </details>
+        <article>
+          <i class="fa-solid fa-calendar-check"></i>
+          <h4>Confirmed Scheduling</h4>
+          <p>Bookings are saved, reviewed, confirmed, and connected to Angel Express operations.</p>
+        </article>
 
-    <details>
-      <summary>Can I book airport pickup or drop-off?</summary>
-      <p>Yes. Angel Express provides airport pickup and drop-off services. Please include your airport, terminal, flight time, and pickup address when booking.</p>
-    </details>
+        <article>
+          <i class="fa-solid fa-comments"></i>
+          <h4>Direct Communication</h4>
+          <p>Passengers can reach Angel Express by WhatsApp, email, and app support.</p>
+        </article>
 
-    <details>
-      <summary>Can I book for a group?</summary>
-      <p>Yes. Group and private car bookings are available. Include the number of passengers and luggage details in your booking note or pickup/drop-off details.</p>
-    </details>
+        <article>
+          <i class="fa-solid fa-credit-card"></i>
+          <h4>Connected Payments</h4>
+          <p>Designed around the payment model used across the Passenger, Driver, and Owner apps.</p>
+        </article>
+      </div>
+    </section>
 
-    <details>
-      <summary>How do I confirm my booking?</summary>
-      <p>After submitting the form, you will receive confirmation by email and WhatsApp. Angel Express may also contact you for additional trip details.</p>
-    </details>
-  </div>
-</section>
-
-<section id="testimonials" class="section">
-  <div class="section-top reveal">
-    <p class="kicker">Rider Experience</p>
-    <h3>Built for different types of travelers.</h3>
-    <p>Angel Express is designed for students, business travelers, airport passengers, and weekend riders who want a cleaner, safer, private ride experience.</p>
-  </div>
-
-  <div class="promise-grid reveal">
-    <article>
-      <img src="https://images.unsplash.com/photo-1590650046871-92c887180603?auto=format&fit=crop&w=400&q=80" alt="African female student" class="testimonial-img">
-      <h4>UTD Student</h4>
-      <p>⭐⭐⭐⭐⭐</p>
-      <p>“The student discount makes long-distance travel easier, and the ride feels safer than waiting around for random options.”</p>
-    </article>
-
-    <article>
-      <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80" alt="Business traveler" class="testimonial-img">
-      <h4>Business Traveler</h4>
-      <p>⭐⭐⭐⭐⭐</p>
-      <p>“Private booking gives me flexibility, comfort, and a cleaner travel experience between cities.”</p>
-    </article>
-
-    <article>
-      <img src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=400&q=80" alt="Asian female traveler" class="testimonial-img">
-      <h4>Airport Passenger</h4>
-      <p>⭐⭐⭐⭐⭐</p>
-      <p>“Airport pickup is easier when I can plan ahead, confirm my ride, and communicate directly on WhatsApp.”</p>
-    </article>
-
-    <article>
-      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" alt="Black male airport passenger" class="testimonial-img">
-      <h4>Weekend Traveler</h4>
-      <p>⭐⭐⭐⭐⭐</p>
-      <p>“For weekend trips, Angel Express feels more personal, comfortable, and reliable than crowded transport.”</p>
-    </article>
-  </div>
-</section>
+    <section class="cta-section reveal">
+      <p class="kicker">Ready to ride?</p>
+      <h2>Get your fare estimate and confirm your Angel Express ride.</h2>
+      <a href="fare-estimate.html" class="btn btn-primary">Book a Ride</a>
+    </section>
   </main>
 
- <footer class="footer">
-  <div class="footer-grid">
+  <footer class="footer">
+    <div class="footer-grid">
+      <div>
+        <h3>Angel Express Mobility (AEM)</h3>
+        <p>
+          Private long-distance transportation across Texas for students,
+          travelers, airport passengers, tourists, and World Cup 2026 visitors.
+        </p>
+        <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
+      </div>
 
-    <div>
-      <h3>Angel Express Mobility (AEM)</h3>
-      <p>
-        Private long-distance transportation across Texas for students,
-        travelers, airport passengers, tourists, and World Cup 2026 visitors.
-      </p>
+      <div>
+        <h4>Contact Information</h4>
+        <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+        <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+        <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+        <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
+      </div>
 
-      <p>⚽ Transportation Support for World Cup 2026 Visitors</p>
+      <div>
+        <h4>Quick Links</h4>
+        <p><a href="index.html">Home</a></p>
+        <p><a href="fare-estimate.html">Book a Ride</a></p>
+        <p><a href="passenger.html">Passenger Services</a></p>
+        <p><a href="driver.html">Drive With Us</a></p>
+        <p><a href="terms.html">Terms & Privacy</a></p>
+      </div>
+
+      <div>
+        <h4>Follow Us</h4>
+        <p><a href="https://instagram.com/angelsexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelsexpresss</a></p>
+        <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+        <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> WhatsApp Us</a></p>
+        <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+      </div>
     </div>
 
-    <div>
-      <h4>Contact Information</h4>
-      <p>📞 +1 (972) 836-7910</p>
-      <p>🕒 Available 24/7 by Reservation</p>
-
-      <p>
-        ✉️ <a href="mailto:angelsexpresss@gmail.com">
-          angelsexpresss@gmail.com
-        </a>
-      </p>
-
-      <p>📍 Dallas, Texas, USA</p>
+    <div class="footer-bottom">
+      © 2026 Angel Express Mobility. All rights reserved.
     </div>
+  </footer>
 
-    <div>
-      <h4>Quick Links</h4>
-      <p><a href="#home">Home</a></p>
-      <p><a href="#routes">Routes</a></p>
-      <p><a href="#book">Book a Ride</a></p>
-      <p><a href="#faq">FAQ</a></p>
+  <button id="chatToggle" class="chat-toggle">
+    <i class="fa-solid fa-message"></i>
+    AI Assistant
+  </button>
+
+  <div class="chatbot-box" id="chatbotBox">
+    <div class="chatbot-header">Angel Express Assistant</div>
+    <div class="chatbot-messages" id="chatbotMessages">
+      <p><strong>Bot:</strong> Hi! How can I help you with your ride today?</p>
     </div>
+    <div class="chatbot-input">
+      <input type="text" id="chatInput" placeholder="Ask about routes, prices, booking..." />
+      <button type="button" onclick="sendChat()">Send</button>
+    </div>
+  </div>
 
-    <div>
-      <h4>Follow Us</h4>
-
-      <p>
-  <a href="https://instagram.com/angelsexpresss" target="_blank">
-    <i class="fab fa-instagram"></i>
-    @angelsexpresss
+  <a
+    href="https://wa.me/19728367910?text=Hello%20Angel%20Express,%20I%20would%20like%20to%20book%20a%20ride."
+    class="whatsapp-float"
+    target="_blank"
+  >
+    <i class="fab fa-whatsapp"></i>
+    WhatsApp
   </a>
-</p>
 
-<p>
-  <a href="https://x.com/angelexpresss" target="_blank">
-    <i class="fa-brands fa-x-twitter"></i>
-    @angelexpresss
-  </a>
-</p>
-
-      <p>
-        <a href="https://wa.me/19728367910" target="_blank">
-          <i class="fab fa-whatsapp"></i> WhatsApp Us
-        </a>
-      </p>
-      <p>
-  <a href="mailto:angelsexpresss@gmail.com">
-   <i class="fas fa-envelope"></i> Email Us
-  </a>
-</p>
-    </div>
-
-  </div>
-
-  <div class="footer-bottom">
-    © 2026 Angel Express Mobility
-
-  </div>
-</footer>
-<!-- Chat Bubble -->
-<button id="chatToggle" class="chat-toggle">
-   AI Assistant
-</button>
-
-<!-- Chat Window -->
-<div class="chatbot-box" id="chatbotBox">
-  <div class="chatbot-header">
-    Angel Express Assistant
-  </div>
-
-  <div class="chatbot-messages" id="chatbotMessages">
-    <p><strong>Bot:</strong> Hi! How can I help you with your ride today?</p>
-  </div>
-
-  <div class="chatbot-input">
-    <input
-      type="text"
-      id="chatInput"
-      placeholder="Ask about routes, prices, booking..."
-    />
-    <button type="button" onclick="sendChat()">Send</button>
-  </div>
-</div>
-<div id="bookingLoader" class="booking-loader">
-  <div class="loader-card">
-    <div class="spinner"></div>
-    <h2>Confirming Your Booking</h2>
-    <p>Please wait while Angel Express registers your ride and prepares your invoice.</p>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
-  <a href="https://wa.me/19728367910?text=Hello%20Angel%20Express,%20I%20would%20like%20to%20book%20a%20ride." class="whatsapp-float" target="_blank">
-   Book via WhatsApp
-</a>
-
 </body>
 </html>
