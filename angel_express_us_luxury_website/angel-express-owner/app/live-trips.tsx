@@ -35,18 +35,25 @@ export default function LiveTripsScreen() {
 
       if (error) throw error;
 
+      const activeStatuses = [
+        "pending",
+        "confirmed",
+        "assigned",
+        "driver_assigned",
+        "driver assigned",
+        "arrived at pickup",
+        "driver_arrived",
+        "picked up",
+        "in progress",
+        "in_progress",
+        "active",
+      ];
+
       const activeTrips =
         data?.filter((trip) =>
-          [
-            "Pending",
-            "Confirmed",
-            "Driver Assigned",
-            "Arrived at Pickup",
-            "Picked Up",
-            "In Progress",
-            "in_progress",
-            "active",
-          ].includes(trip.status)
+          activeStatuses.includes(
+            String(trip.status || "").trim().toLowerCase()
+          )
         ) || [];
 
       setTrips(activeTrips);
@@ -78,7 +85,13 @@ export default function LiveTripsScreen() {
   }
 
   function getPassengerName(trip: any) {
-    return trip.name || trip.passenger_name || trip.full_name || "Unknown Passenger";
+    return (
+      trip.name ||
+      trip.passenger_name ||
+      trip.full_name ||
+      trip.email ||
+      "Website Passenger"
+    );
   }
 
   function getPassengerPhone(trip: any) {
@@ -86,11 +99,22 @@ export default function LiveTripsScreen() {
   }
 
   function getPickup(trip: any) {
-    return trip.pickup || trip.pickup_location || "Not Set";
+    return (
+      trip.pickup ||
+      trip.pickup_address ||
+      trip.pickup_location ||
+      "Not Set"
+    );
   }
 
   function getDropoff(trip: any) {
-    return trip.dropoff || trip.dropoff_location || trip.destination || "Not Set";
+    return (
+      trip.dropoff ||
+      trip.dropoff_address ||
+      trip.dropoff_location ||
+      trip.destination ||
+      "Not Set"
+    );
   }
 
   function getDriverName(trip: any) {
@@ -99,6 +123,34 @@ export default function LiveTripsScreen() {
 
   function getDriverPhone(trip: any) {
     return trip.driver_phone || trip.assigned_driver_phone || "";
+  }
+
+  function getTripDate(trip: any) {
+    return trip.date || trip.ride_date || trip.trip_date || "Not Set";
+  }
+
+  function getTripTime(trip: any) {
+    return trip.time || trip.ride_time || trip.trip_time || "Not Set";
+  }
+
+  function getSourceLabel(trip: any) {
+    const source = String(trip.source || "app").toLowerCase();
+
+    if (source === "website") return "Website Booking";
+    return "App Booking";
+  }
+
+  function getTripTotal(trip: any) {
+    return Number(trip.total || trip.total_fare || 0).toFixed(2);
+  }
+
+  function openLiveMap(trip: any) {
+    router.push({
+      pathname: "/live-map",
+      params: {
+        bookingId: String(trip.id),
+      },
+    });
   }
 
   if (loading) {
@@ -120,13 +172,14 @@ export default function LiveTripsScreen() {
             setRefreshing(true);
             loadTrips();
           }}
+          tintColor="#d4af37"
         />
       }
     >
       <Text style={styles.title}>🚘 Live Trips Dashboard</Text>
 
       <Text style={styles.subtitle}>
-        Active rides currently being monitored by Angel Express.
+        Active app and website rides currently being monitored by Angel Express.
       </Text>
 
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -137,7 +190,7 @@ export default function LiveTripsScreen() {
         <Text style={styles.infoTitle}>What this screen does</Text>
         <Text style={styles.infoText}>
           This page helps the owner oversee every active ride, check trip status,
-          view pickup and dropoff, and contact passengers or assigned drivers
+          view pickup and drop-off, and contact passengers or assigned drivers
           during a live trip.
         </Text>
       </View>
@@ -154,7 +207,7 @@ export default function LiveTripsScreen() {
           <Text style={styles.emptyTitle}>No active rides currently</Text>
           <Text style={styles.emptyText}>
             Pending, confirmed, driver assigned, picked up, and in-progress rides
-            will appear here.
+            from both the app and website will appear here.
           </Text>
         </View>
       ) : (
@@ -170,6 +223,7 @@ export default function LiveTripsScreen() {
             <View key={String(trip.id)} style={styles.tripCard}>
               <View style={styles.tripHeader}>
                 <View style={{ flex: 1 }}>
+                  <Text style={styles.sourceBadge}>{getSourceLabel(trip)}</Text>
                   <Text style={styles.tripTitle}>Trip #{trip.id}</Text>
                   <Text style={styles.tripSubTitle}>{passengerName}</Text>
                 </View>
@@ -183,26 +237,57 @@ export default function LiveTripsScreen() {
 
               <View style={styles.divider} />
 
-              <Text style={styles.tripText}>Passenger Phone: {passengerPhone || "Not Available"}</Text>
-              <Text style={styles.tripText}>Pickup: {pickup}</Text>
-              <Text style={styles.tripText}>Dropoff: {dropoff}</Text>
-              <Text style={styles.tripText}>Date: {trip.date || trip.trip_date || "Not Set"}</Text>
-              <Text style={styles.tripText}>Time: {trip.time || trip.trip_time || "Not Set"}</Text>
-
-              <Text style={styles.driver}>
-                Driver: {driverName}
+              <Text style={styles.tripText}>
+                Passenger Email: {trip.email || "Not Available"}
               </Text>
+
+              <Text style={styles.tripText}>
+                Passenger Phone: {passengerPhone || "Not Available"}
+              </Text>
+
+              <Text style={styles.tripText}>Pickup: {pickup}</Text>
+              <Text style={styles.tripText}>Drop-off: {dropoff}</Text>
+              <Text style={styles.tripText}>Date: {getTripDate(trip)}</Text>
+              <Text style={styles.tripText}>Time: {getTripTime(trip)}</Text>
+
+              <Text style={styles.tripText}>
+                Trip Type: {trip.trip_type || trip.tripType || "One Way"}
+              </Text>
+
+              <Text style={styles.tripText}>
+                Ride Category: {trip.ride_category || "Standard Ride"}
+              </Text>
+
+              <Text style={styles.tripText}>
+                Passengers: {trip.passengers || 1}
+              </Text>
+
+              <Text style={styles.tripText}>
+                Luggage: {trip.luggage_count || 0}
+              </Text>
+
+              <Text style={styles.tripText}>
+                Total Fare: ${getTripTotal(trip)}
+              </Text>
+
+              <Text style={styles.driver}>Driver: {driverName}</Text>
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  style={styles.callButton}
+                  style={[
+                    styles.callButton,
+                    !passengerPhone && styles.disabledButton,
+                  ]}
                   onPress={() => callNumber(passengerPhone)}
                 >
                   <Text style={styles.buttonText}>Call Passenger</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.smsButton}
+                  style={[
+                    styles.smsButton,
+                    !passengerPhone && styles.disabledButton,
+                  ]}
                   onPress={() =>
                     textNumber(
                       passengerPhone,
@@ -233,13 +318,20 @@ export default function LiveTripsScreen() {
                   onPress={() =>
                     textNumber(
                       driverPhone,
-                      `Angel Express dispatch update for Trip #${trip.id}: Passenger ${passengerName}, pickup ${pickup}, dropoff ${dropoff}.`
+                      `Angel Express dispatch update for Trip #${trip.id}: Passenger ${passengerName}, pickup ${pickup}, drop-off ${dropoff}.`
                     )
                   }
                 >
                   <Text style={styles.buttonText}>Text Driver</Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={styles.mapButton}
+                onPress={() => openLiveMap(trip)}
+              >
+                <Text style={styles.mapButtonText}>Open Live Map</Text>
+              </TouchableOpacity>
             </View>
           );
         })
@@ -354,9 +446,23 @@ const styles = StyleSheet.create({
   },
   tripHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 10,
+  },
+  sourceBadge: {
+    alignSelf: "flex-start",
+    color: "#d4af37",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.45)",
+    backgroundColor: "rgba(212,175,55,0.12)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: "900",
+    marginBottom: 8,
+    overflow: "hidden",
   },
   tripTitle: {
     fontSize: 20,
@@ -372,7 +478,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    maxWidth: 140,
+    maxWidth: 150,
   },
   statusBadgeText: {
     color: "#07111f",
@@ -421,6 +527,17 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     alignItems: "center",
+  },
+  mapButton: {
+    marginTop: 14,
+    backgroundColor: "#d4af37",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  mapButtonText: {
+    color: "#07111f",
+    fontWeight: "900",
   },
   disabledButton: {
     opacity: 0.45,

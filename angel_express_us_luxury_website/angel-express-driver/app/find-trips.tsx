@@ -32,7 +32,7 @@ export default function FindTripsScreen() {
         .from("bookings")
         .select("*")
         .is("driver_id", null)
-        .in("status", ["pending", "confirmed"])
+        .in("status", ["pending", "confirmed", "Pending", "Confirmed"])
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -89,17 +89,14 @@ export default function FindTripsScreen() {
         .from("bookings")
         .update({
           driver_id: user.id,
-          status: "assigned",
+          status: "driver_assigned",
         })
         .eq("id", trip.id)
         .is("driver_id", null);
 
       if (updateError) throw updateError;
 
-      Alert.alert(
-        "Trip Accepted",
-        "This trip has been assigned to you."
-      );
+      Alert.alert("Trip Accepted", "This trip has been assigned to you.");
 
       loadAvailableTrips();
     } catch (err: any) {
@@ -119,11 +116,22 @@ export default function FindTripsScreen() {
   }
 
   function getPickup(trip: any) {
-    return trip.pickup || trip.pickup_address || trip.pickup_location || "Not provided";
+    return (
+      trip.pickup ||
+      trip.pickup_address ||
+      trip.pickup_location ||
+      "Not provided"
+    );
   }
 
   function getDropoff(trip: any) {
-    return trip.dropoff || trip.dropoff_address || trip.dropoff_location || "Not provided";
+    return (
+      trip.dropoff ||
+      trip.dropoff_address ||
+      trip.dropoff_location ||
+      trip.destination ||
+      "Not provided"
+    );
   }
 
   function getFare(trip: any) {
@@ -144,6 +152,13 @@ export default function FindTripsScreen() {
     }
 
     return getFare(trip) * 0.7;
+  }
+
+  function getSourceLabel(trip: any) {
+    const source = String(trip.source || "app").toLowerCase();
+
+    if (source === "website") return "Website Booking";
+    return "App Booking";
   }
 
   return (
@@ -193,6 +208,8 @@ export default function FindTripsScreen() {
 
               return (
                 <View key={trip.id} style={styles.tripCard}>
+                  <Text style={styles.sourceBadge}>{getSourceLabel(trip)}</Text>
+
                   <Text style={styles.tripTitle}>{getTripTitle(trip)}</Text>
 
                   <View style={styles.row}>
@@ -219,19 +236,29 @@ export default function FindTripsScreen() {
                     </Text>
                   </View>
 
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Ride Category</Text>
+                    <Text style={styles.value}>
+                      {trip.ride_category || trip.category || "Standard Ride"}
+                    </Text>
+                  </View>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Trip Type</Text>
+                    <Text style={styles.value}>
+                      {trip.trip_type || trip.tripType || "One Way"}
+                    </Text>
+                  </View>
+
                   <View style={styles.moneyBox}>
                     <View>
                       <Text style={styles.moneyLabel}>Trip Total</Text>
-                      <Text style={styles.moneyValue}>
-                        ${fare.toFixed(2)}
-                      </Text>
+                      <Text style={styles.moneyValue}>${fare.toFixed(2)}</Text>
                     </View>
 
                     <View>
                       <Text style={styles.moneyLabel}>Your 70%</Text>
-                      <Text style={styles.payoutValue}>
-                        ${payout.toFixed(2)}
-                      </Text>
+                      <Text style={styles.payoutValue}>${payout.toFixed(2)}</Text>
                     </View>
                   </View>
 
@@ -330,6 +357,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     marginBottom: 18,
+  },
+  sourceBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(212,175,55,0.16)",
+    color: "#d4af37",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.4)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: "900",
+    marginBottom: 10,
+    textTransform: "uppercase",
   },
   tripTitle: {
     color: "#d4af37",
