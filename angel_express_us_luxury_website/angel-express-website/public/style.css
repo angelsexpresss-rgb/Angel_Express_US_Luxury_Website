@@ -1308,4 +1308,25 @@ right:15px;
 right:15px;
 }
 
+}.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-cta-secondary {
+  background: transparent;
+  color: #D4AF37;
+  border: 1px solid rgba(212, 175, 55, .35);
+}
+
+@media (max-width: 900px) {
+  .nav-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nav-actions .nav-cta {
+    text-align: center;
+  }
 }
