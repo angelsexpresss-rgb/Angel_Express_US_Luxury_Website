@@ -9,30 +9,196 @@
 <link rel="stylesheet" href="style.css">
 
 <style>
-.booking-page{max-width:800px;margin:40px auto;padding:20px;}
-.back-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:50px;background:rgba(11,20,38,.9);border:1px solid rgba(212,175,55,.25);color:white;text-decoration:none;font-weight:700;margin-bottom:25px;transition:.3s;}
-.back-btn:hover{border-color:#D4AF37;transform:translateY(-2px);}
-.booking-card{background:rgba(16,24,39,.82);border:1px solid rgba(212,175,55,.25);border-radius:24px;padding:30px;backdrop-filter:blur(16px);}
-.booking-title{font-size:48px;font-weight:900;margin-bottom:10px;}
-.booking-subtitle{color:#B8C1CC;margin-bottom:40px;}
-.section-title{font-size:28px;font-weight:800;color:#D4AF37;margin-top:30px;margin-bottom:15px;}
-label{display:block;margin-bottom:8px;margin-top:18px;font-weight:700;}
-input,textarea{width:100%;padding:16px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-size:16px;margin-bottom:10px;}
-textarea{min-height:120px;resize:vertical;}
-.address-wrapper{position:relative;}
-.suggestions-box{position:absolute;top:100%;left:0;right:0;z-index:50;background:#0B1426;border:1px solid rgba(212,175,55,.35);border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(0,0,0,.45);display:none;}
-.suggestion-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08);color:white;font-size:14px;line-height:1.4;}
-.suggestion-item:hover{background:rgba(212,175,55,.14);}
-.location-status{font-size:13px;color:#38d46f;margin-top:-4px;margin-bottom:12px;display:none;}
-.location-status.error{color:#ff6b6b;}
-.helper-note{font-size:13px;color:#B8C1CC;margin-top:-4px;margin-bottom:12px;}
-.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.option-btn,.category-btn{height:58px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-weight:700;cursor:pointer;transition:.2s;}
-.option-btn.active,.category-btn.active{background:#D4AF37;color:#050A14;}
-.category-grid{display:grid;gap:12px;}
-.continue-btn{margin-top:30px;width:100%;height:60px;border:none;border-radius:18px;background:#D4AF37;color:#050A14;font-size:20px;font-weight:900;cursor:pointer;transition:.3s;}
-.continue-btn:hover{transform:translateY(-2px);}
-@media(max-width:768px){.option-grid{grid-template-columns:1fr;}.booking-title{font-size:38px;}}
+.booking-page{
+max-width:800px;
+margin:40px auto;
+padding:20px;
+}
+
+.back-btn{
+display:inline-flex;
+align-items:center;
+gap:10px;
+padding:14px 22px;
+border-radius:50px;
+background:rgba(11,20,38,.9);
+border:1px solid rgba(212,175,55,.25);
+color:white;
+text-decoration:none;
+font-weight:700;
+margin-bottom:25px;
+transition:.3s;
+}
+
+.back-btn:hover{
+border-color:#D4AF37;
+transform:translateY(-2px);
+}
+
+.booking-card{
+background:rgba(16,24,39,.82);
+border:1px solid rgba(212,175,55,.25);
+border-radius:24px;
+padding:30px;
+backdrop-filter:blur(16px);
+}
+
+.booking-title{
+font-size:48px;
+font-weight:900;
+margin-bottom:10px;
+}
+
+.booking-subtitle{
+color:#B8C1CC;
+margin-bottom:40px;
+}
+
+.section-title{
+font-size:28px;
+font-weight:800;
+color:#D4AF37;
+margin-top:30px;
+margin-bottom:15px;
+}
+
+label{
+display:block;
+margin-bottom:8px;
+margin-top:18px;
+font-weight:700;
+}
+
+input,
+textarea,
+select{
+width:100%;
+padding:16px;
+border-radius:16px;
+border:1px solid rgba(212,175,55,.25);
+background:#0B1426;
+color:white;
+font-size:16px;
+margin-bottom:10px;
+}
+
+select{
+appearance:auto;
+cursor:pointer;
+}
+
+textarea{
+min-height:120px;
+resize:vertical;
+}
+
+.helper-note{
+font-size:13px;
+color:#B8C1CC;
+margin-top:-4px;
+margin-bottom:12px;
+line-height:1.5;
+}
+
+.address-wrapper{
+position:relative;
+}
+
+.suggestions-box{
+position:absolute;
+top:100%;
+left:0;
+right:0;
+z-index:50;
+background:#0B1426;
+border:1px solid rgba(212,175,55,.35);
+border-radius:16px;
+overflow:hidden;
+box-shadow:0 18px 45px rgba(0,0,0,.45);
+display:none;
+}
+
+.suggestion-item{
+padding:14px 16px;
+cursor:pointer;
+border-bottom:1px solid rgba(255,255,255,.08);
+color:white;
+font-size:14px;
+line-height:1.4;
+}
+
+.suggestion-item:hover{
+background:rgba(212,175,55,.14);
+}
+
+.location-status{
+font-size:13px;
+color:#38d46f;
+margin-top:-4px;
+margin-bottom:12px;
+display:none;
+}
+
+.location-status.error{
+color:#ff6b6b;
+}
+
+.option-grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:12px;
+}
+
+.option-btn,
+.category-btn{
+height:58px;
+border-radius:16px;
+border:1px solid rgba(212,175,55,.25);
+background:#0B1426;
+color:white;
+font-weight:700;
+cursor:pointer;
+transition:.2s;
+}
+
+.option-btn.active,
+.category-btn.active{
+background:#D4AF37;
+color:#050A14;
+}
+
+.category-grid{
+display:grid;
+gap:12px;
+}
+
+.continue-btn{
+margin-top:30px;
+width:100%;
+height:60px;
+border:none;
+border-radius:18px;
+background:#D4AF37;
+color:#050A14;
+font-size:20px;
+font-weight:900;
+cursor:pointer;
+transition:.3s;
+}
+
+.continue-btn:hover{
+transform:translateY(-2px);
+}
+
+@media(max-width:768px){
+.option-grid{
+grid-template-columns:1fr;
+}
+
+.booking-title{
+font-size:38px;
+}
+}
 </style>
 </head>
 
@@ -57,8 +223,9 @@ id="email"
 placeholder="Enter the email you will use in the Angel Express app"
 required
 >
+
 <p class="helper-note">
-Use the same email when registering in the app so this ride appears in your trip history.
+Use the same email when registering in the Angel Express app so this ride appears in your trip history.
 </p>
 
 <label>Pickup Address</label>
@@ -87,11 +254,65 @@ required
 </div>
 <div id="dropoffStatus" class="location-status"></div>
 
-<label>Date</label>
-<input type="date" id="tripDate">
+<label>Pickup Date</label>
+<input
+type="date"
+id="tripDate"
+required
+>
 
-<label>Time</label>
-<input type="time" id="tripTime">
+<label>Pickup Time</label>
+<select id="tripTime" required>
+<option value="">Select pickup time</option>
+<option value="05:00">5:00 AM</option>
+<option value="05:30">5:30 AM</option>
+<option value="06:00">6:00 AM</option>
+<option value="06:30">6:30 AM</option>
+<option value="07:00">7:00 AM</option>
+<option value="07:30">7:30 AM</option>
+<option value="08:00">8:00 AM</option>
+<option value="08:30">8:30 AM</option>
+<option value="09:00">9:00 AM</option>
+<option value="09:30">9:30 AM</option>
+<option value="10:00">10:00 AM</option>
+<option value="10:30">10:30 AM</option>
+<option value="11:00">11:00 AM</option>
+<option value="11:30">11:30 AM</option>
+<option value="12:00">12:00 PM</option>
+<option value="12:30">12:30 PM</option>
+<option value="13:00">1:00 PM</option>
+<option value="13:30">1:30 PM</option>
+<option value="14:00">2:00 PM</option>
+<option value="14:30">2:30 PM</option>
+<option value="15:00">3:00 PM</option>
+<option value="15:30">3:30 PM</option>
+<option value="16:00">4:00 PM</option>
+<option value="16:30">4:30 PM</option>
+<option value="17:00">5:00 PM</option>
+<option value="17:30">5:30 PM</option>
+<option value="18:00">6:00 PM</option>
+<option value="18:30">6:30 PM</option>
+<option value="19:00">7:00 PM</option>
+<option value="19:30">7:30 PM</option>
+<option value="20:00">8:00 PM</option>
+<option value="20:30">8:30 PM</option>
+<option value="21:00">9:00 PM</option>
+<option value="21:30">9:30 PM</option>
+<option value="22:00">10:00 PM</option>
+<option value="22:30">10:30 PM</option>
+<option value="23:00">11:00 PM</option>
+<option value="23:30">11:30 PM</option>
+<option value="00:00">12:00 AM</option>
+<option value="00:30">12:30 AM</option>
+<option value="01:00">1:00 AM</option>
+<option value="01:30">1:30 AM</option>
+<option value="02:00">2:00 AM</option>
+<option value="02:30">2:30 AM</option>
+<option value="03:00">3:00 AM</option>
+<option value="03:30">3:30 AM</option>
+<option value="04:00">4:00 AM</option>
+<option value="04:30">4:30 AM</option>
+</select>
 
 <div class="section-title">Trip Type</div>
 
@@ -186,7 +407,9 @@ async function searchAddress(query, type){
       `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=us&q=${encodeURIComponent(query)}`;
 
     const response = await fetch(url, {
-      headers:{ "Accept":"application/json" }
+      headers:{
+        "Accept":"application/json"
+      }
     });
 
     const results = await response.json();
@@ -268,6 +491,8 @@ function continueToEstimate(){
   const email = document.getElementById("email").value.trim().toLowerCase();
   const pickupValue = document.getElementById("pickup").value.trim();
   const dropoffValue = document.getElementById("dropoff").value.trim();
+  const tripDate = document.getElementById("tripDate").value;
+  const tripTime = document.getElementById("tripTime").value;
 
   if(!email){
     alert("Please enter your email address.");
@@ -289,6 +514,16 @@ function continueToEstimate(){
     return;
   }
 
+  if(!tripDate){
+    alert("Please select a pickup date.");
+    return;
+  }
+
+  if(!tripTime){
+    alert("Please select a pickup time.");
+    return;
+  }
+
   const bookingData = {
     email,
 
@@ -303,8 +538,8 @@ function continueToEstimate(){
     pickupPlaceId: pickupLocation.placeId,
     dropoffPlaceId: dropoffLocation.placeId,
 
-    date: document.getElementById("tripDate").value,
-    time: document.getElementById("tripTime").value,
+    date: tripDate,
+    time: tripTime,
 
     tripType,
     rideCategory,
