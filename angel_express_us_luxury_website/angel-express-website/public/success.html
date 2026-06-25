@@ -1,26 +1,279 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Booking Confirmed | Angel Express</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Booking Confirmed | Angel Express</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+
+.success-page{
+min-height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+padding:40px 20px;
+}
+
+.success-wrapper{
+width:100%;
+max-width:900px;
+}
+
+.success-card{
+background:rgba(16,24,39,.85);
+border:1px solid rgba(212,175,55,.25);
+border-radius:28px;
+padding:40px;
+backdrop-filter:blur(18px);
+text-align:center;
+box-shadow:0 25px 80px rgba(0,0,0,.35);
+}
+
+.success-icon{
+font-size:80px;
+margin-bottom:20px;
+}
+
+.success-card h1{
+font-size:48px;
+margin-bottom:10px;
+}
+
+.success-card p{
+color:#B8C1CC;
+line-height:1.7;
+}
+
+.status-grid{
+margin-top:35px;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:15px;
+}
+
+.status-item{
+background:#0B1426;
+border:1px solid rgba(212,175,55,.20);
+border-radius:18px;
+padding:18px;
+text-align:left;
+}
+
+.status-item strong{
+display:block;
+margin-bottom:5px;
+color:#D4AF37;
+}
+
+.success-actions{
+margin-top:35px;
+display:flex;
+gap:15px;
+justify-content:center;
+flex-wrap:wrap;
+}
+
+.download-banner{
+margin-top:40px;
+padding:30px;
+border-radius:24px;
+background:linear-gradient(
+135deg,
+rgba(212,175,55,.12),
+rgba(255,255,255,.04)
+);
+border:1px solid rgba(212,175,55,.25);
+}
+
+.download-banner h2{
+margin-bottom:10px;
+}
+
+.download-banner p{
+max-width:600px;
+margin:auto;
+}
+
+.store-buttons{
+margin-top:20px;
+display:flex;
+justify-content:center;
+gap:15px;
+flex-wrap:wrap;
+}
+
+.store-btn{
+display:flex;
+align-items:center;
+gap:10px;
+padding:14px 20px;
+border-radius:16px;
+background:#0B1426;
+border:1px solid rgba(212,175,55,.25);
+font-weight:700;
+text-decoration:none;
+color:white;
+}
+
+.trip-features{
+margin-top:25px;
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:12px;
+}
+
+.trip-feature{
+background:#0B1426;
+border-radius:16px;
+padding:15px;
+font-size:14px;
+}
+
+@media(max-width:768px){
+
+.status-grid{
+grid-template-columns:1fr;
+}
+
+.trip-features{
+grid-template-columns:1fr;
+}
+
+.success-card h1{
+font-size:34px;
+}
+
+}
+
+</style>
+
 </head>
+
 <body>
 
-  <main class="success-page">
-    <div class="success-card">
-      <h1>✅ Booking Received</h1>
-      <p>Thank you for choosing <strong>Angel Express</strong>.</p>
-      <p>Your ride registration has been received successfully.</p>
-      <p>A confirmation email and invoice have been sent to your email.</p>
+<main class="success-page">
 
-      <div class="success-actions">
-        <a href="index.html" class="btn btn-light">Back to Home</a>
-        <a href="https://wa.me/19728367910" class="btn btn-dark">Message Us on WhatsApp</a>
-      </div>
-    </div>
-  </main>
+<div class="success-wrapper">
+
+<div class="success-card">
+
+<div class="success-icon">
+✅
+</div>
+
+<h1>Booking Received</h1>
+
+<p>
+Thank you for choosing <strong>Angel Express</strong>.
+Your ride request has been successfully received and submitted to our operations team.
+</p>
+
+<div class="status-grid">
+
+<div class="status-item">
+<strong>✓ Booking Received</strong>
+Your reservation has been recorded.
+</div>
+
+<div class="status-item">
+<strong>✓ Invoice Sent</strong>
+A copy of your invoice has been emailed.
+</div>
+
+<div class="status-item">
+<strong>✓ Calendar Event Created</strong>
+Your trip has been added to your itinerary.
+</div>
+
+<div class="status-item">
+<strong>✓ WhatsApp Confirmation Sent</strong>
+Our team has received your booking.
+</div>
+
+</div>
+
+<div class="success-actions">
+
+<a href="index.html" class="btn btn-light">
+Back Home
+</a>
+
+<a href="book-ride.html" class="btn btn-primary">
+Book Another Ride
+</a>
+
+<a
+href="https://wa.me/19728367910"
+target="_blank"
+class="btn btn-dark"
+
+>
+
+Contact Support </a>
+
+</div>
+
+<div class="download-banner">
+
+<h2>Download the Angel Express App</h2>
+
+<p>
+Get live trip tracking, chauffeur updates, ride history,
+notifications, rewards, emergency sharing, and real-time ride status.
+</p>
+
+<div class="store-buttons">
+
+<a href="#" class="store-btn">
+📱 Download on App Store
+</a>
+
+<a href="#" class="store-btn">
+🤖 Get it on Google Play
+</a>
+
+</div>
+
+<div class="trip-features">
+
+<div class="trip-feature">
+📍 Live Trip Tracking
+</div>
+
+<div class="trip-feature">
+🚗 Chauffeur Updates
+</div>
+
+<div class="trip-feature">
+🛡 Safety Monitoring
+</div>
+
+<div class="trip-feature">
+🎓 Student Travel Mode
+</div>
+
+<div class="trip-feature">
+🏆 Rewards & Referrals
+</div>
+
+<div class="trip-feature">
+🌎 World Cup Transportation
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</main>
 
 </body>
 </html>
