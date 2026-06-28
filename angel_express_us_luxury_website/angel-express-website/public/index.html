@@ -5,11 +5,304 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Angel Express Mobility | Premium Private Rides Across Texas</title>
 
-  <link rel="preconnect" href="https://images.unsplash.com">
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
   <style>
+    :root {
+      --ae-navy: #050b16;
+      --ae-navy-soft: #0b1728;
+      --ae-gold: #D4AF37;
+      --ae-white: #ffffff;
+      --ae-muted: #B8C1CC;
+      --ae-glass: rgba(255,255,255,.09);
+      --ae-border: rgba(212,175,55,.28);
+    }
+
+    body {
+      margin: 0;
+      background: var(--ae-navy);
+      color: var(--ae-white);
+      overflow-x: hidden;
+    }
+
+    .luxury-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: radial-gradient(circle at center, #10213b, #050b16 65%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .8s ease, visibility .8s ease;
+    }
+
+    .luxury-loader.hide {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-mark {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      border: 1px solid rgba(212,175,55,.35);
+      display: grid;
+      place-items: center;
+      color: var(--ae-gold);
+      font-size: 42px;
+      font-weight: 900;
+      box-shadow: 0 0 80px rgba(212,175,55,.25);
+      animation: loaderPulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes loaderPulse {
+      0%,100% { transform: scale(1); opacity: .7; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    .hero-v4 {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 140px 6% 90px;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .hero-v4-bg {
+      position: absolute;
+      inset: 0;
+      z-index: -5;
+      background: #050b16;
+    }
+
+    .hero-v4-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 2.4s ease-in-out;
+      transform: scale(1.08);
+      overflow: hidden;
+    }
+
+    .hero-v4-slide.active {
+      opacity: 1;
+      animation: kenBurns 11s ease-in-out forwards;
+    }
+
+    .hero-v4-slide img,
+    .hero-v4-slide video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: saturate(1.08) contrast(1.06);
+    }
+
+    @keyframes kenBurns {
+      from { transform: scale(1.08); }
+      to { transform: scale(1.17); }
+    }
+
+    .hero-v4-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: -3;
+      background:
+        radial-gradient(circle at 75% 35%, rgba(212,175,55,.2), transparent 28%),
+        linear-gradient(90deg, rgba(5,11,22,.97), rgba(5,11,22,.76), rgba(5,11,22,.34)),
+        linear-gradient(180deg, rgba(5,11,22,.18), rgba(5,11,22,.98));
+    }
+
+    .hero-v4-gold-light {
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      right: -180px;
+      top: 16%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212,175,55,.23), transparent 68%);
+      filter: blur(10px);
+      animation: goldFloat 7s infinite alternate ease-in-out;
+      z-index: -2;
+    }
+
+    @keyframes goldFloat {
+      from { transform: translateY(-20px); opacity: .55; }
+      to { transform: translateY(40px); opacity: .95; }
+    }
+
+    .hero-v4-content {
+      max-width: 850px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .hero-v4-kicker {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--ae-gold);
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(212,175,55,.3);
+      backdrop-filter: blur(14px);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 900;
+      letter-spacing: 1.7px;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    .hero-v4 h1 {
+      font-size: clamp(52px, 8vw, 108px);
+      line-height: .92;
+      margin: 24px 0 18px;
+      letter-spacing: -3px;
+    }
+
+    .hero-v4 h1 span {
+      color: var(--ae-gold);
+    }
+
+    .hero-v4-sub {
+      max-width: 720px;
+      font-size: 21px;
+      line-height: 1.75;
+      color: #dce5ee;
+    }
+
+    .hero-v4-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 34px;
+    }
+
+    .hero-v4-btn {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 26px;
+      border-radius: 999px;
+      font-weight: 900;
+      text-decoration: none;
+      transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+    }
+
+    .hero-v4-btn::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -80%;
+      width: 55%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+      transform: skewX(-20deg);
+      transition: left .55s ease;
+    }
+
+    .hero-v4-btn:hover::after {
+      left: 130%;
+    }
+
+    .hero-v4-btn:hover {
+      transform: translateY(-5px);
+    }
+
+    .hero-v4-primary {
+      background: var(--ae-gold);
+      color: #06111f;
+      box-shadow: 0 20px 55px rgba(212,175,55,.32);
+    }
+
+    .hero-v4-secondary {
+      background: rgba(255,255,255,.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero-v4-secondary:hover {
+      border-color: var(--ae-gold);
+    }
+
+    .hero-v4-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 16px;
+      max-width: 900px;
+      margin-top: 48px;
+    }
+
+    .hero-v4-stat {
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(212,175,55,.26);
+      border-radius: 24px;
+      padding: 22px;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 70px rgba(0,0,0,.25);
+      transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease;
+    }
+
+    .hero-v4-stat:hover {
+      transform: translateY(-8px);
+      border-color: rgba(212,175,55,.7);
+      box-shadow: 0 30px 80px rgba(0,0,0,.35);
+    }
+
+    .hero-v4-stat strong {
+      display: block;
+      font-size: 26px;
+      color: white;
+    }
+
+    .hero-v4-stat span {
+      display: block;
+      margin-top: 7px;
+      color: var(--ae-muted);
+      font-size: 14px;
+    }
+
+    .hero-v4-caption {
+      position: absolute;
+      right: 6%;
+      bottom: 42px;
+      z-index: 4;
+      max-width: 360px;
+      background: rgba(5,11,22,.62);
+      border: 1px solid rgba(212,175,55,.26);
+      border-radius: 24px;
+      padding: 18px 20px;
+      backdrop-filter: blur(16px);
+      color: #dce5ee;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .hero-v4-caption b {
+      display: block;
+      color: var(--ae-gold);
+      margin-bottom: 4px;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(34px);
+      filter: blur(8px);
+      transition: opacity .85s ease, transform .85s ease, filter .85s ease;
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+
     .faq-accordion {
       display: grid;
       gap: 16px;
@@ -73,10 +366,45 @@
       font-weight: 900;
       margin: 8px 0;
     }
+
+    @media (max-width: 900px) {
+      .hero-v4 {
+        padding: 130px 6% 70px;
+      }
+
+      .hero-v4 h1 {
+        letter-spacing: -1.5px;
+      }
+
+      .hero-v4-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .hero-v4-caption {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        margin-top: 34px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .hero-v4-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-v4-sub {
+        font-size: 18px;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <div class="luxury-loader" id="luxuryLoader">
+    <div class="loader-mark">A</div>
+  </div>
+
   <div class="bg-orb orb-one"></div>
   <div class="bg-orb orb-two"></div>
 
@@ -106,57 +434,120 @@
   </header>
 
   <main>
-    <section class="ae-hero">
-      <div class="hero-copy reveal">
-        <p class="kicker">Dallas-based private transportation</p>
-        <h2>Premium private rides for students, travelers, airport trips, and events.</h2>
-        <p class="hero-sub">
-          Angel Express connects passengers, chauffeurs, and operations into one seamless mobility ecosystem across Texas.
+    <section class="hero-v4">
+      <div class="hero-v4-bg" id="heroV4Bg">
+        <div class="hero-v4-slide active">
+          <img src="images/hero/01-dfw-airport.jpg" alt="Mercedes SUV arriving at DFW airport">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/02-utd-campus.jpg" alt="Luxury SUV outside UTD campus">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/03-dallas-sunset.jpg" alt="Dallas skyline at sunset">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/04-chauffeur-door.jpg" alt="Chauffeur opening the rear door">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/05-passenger-entering.jpg" alt="Passenger entering the SUV">
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/06-airport-pickup.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/07-texas-highway.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/08-worldcup.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/09-business-executive.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/10-dallas-night.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+
+      <div class="hero-v4-overlay"></div>
+      <div class="hero-v4-gold-light"></div>
+
+      <div class="hero-v4-content reveal">
+        <p class="hero-v4-kicker">
+          <i class="fa-solid fa-crown"></i>
+          Dallas-based private transportation
         </p>
 
-        <div class="hero-actions">
-          <a href="book-ride.html" class="btn btn-primary">
+        <h1>Travel Texas in <span>Comfort.</span></h1>
+
+        <p class="hero-v4-sub">
+          Premium private rides for students, airport travelers, business trips,
+          long-distance routes, events, and World Cup visitors — connected through
+          one Angel Express mobility ecosystem.
+        </p>
+
+        <div class="hero-v4-actions">
+          <a href="book-ride.html" class="hero-v4-btn hero-v4-primary">
             <i class="fa-solid fa-route"></i>
-            Book a Ride
+            Book Your Ride
           </a>
 
-          <a href="driver.html#apply" class="btn btn-secondary">
+          <a href="fare-estimate.html" class="hero-v4-btn hero-v4-secondary">
+            <i class="fa-solid fa-calculator"></i>
+            Get Fare Estimate
+          </a>
+
+          <a href="driver.html#apply" class="hero-v4-btn hero-v4-secondary">
             <i class="fa-solid fa-car"></i>
             Become a Chauffeur
           </a>
-
-          <a href="passenger.html" class="btn btn-secondary">
-            Explore Services
-          </a>
         </div>
 
-        <div class="hero-stats">
-          <div>
+        <div class="hero-v4-stats">
+          <div class="hero-v4-stat">
             <strong>Private</strong>
             <span>Whole-car rides</span>
           </div>
-          <div>
+
+          <div class="hero-v4-stat">
             <strong>Texas</strong>
             <span>Regional routes</span>
           </div>
-          <div>
+
+          <div class="hero-v4-stat">
+            <strong>24/7</strong>
+            <span>By reservation</span>
+          </div>
+
+          <div class="hero-v4-stat">
             <strong>70%</strong>
             <span>Chauffeur payout</span>
           </div>
         </div>
       </div>
 
-      <div class="hero-visual reveal">
-        <div class="media-card">
-          <video autoplay muted loop playsinline>
-            <source src="https://videos.pexels.com/video-files/2103099/2103099-hd_1280_720_30fps.mp4" type="video/mp4">
-          </video>
-          <div class="media-overlay">
-            <span>Angel Express Live</span>
-            <h3>Private. Clean. Reliable.</h3>
-            <p>Designed for airport transfers, student travel, long-distance rides, World Cup visitors, and professional chauffeurs.</p>
-          </div>
-        </div>
+      <div class="hero-v4-caption">
+        <b>Angel Express Live Experience</b>
+        Smooth airport pickups, campus travel, city-to-city rides, event movement,
+        and professionally managed private transportation.
       </div>
     </section>
 
@@ -440,6 +831,55 @@
   >
     💬 Chat With Us
   </a>
+
+  <script>
+    window.addEventListener("load", () => {
+      const loader = document.getElementById("luxuryLoader");
+      setTimeout(() => {
+        loader.classList.add("hide");
+      }, 700);
+    });
+
+    const heroSlides = document.querySelectorAll(".hero-v4-slide");
+    let heroIndex = 0;
+
+    function showNextHeroSlide() {
+      heroSlides[heroIndex].classList.remove("active");
+      heroIndex = (heroIndex + 1) % heroSlides.length;
+      heroSlides[heroIndex].classList.add("active");
+
+      const video = heroSlides[heroIndex].querySelector("video");
+      if (video) {
+        video.currentTime = 0;
+        video.play().catch(() => {});
+      }
+    }
+
+    setInterval(showNextHeroSlide, 9000);
+
+    const revealElements = document.querySelectorAll(".reveal");
+
+    const revealObserver = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("active");
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    revealElements.forEach(element => revealObserver.observe(element));
+
+    window.addEventListener("scroll", () => {
+      const bg = document.getElementById("heroV4Bg");
+      const scrollY = window.scrollY;
+      if (bg) {
+        bg.style.transform = `translateY(${scrollY * 0.18}px)`;
+      }
+    });
+  </script>
 
   <script src="script.js"></script>
 </body>
