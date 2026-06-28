@@ -572,36 +572,33 @@
   </div>
 </main>
 
-<button id="chatToggle" class="floating-btn ai-btn" type="button">
-  <i class="fa-solid fa-comments"></i>
-  AI Assistant
-</button>
+<  <button id="chatToggle" class="chat-toggle">
+    💬 AI Assistant
+  </button>
 
-<div class="chatbot-box" id="chatbotBox">
-  <div class="chatbot-header">Angel Express Assistant</div>
-  <div class="chatbot-messages" id="chatbotMessages">
-    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
+  <div class="chatbot-box" id="chatbotBox">
+    <div class="chatbot-header">Angel Express Assistant</div>
+
+    <div class="chatbot-messages" id="chatbotMessages">
+      <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
+    </div>
+
+    <div class="chatbot-input">
+      <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
+      <button onclick="sendChat()">Send</button>
+    </div>
   </div>
-  <div class="chatbot-input">
-    <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
-    <button type="button" onclick="sendChat()">Send</button>
-  </div>
-</div>
 
-<a href="https://wa.me/19728367910" target="_blank" class="floating-btn whatsapp-btn">
-  <i class="fa-brands fa-whatsapp"></i>
-  Chat With Us
-</a>
-
+  <a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
+    💬 Chat With Us
+  </a>
 <div class="mobile-support-dock">
   <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">
-    <i class="fa-solid fa-comments"></i>
-    AI Assistant
+    💬 AI Assistant
   </button>
 
   <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">
-    <i class="fa-brands fa-whatsapp"></i>
-    Chat With Us
+    💬 Chat With Us
   </a>
 </div>
 
