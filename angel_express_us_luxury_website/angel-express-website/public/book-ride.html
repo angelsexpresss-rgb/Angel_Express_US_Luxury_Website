@@ -1,128 +1,544 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Book a Ride | Angel Express</title>
-<link rel="stylesheet" href="style.css">
+
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <style>
-.booking-page{max-width:800px;margin:40px auto;padding:20px;}
-.back-btn{display:inline-flex;align-items:center;gap:10px;padding:14px 22px;border-radius:50px;background:rgba(11,20,38,.9);border:1px solid rgba(212,175,55,.25);color:white;text-decoration:none;font-weight:700;margin-bottom:25px;transition:.3s;}
-.back-btn:hover{border-color:#D4AF37;transform:translateY(-2px);}
-.booking-card{background:rgba(16,24,39,.82);border:1px solid rgba(212,175,55,.25);border-radius:24px;padding:30px;backdrop-filter:blur(16px);}
-.booking-title{font-size:48px;font-weight:900;margin-bottom:10px;}
-.booking-subtitle{color:#B8C1CC;margin-bottom:40px;}
-.section-title{font-size:28px;font-weight:800;color:#D4AF37;margin-top:30px;margin-bottom:15px;}
-label{display:block;margin-bottom:8px;margin-top:18px;font-weight:700;}
-input,textarea,select{width:100%;padding:16px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-size:16px;margin-bottom:10px;}
-select{appearance:auto;cursor:pointer;}
-textarea{min-height:120px;resize:vertical;}
-.helper-note{font-size:13px;color:#B8C1CC;margin-top:-4px;margin-bottom:12px;line-height:1.5;}
-.address-wrapper{position:relative;}
-.suggestions-box{position:absolute;top:100%;left:0;right:0;z-index:50;background:#0B1426;border:1px solid rgba(212,175,55,.35);border-radius:16px;overflow:hidden;box-shadow:0 18px 45px rgba(0,0,0,.45);display:none;}
-.suggestion-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08);color:white;font-size:14px;line-height:1.4;}
-.suggestion-item:hover{background:rgba(212,175,55,.14);}
-.location-status{font-size:13px;color:#38d46f;margin-top:-4px;margin-bottom:12px;display:none;}
-.location-status.error{color:#ff6b6b;}
-.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.option-btn,.category-btn{height:58px;border-radius:16px;border:1px solid rgba(212,175,55,.25);background:#0B1426;color:white;font-weight:700;cursor:pointer;transition:.2s;}
-.option-btn.active,.category-btn.active{background:#D4AF37;color:#050A14;}
-.category-grid{display:grid;gap:12px;}
-.continue-btn{margin-top:30px;width:100%;height:60px;border:none;border-radius:18px;background:#D4AF37;color:#050A14;font-size:20px;font-weight:900;cursor:pointer;transition:.3s;}
-.continue-btn:hover{transform:translateY(-2px);}
-@media(max-width:768px){.option-grid{grid-template-columns:1fr;}.booking-title{font-size:38px;}}
+  :root{
+    --ae-navy:#050b16;
+    --ae-gold:#D4AF37;
+    --ae-muted:#B8C1CC;
+    --ae-border:rgba(212,175,55,.28);
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    background:#050b16;
+    color:white;
+    overflow-x:hidden;
+  }
+
+  .page-shell{
+    min-height:100vh;
+    padding:125px 5.5% 90px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .page-bg{
+    position:fixed;
+    inset:0;
+    z-index:-3;
+    background:
+      linear-gradient(90deg,rgba(5,11,22,.96),rgba(5,11,22,.74)),
+      url("images/hero/01-dfw-airport.jpg");
+    background-size:cover;
+    background-position:center;
+  }
+
+  .page-bg::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(circle at 75% 20%,rgba(212,175,55,.22),transparent 30%),
+      linear-gradient(180deg,rgba(5,11,22,.1),#050b16 95%);
+  }
+
+  .booking-wrap{
+    max-width:980px;
+    margin:0 auto;
+  }
+
+  .back-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding:13px 20px;
+    border-radius:999px;
+    background:rgba(255,255,255,.08);
+    border:1px solid var(--ae-border);
+    color:white;
+    font-weight:900;
+    margin-bottom:24px;
+    backdrop-filter:blur(14px);
+  }
+
+  .booking-card{
+    background:rgba(13,20,34,.78);
+    border:1px solid var(--ae-border);
+    border-radius:34px;
+    padding:clamp(24px,5vw,46px);
+    backdrop-filter:blur(20px);
+    box-shadow:0 30px 90px rgba(0,0,0,.38);
+  }
+
+  .booking-kicker{
+    display:inline-flex;
+    gap:10px;
+    align-items:center;
+    color:var(--ae-gold);
+    border:1px solid rgba(212,175,55,.35);
+    border-radius:999px;
+    padding:9px 14px;
+    font-size:12px;
+    font-weight:900;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    background:rgba(255,255,255,.07);
+  }
+
+  .booking-title{
+    font-size:clamp(44px,7vw,82px);
+    line-height:.95;
+    margin:22px 0 14px;
+    letter-spacing:-2px;
+  }
+
+  .booking-title span{color:var(--ae-gold);}
+
+  .booking-subtitle{
+    color:#dce5ee;
+    font-size:18px;
+    line-height:1.7;
+    max-width:720px;
+    margin-bottom:36px;
+  }
+
+  .form-section{
+    margin-top:34px;
+    padding-top:28px;
+    border-top:1px solid rgba(255,255,255,.1);
+  }
+
+  .section-title{
+    font-size:24px;
+    font-weight:900;
+    color:var(--ae-gold);
+    margin:0 0 18px;
+  }
+
+  .field-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+
+  label{
+    display:block;
+    margin:16px 0 8px;
+    color:white;
+    font-weight:900;
+    font-size:13px;
+    letter-spacing:.7px;
+    text-transform:uppercase;
+  }
+
+  input,textarea,select{
+    width:100%;
+    min-height:56px;
+    padding:16px;
+    border-radius:18px;
+    border:1px solid rgba(212,175,55,.28);
+    background:rgba(5,11,22,.82);
+    color:white;
+    font-size:16px;
+    outline:none;
+  }
+
+  input:focus,textarea:focus,select:focus{
+    border-color:var(--ae-gold);
+    box-shadow:0 0 0 4px rgba(212,175,55,.12);
+  }
+
+  textarea{
+    min-height:130px;
+    resize:vertical;
+  }
+
+  .helper-note{
+    font-size:13px;
+    color:var(--ae-muted);
+    margin:8px 0 12px;
+    line-height:1.5;
+  }
+
+  .address-wrapper{position:relative;}
+
+  .suggestions-box{
+    position:absolute;
+    top:calc(100% + 8px);
+    left:0;
+    right:0;
+    z-index:50;
+    display:none;
+    background:#081426;
+    border:1px solid rgba(212,175,55,.4);
+    border-radius:18px;
+    overflow:hidden;
+    box-shadow:0 18px 45px rgba(0,0,0,.45);
+  }
+
+  .suggestion-item{
+    padding:14px 16px;
+    cursor:pointer;
+    border-bottom:1px solid rgba(255,255,255,.08);
+    color:white;
+    font-size:14px;
+    line-height:1.4;
+  }
+
+  .suggestion-item:hover{
+    background:rgba(212,175,55,.14);
+  }
+
+  .location-status{
+    display:none;
+    font-size:13px;
+    color:#38d46f;
+    margin-top:8px;
+  }
+
+  .location-status.error{color:#ff6b6b;}
+
+  .option-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+  }
+
+  .category-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+  }
+
+  .option-btn,.category-btn{
+    min-height:62px;
+    border-radius:18px;
+    border:1px solid rgba(212,175,55,.28);
+    background:rgba(5,11,22,.82);
+    color:white;
+    font-weight:900;
+    cursor:pointer;
+    transition:.25s ease;
+  }
+
+  .option-btn:hover,.category-btn:hover{
+    transform:translateY(-3px);
+    border-color:var(--ae-gold);
+  }
+
+  .option-btn.active,.category-btn.active{
+    background:var(--ae-gold);
+    color:#050b16;
+  }
+
+  .continue-btn{
+    width:100%;
+    min-height:64px;
+    margin-top:36px;
+    border:none;
+    border-radius:999px;
+    background:var(--ae-gold);
+    color:#050b16;
+    font-size:19px;
+    font-weight:950;
+    cursor:pointer;
+    box-shadow:0 20px 55px rgba(212,175,55,.28);
+    transition:.25s ease;
+  }
+
+  .continue-btn:hover{
+    transform:translateY(-4px);
+  }
+
+  .mobile-support-dock{display:none;}
+
+  @media(max-width:980px){
+    .page-shell{
+      padding-top:112px;
+    }
+
+    .field-grid,
+    .category-grid{
+      grid-template-columns:1fr;
+    }
+  }
+
+  @media(max-width:640px){
+    .page-shell{
+      padding:100px 4.5% 110px;
+    }
+
+    .booking-card{
+      border-radius:26px;
+    }
+
+    .booking-title{
+      font-size:42px;
+    }
+
+    .booking-subtitle{
+      font-size:16px;
+    }
+
+    .option-grid{
+      grid-template-columns:1fr;
+    }
+
+    .chat-toggle,
+    .whatsapp-float{
+      display:none!important;
+    }
+
+    .mobile-support-dock{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom:calc(env(safe-area-inset-bottom) + 14px);
+      z-index:999999;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    .mobile-support-btn{
+      min-height:48px;
+      border-radius:999px;
+      border:none;
+      font-weight:900;
+      font-size:13px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      box-shadow:0 14px 35px rgba(0,0,0,.35);
+    }
+
+    .mobile-support-btn.ai{
+      background:#D4AF37;
+      color:#050A14;
+    }
+
+    .mobile-support-btn.whatsapp{
+      background:#25D366;
+      color:#050A14;
+    }
+  }
 </style>
 </head>
 
 <body>
 
-<div class="booking-page">
-<a href="index.html" class="back-btn">← Back to Home</a>
+<header class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">A</div>
+    <div class="logo-text">
+      <h1>ANGEL EXPRESS</h1>
+      <span>MOBILITY ECOSYSTEM</span>
+    </div>
+  </a>
 
-<div class="booking-card">
-<h1 class="booking-title">Book a Ride</h1>
-<p class="booking-subtitle">Enter your trip details. Your fare estimate will be calculated next.</p>
+  <nav class="desktop-nav">
+    <a href="index.html">Home</a>
+    <a href="book-ride.html">Book Ride</a>
+    <a href="passenger.html">Passengers</a>
+    <a href="driver.html">Drivers</a>
+    <a href="terms.html">Terms</a>
+    <a href="blog.html">Blog</a>
+    <a href="contact.html">Contact</a>
+  </nav>
 
-<label>Email Address</label>
-<input type="email" id="email" placeholder="Enter the email you will use in the Angel Express app" required>
-<p class="helper-note">Use the same email when registering in the Angel Express app so this ride appears in your trip history.</p>
+  <div class="desktop-actions">
+    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
+  </div>
 
-<label>Pickup Address</label>
-<div class="address-wrapper">
-<input type="text" id="pickup" placeholder="Start typing pickup address" autocomplete="off" required>
-<div id="pickupSuggestions" class="suggestions-box"></div>
-</div>
-<div id="pickupStatus" class="location-status"></div>
+  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
 
-<label>Drop-off Address</label>
-<div class="address-wrapper">
-<input type="text" id="dropoff" placeholder="Start typing drop-off address" autocomplete="off" required>
-<div id="dropoffSuggestions" class="suggestions-box"></div>
-</div>
-<div id="dropoffStatus" class="location-status"></div>
-
-<label>Pickup Date</label>
-<input type="date" id="tripDate" required>
-
-<label>Pickup Time</label>
-<select id="tripTime" required>
-<option value="">Select pickup time</option>
-<option value="05:00">5:00 AM</option><option value="05:30">5:30 AM</option>
-<option value="06:00">6:00 AM</option><option value="06:30">6:30 AM</option>
-<option value="07:00">7:00 AM</option><option value="07:30">7:30 AM</option>
-<option value="08:00">8:00 AM</option><option value="08:30">8:30 AM</option>
-<option value="09:00">9:00 AM</option><option value="09:30">9:30 AM</option>
-<option value="10:00">10:00 AM</option><option value="10:30">10:30 AM</option>
-<option value="11:00">11:00 AM</option><option value="11:30">11:30 AM</option>
-<option value="12:00">12:00 PM</option><option value="12:30">12:30 PM</option>
-<option value="13:00">1:00 PM</option><option value="13:30">1:30 PM</option>
-<option value="14:00">2:00 PM</option><option value="14:30">2:30 PM</option>
-<option value="15:00">3:00 PM</option><option value="15:30">3:30 PM</option>
-<option value="16:00">4:00 PM</option><option value="16:30">4:30 PM</option>
-<option value="17:00">5:00 PM</option><option value="17:30">5:30 PM</option>
-<option value="18:00">6:00 PM</option><option value="18:30">6:30 PM</option>
-<option value="19:00">7:00 PM</option><option value="19:30">7:30 PM</option>
-<option value="20:00">8:00 PM</option><option value="20:30">8:30 PM</option>
-<option value="21:00">9:00 PM</option><option value="21:30">9:30 PM</option>
-<option value="22:00">10:00 PM</option><option value="22:30">10:30 PM</option>
-<option value="23:00">11:00 PM</option><option value="23:30">11:30 PM</option>
-<option value="00:00">12:00 AM</option><option value="00:30">12:30 AM</option>
-<option value="01:00">1:00 AM</option><option value="01:30">1:30 AM</option>
-<option value="02:00">2:00 AM</option><option value="02:30">2:30 AM</option>
-<option value="03:00">3:00 AM</option><option value="03:30">3:30 AM</option>
-<option value="04:00">4:00 AM</option><option value="04:30">4:30 AM</option>
-</select>
-
-<div class="section-title">Trip Type</div>
-<div class="option-grid">
-<button type="button" class="option-btn active" data-type="One Way">One Way</button>
-<button type="button" class="option-btn" data-type="Round Trip">Round Trip</button>
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="fare-estimate.html">Fare Estimate</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
 </div>
 
-<div class="section-title">Ride Category</div>
-<div class="category-grid">
-<button type="button" class="category-btn active" data-category="Standard Ride">Standard Ride</button>
-<button type="button" class="category-btn" data-category="Airport Transfer">Airport Transfer</button>
-<button type="button" class="category-btn" data-category="Student Group Ride">Student Group Ride</button>
-<button type="button" class="category-btn" data-category="Tourist/Event Ride">Tourist/Event Ride</button>
+<div class="page-bg"></div>
+
+<main class="page-shell">
+  <div class="booking-wrap">
+    <a href="index.html" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i>
+      Back to Home
+    </a>
+
+    <div class="booking-card">
+      <p class="booking-kicker">
+        <i class="fa-solid fa-route"></i>
+        Angel Express Booking
+      </p>
+
+      <h1 class="booking-title">Book a <span>Ride.</span></h1>
+
+      <p class="booking-subtitle">
+        Enter your trip details below. Angel Express will calculate your fare estimate next and prepare your ride request for confirmation.
+      </p>
+
+      <div class="form-section">
+        <div class="section-title">Passenger Details</div>
+
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="Enter the email you will use in the Angel Express app" required>
+        <p class="helper-note">
+          Use the same email when registering in the Angel Express app so this ride appears in your trip history.
+        </p>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Pickup & Drop-off</div>
+
+        <label>Pickup Address</label>
+        <div class="address-wrapper">
+          <input type="text" id="pickup" placeholder="Start typing pickup address" autocomplete="off" required>
+          <div id="pickupSuggestions" class="suggestions-box"></div>
+        </div>
+        <div id="pickupStatus" class="location-status"></div>
+
+        <label>Drop-off Address</label>
+        <div class="address-wrapper">
+          <input type="text" id="dropoff" placeholder="Start typing drop-off address" autocomplete="off" required>
+          <div id="dropoffSuggestions" class="suggestions-box"></div>
+        </div>
+        <div id="dropoffStatus" class="location-status"></div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Schedule</div>
+
+        <div class="field-grid">
+          <div>
+            <label>Pickup Date</label>
+            <input type="date" id="tripDate" required>
+          </div>
+
+          <div>
+            <label>Pickup Time</label>
+            <select id="tripTime" required>
+              <option value="">Select pickup time</option>
+              <option value="05:00">5:00 AM</option><option value="05:30">5:30 AM</option>
+              <option value="06:00">6:00 AM</option><option value="06:30">6:30 AM</option>
+              <option value="07:00">7:00 AM</option><option value="07:30">7:30 AM</option>
+              <option value="08:00">8:00 AM</option><option value="08:30">8:30 AM</option>
+              <option value="09:00">9:00 AM</option><option value="09:30">9:30 AM</option>
+              <option value="10:00">10:00 AM</option><option value="10:30">10:30 AM</option>
+              <option value="11:00">11:00 AM</option><option value="11:30">11:30 AM</option>
+              <option value="12:00">12:00 PM</option><option value="12:30">12:30 PM</option>
+              <option value="13:00">1:00 PM</option><option value="13:30">1:30 PM</option>
+              <option value="14:00">2:00 PM</option><option value="14:30">2:30 PM</option>
+              <option value="15:00">3:00 PM</option><option value="15:30">3:30 PM</option>
+              <option value="16:00">4:00 PM</option><option value="16:30">4:30 PM</option>
+              <option value="17:00">5:00 PM</option><option value="17:30">5:30 PM</option>
+              <option value="18:00">6:00 PM</option><option value="18:30">6:30 PM</option>
+              <option value="19:00">7:00 PM</option><option value="19:30">7:30 PM</option>
+              <option value="20:00">8:00 PM</option><option value="20:30">8:30 PM</option>
+              <option value="21:00">9:00 PM</option><option value="21:30">9:30 PM</option>
+              <option value="22:00">10:00 PM</option><option value="22:30">10:30 PM</option>
+              <option value="23:00">11:00 PM</option><option value="23:30">11:30 PM</option>
+              <option value="00:00">12:00 AM</option><option value="00:30">12:30 AM</option>
+              <option value="01:00">1:00 AM</option><option value="01:30">1:30 AM</option>
+              <option value="02:00">2:00 AM</option><option value="02:30">2:30 AM</option>
+              <option value="03:00">3:00 AM</option><option value="03:30">3:30 AM</option>
+              <option value="04:00">4:00 AM</option><option value="04:30">4:30 AM</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Trip Type</div>
+        <div class="option-grid">
+          <button type="button" class="option-btn active" data-type="One Way">One Way</button>
+          <button type="button" class="option-btn" data-type="Round Trip">Round Trip</button>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Ride Category</div>
+        <div class="category-grid">
+          <button type="button" class="category-btn active" data-category="Standard Ride">Standard Ride</button>
+          <button type="button" class="category-btn" data-category="Airport Transfer">Airport Transfer</button>
+          <button type="button" class="category-btn" data-category="Student Group Ride">Student Group Ride</button>
+          <button type="button" class="category-btn" data-category="Tourist/Event Ride">Tourist/Event Ride</button>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Passengers & Luggage</div>
+
+        <div class="field-grid">
+          <div>
+            <label>Passengers</label>
+            <input type="number" id="passengers" value="1" min="1">
+          </div>
+
+          <div>
+            <label>Luggage</label>
+            <input type="number" id="luggage" value="0" min="0">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">Extra Details</div>
+
+        <label>Notes</label>
+        <textarea id="notes" placeholder="Notes e.g. flight number, pickup instructions, luggage details"></textarea>
+
+        <label>Promo / Referral Code</label>
+        <input type="text" id="referral" placeholder="Promo / Referral Code">
+      </div>
+
+      <button type="button" class="continue-btn" onclick="continueToEstimate()">
+        Continue to Fare Estimate
+      </button>
+    </div>
+  </div>
+</main>
+
+<button id="chatToggle" class="chat-toggle">💬 AI Assistant</button>
+
+<div class="chatbot-box" id="chatbotBox">
+  <div class="chatbot-header">Angel Express Assistant</div>
+  <div class="chatbot-messages" id="chatbotMessages">
+    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
+  </div>
+  <div class="chatbot-input">
+    <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
+    <button type="button" onclick="sendChat()">Send</button>
+  </div>
 </div>
 
-<div class="section-title">Passengers & Luggage</div>
-<label>Passengers</label>
-<input type="number" id="passengers" value="1" min="1">
+<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">💬 Chat With Us</a>
 
-<label>Luggage</label>
-<input type="number" id="luggage" value="0" min="0">
-
-<div class="section-title">Extra Details</div>
-<textarea id="notes" placeholder="Notes e.g. flight number, pickup instructions, luggage details"></textarea>
-
-<label>Promo / Referral Code</label>
-<input type="text" id="referral" placeholder="Promo / Referral Code">
-
-<button type="button" class="continue-btn" onclick="continueToEstimate()">Continue to Fare Estimate</button>
-</div>
+<div class="mobile-support-dock">
+  <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">💬 AI Assistant</button>
+  <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">💬 Chat With Us</a>
 </div>
 
 <script>
@@ -285,22 +701,27 @@ function continueToEstimate(){
   localStorage.setItem("angelBooking", JSON.stringify(bookingData));
   window.location.href = "fare-estimate.html";
 }
+
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const mobileMenu = document.getElementById("mobileMenu");
+
+mobileMenuBtn?.addEventListener("click", () => {
+  mobileMenu?.classList.toggle("open");
+});
+
+mobileMenu?.querySelectorAll("a").forEach(link => {
+  link.addEventListener("click", () => {
+    mobileMenu.classList.remove("open");
+  });
+});
+
+const mobileChatBtn = document.getElementById("mobileChatBtn");
+const chatbotBox = document.getElementById("chatbotBox");
+
+mobileChatBtn?.addEventListener("click", () => {
+  chatbotBox?.classList.toggle("open");
+});
 </script>
-
-<button id="chatToggle" class="chat-toggle">💬 AI Assistant</button>
-
-<div class="chatbot-box" id="chatbotBox">
-  <div class="chatbot-header">Angel Express Assistant</div>
-  <div class="chatbot-messages" id="chatbotMessages">
-    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
-  </div>
-  <div class="chatbot-input">
-    <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
-    <button type="button" onclick="sendChat()">Send</button>
-  </div>
-</div>
-
-<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">💬 Chat With Us</a>
 
 <script src="script.js"></script>
 </body>
