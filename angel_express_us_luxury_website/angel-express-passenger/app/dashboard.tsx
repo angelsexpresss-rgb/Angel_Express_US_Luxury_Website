@@ -9,8 +9,32 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  BadgeCheck,
+  Bell,
+  BriefcaseBusiness,
+  CalendarDays,
+  CarFront,
+  Gift,
+  GraduationCap,
+  Headphones,
+  Info,
+  Languages,
+  Lock,
+  LogOut,
+  MapPinned,
+  Navigation,
+  Plane,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  UserRound,
+  Users,
+} from "lucide-react-native";
 import { registerForPushNotifications } from "../lib/notifications";
 import { supabase } from "../lib/supabase";
+
+const GOLD = "#D4AF37";
 
 export default function DashboardScreen() {
   const [firstName, setFirstName] = useState("Passenger");
@@ -103,10 +127,19 @@ export default function DashboardScreen() {
           </TouchableOpacity>
 
           <HorizontalSection title="Ride Management">
-            <QuickCard title="Book a Ride" onPress={() => router.push("/book-ride" as any)} />
-            <QuickCard title="My Trips" onPress={() => router.push("/my-trips" as any)} />
+            <QuickCard
+              title="Book a Ride"
+              icon={<CarFront size={24} color={GOLD} />}
+              onPress={() => router.push("/book-ride" as any)}
+            />
+            <QuickCard
+              title="My Trips"
+              icon={<CalendarDays size={24} color={GOLD} />}
+              onPress={() => router.push("/my-trips" as any)}
+            />
             <QuickCard
               title="Track Live Trip"
+              icon={<MapPinned size={24} color={GOLD} />}
               onPress={() =>
                 router.push({
                   pathname: "/live-trip" as any,
@@ -114,14 +147,34 @@ export default function DashboardScreen() {
                 })
               }
             />
-            <QuickCard title="Luxury Ride Prep+" onPress={() => router.push("/luxury-ride-prep" as any)} />
+            <QuickCard
+              title="Luxury Ride Prep+"
+              icon={<BriefcaseBusiness size={24} color={GOLD} />}
+              onPress={() => router.push("/luxury-ride-prep" as any)}
+            />
           </HorizontalSection>
 
           <HorizontalSection title="Travel Concierge">
-            <QuickCard title="Angel Travel Concierge" onPress={() => router.push("/travel-concierge" as any)} />
-            <QuickCard title="Student Travel Mode+" onPress={() => router.push("/student-travel" as any)} />
-            <QuickCard title="Multi-Language Assistant" onPress={() => router.push("/language-assistant" as any)} />
-            <QuickCard title="AI Ride Assistant" onPress={() => router.push("/ai-assistant" as any)} />
+            <QuickCard
+              title="Angel Travel Concierge"
+              icon={<Plane size={24} color={GOLD} />}
+              onPress={() => router.push("/travel-concierge" as any)}
+            />
+            <QuickCard
+              title="Student Travel Mode+"
+              icon={<GraduationCap size={24} color={GOLD} />}
+              onPress={() => router.push("/student-travel" as any)}
+            />
+            <QuickCard
+              title="Multi-Language Assistant"
+              icon={<Languages size={24} color={GOLD} />}
+              onPress={() => router.push("/language-assistant" as any)}
+            />
+            <QuickCard
+              title="AI Ride Assistant"
+              icon={<Sparkles size={24} color={GOLD} />}
+              onPress={() => router.push("/ai-assistant" as any)}
+            />
           </HorizontalSection>
 
           <DropdownSection
@@ -129,43 +182,114 @@ export default function DashboardScreen() {
             isOpen={openSection === "safety"}
             onPress={() => setOpenSection(openSection === "safety" ? null : "safety")}
           >
-            <ListItem title="Angel Safety Share" onPress={() => router.push("/safety-share" as any)} />
-            <ListItem title="Family Check-In+" onPress={() => router.push("/family-checkin" as any)} />
-            <ListItem title="Support Center" onPress={() => router.push("/support" as any)} />
+            <ListItem
+              title="Angel Safety Share"
+              icon={<ShieldCheck size={20} color={GOLD} />}
+              onPress={() => router.push("/safety-share" as any)}
+            />
+            <ListItem
+              title="Family Check-In+"
+              icon={<Users size={20} color={GOLD} />}
+              onPress={() => router.push("/family-checkin" as any)}
+            />
+            <ListItem
+              title="Support Center"
+              icon={<Headphones size={20} color={GOLD} />}
+              onPress={() => router.push("/support" as any)}
+            />
           </DropdownSection>
 
           <DropdownSection
             title="Passenger Account"
             isOpen={openSection === "passenger"}
-            onPress={() => setOpenSection(openSection === "passenger" ? null : "passenger")}
+            onPress={() =>
+              setOpenSection(openSection === "passenger" ? null : "passenger")
+            }
           >
-            <ListItem title="Profile" onPress={() => router.push("/profile" as any)} />
-            <ListItem title="Passenger Card" onPress={() => router.push("/passenger-card" as any)} />
-            <ListItem title="Rewards" onPress={() => router.push("/rewards" as any)} />
+            <ListItem
+              title="Profile"
+              icon={<UserRound size={20} color={GOLD} />}
+              onPress={() => router.push("/profile" as any)}
+            />
+            <ListItem
+              title="Passenger Card"
+              icon={<BadgeCheck size={20} color={GOLD} />}
+              onPress={() => router.push("/passenger-card" as any)}
+            />
+            <ListItem
+              title="Rewards"
+              icon={<Gift size={20} color={GOLD} />}
+              onPress={() => router.push("/rewards" as any)}
+            />
           </DropdownSection>
 
           <DropdownSection
             title="Account & Settings"
             isOpen={openSection === "settings"}
-            onPress={() => setOpenSection(openSection === "settings" ? null : "settings")}
+            onPress={() =>
+              setOpenSection(openSection === "settings" ? null : "settings")
+            }
           >
-            <ListItem title="Notification Preferences" onPress={() => router.push("/notification-preferences" as any)} />
-            <ListItem title="Privacy & Account" onPress={() => router.push("/privacy-account" as any)} />
-            <ListItem title="About Angel Express" onPress={() => router.push("/about" as any)} />
-            <ListItem title="Log Out" onPress={handleLogout} danger />
+            <ListItem
+              title="Notification Preferences"
+              icon={<Bell size={20} color={GOLD} />}
+              onPress={() => router.push("/notification-preferences" as any)}
+            />
+            <ListItem
+              title="Privacy & Account"
+              icon={<Lock size={20} color={GOLD} />}
+              onPress={() => router.push("/privacy-account" as any)}
+            />
+            <ListItem
+              title="About Angel Express"
+              icon={<Info size={20} color={GOLD} />}
+              onPress={() => router.push("/about" as any)}
+            />
+            <ListItem
+              title="Log Out"
+              icon={<LogOut size={20} color="#FF6B6B" />}
+              onPress={handleLogout}
+              danger
+            />
           </DropdownSection>
 
           <DropdownSection
             title="Unique Angel Features"
             isOpen={openSection === "features"}
-            onPress={() => setOpenSection(openSection === "features" ? null : "features")}
+            onPress={() =>
+              setOpenSection(openSection === "features" ? null : "features")
+            }
           >
-            <FeatureItem title="Push Ride Updates" text="Driver assigned, ride confirmed, driver arriving, trip started, arrived safely, and rewards earned." />
-            <FeatureItem title="Live GPS Tracking" text="Track your active ride, driver location, ETA, vehicle, and plate number." />
-            <FeatureItem title="Student Travel Mode" text="Discounted student routes, campus pickup points, and group rides." />
-            <FeatureItem title="World Cup/Event Mode" text="Hotel pickup, stadium routes, airport transfers, and event support." />
-            <FeatureItem title="Luxury Ride Prep" text="Luggage, ID, timing, and driver details before pickup." />
-            <FeatureItem title="Family Check-In" text="Send pickup, halfway, and arrival updates to loved ones." />
+            <FeatureItem
+              title="Push Ride Updates"
+              text="Driver assigned, ride confirmed, driver arriving, trip started, arrived safely, and rewards earned."
+              icon={<Bell size={18} color={GOLD} />}
+            />
+            <FeatureItem
+              title="Live GPS Tracking"
+              text="Track your active ride, driver location, ETA, vehicle, and plate number."
+              icon={<Navigation size={18} color={GOLD} />}
+            />
+            <FeatureItem
+              title="Student Travel Mode"
+              text="Discounted student routes, campus pickup points, and group rides."
+              icon={<GraduationCap size={18} color={GOLD} />}
+            />
+            <FeatureItem
+              title="World Cup/Event Mode"
+              text="Hotel pickup, stadium routes, airport transfers, and event support."
+              icon={<Trophy size={18} color={GOLD} />}
+            />
+            <FeatureItem
+              title="Luxury Ride Prep"
+              text="Luggage, ID, timing, and driver details before pickup."
+              icon={<BriefcaseBusiness size={18} color={GOLD} />}
+            />
+            <FeatureItem
+              title="Family Check-In"
+              text="Send pickup, halfway, and arrival updates to loved ones."
+              icon={<Users size={18} color={GOLD} />}
+            />
           </DropdownSection>
         </ScrollView>
       </View>
@@ -177,19 +301,21 @@ function HorizontalSection({ title, children }: any) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+      >
         {children}
       </ScrollView>
     </View>
   );
 }
 
-function QuickCard({ title, onPress }: any) {
+function QuickCard({ title, onPress, icon }: any) {
   return (
     <TouchableOpacity style={styles.quickCard} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.iconBox}>
-        <Text style={styles.iconText}>A</Text>
-      </View>
+      <View style={styles.iconBox}>{icon}</View>
       <Text style={styles.quickTitle}>{title}</Text>
       <Text style={styles.goldArrow}>›</Text>
     </TouchableOpacity>
@@ -199,7 +325,11 @@ function QuickCard({ title, onPress }: any) {
 function DropdownSection({ title, isOpen, onPress, children }: any) {
   return (
     <View style={styles.dropdown}>
-      <TouchableOpacity style={styles.dropdownHeader} onPress={onPress} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={styles.dropdownHeader}
+        onPress={onPress}
+        activeOpacity={0.85}
+      >
         <Text style={styles.dropdownTitle}>{title}</Text>
         <Text style={styles.dropdownArrow}>{isOpen ? "−" : "+"}</Text>
       </TouchableOpacity>
@@ -209,23 +339,23 @@ function DropdownSection({ title, isOpen, onPress, children }: any) {
   );
 }
 
-function ListItem({ title, onPress, danger }: any) {
+function ListItem({ title, onPress, icon, danger }: any) {
   return (
     <TouchableOpacity style={styles.listItem} onPress={onPress} activeOpacity={0.85}>
-      <View style={[styles.smallIcon, danger && styles.dangerIcon]}>
-        <Text style={[styles.smallIconText, danger && styles.dangerText]}>A</Text>
-      </View>
-
+      <View style={[styles.smallIcon, danger && styles.dangerIcon]}>{icon}</View>
       <Text style={[styles.listText, danger && styles.dangerText]}>{title}</Text>
       <Text style={[styles.listArrow, danger && styles.dangerText]}>›</Text>
     </TouchableOpacity>
   );
 }
 
-function FeatureItem({ title, text }: any) {
+function FeatureItem({ title, text, icon }: any) {
   return (
     <View style={styles.featureItem}>
-      <Text style={styles.featureTitle}>{title}</Text>
+      <View style={styles.featureHeader}>
+        <View style={styles.featureIcon}>{icon}</View>
+        <Text style={styles.featureTitle}>{title}</Text>
+      </View>
       <Text style={styles.featureText}>{text}</Text>
     </View>
   );
@@ -280,7 +410,13 @@ const styles = StyleSheet.create({
   arrowDark: { color: "#06111f", fontSize: 46, fontWeight: "300" },
 
   section: { marginBottom: 28 },
-  sectionTitle: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", marginBottom: 14 },
+  sectionTitle: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "900",
+    marginBottom: 14,
+  },
+
   row: { gap: 14, paddingRight: 20 },
 
   quickCard: {
@@ -304,8 +440,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  iconText: { color: "#D4AF37", fontSize: 24, fontWeight: "900", fontStyle: "italic" },
-  quickTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "900", lineHeight: 22 },
+  quickTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "900",
+    lineHeight: 22,
+  },
+
   goldArrow: { color: "#D4AF37", fontSize: 30, alignSelf: "flex-end" },
 
   dropdown: { marginBottom: 10 },
@@ -340,7 +481,6 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
 
-  smallIconText: { color: "#D4AF37", fontSize: 19, fontWeight: "900", fontStyle: "italic" },
   listText: { color: "#E8EDF3", fontSize: 18, flex: 1 },
   listArrow: { color: "#D4AF37", fontSize: 28 },
 
@@ -350,7 +490,24 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.08)",
   },
 
-  featureTitle: { color: "#D4AF37", fontSize: 17, fontWeight: "900", marginBottom: 5 },
+  featureHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+
+  featureIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+
+  featureTitle: { color: "#D4AF37", fontSize: 17, fontWeight: "900" },
   featureText: { color: "#B8C1CC", fontSize: 14.5, lineHeight: 22 },
 
   dangerIcon: { borderColor: "rgba(255,107,107,0.45)" },
