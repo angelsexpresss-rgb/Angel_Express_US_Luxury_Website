@@ -1739,4 +1739,28 @@ a.whatsapp-float {
     padding: 11px 15px !important;
     font-size: 13px !important;
   }
+}/* EMERGENCY PAGE VISIBILITY FIX */
+.reveal {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  visibility: visible !important;
+}
+
+.reveal.active {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  visibility: visible !important;
+}
+
+/* KEEP MOBILE MENU HIDDEN UNTIL OPENED */
+.mobile-menu {
+  display: none !important;
+}
+
+.mobile-menu.open {
+  display: grid !important;
+  grid-template-columns: 1fr;
+  gap: 9px;
 }
