@@ -1,21 +1,54 @@
 import * as Linking from "expo-linking";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  CalendarDays,
+  CarFront,
+  CreditCard,
+  MapPinned,
+  MessageCircle,
+  Phone,
+  ReceiptText,
+  ShieldCheck,
+  Star,
+  UserRound,
+} from "lucide-react-native";
+
 import { supabase } from "../lib/supabase";
+
+import {
+  AE_COLORS,
+  AngelCard,
+  AngelDropdown,
+  AngelHeroButton,
+  fadeUp,
+  slowBackgroundZoom,
+} from "../components/angel";
+
+const GOLD = AE_COLORS.gold;
 
 export default function MyTripsScreen() {
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState<any[]>([]);
-  const [openStatus, setOpenStatus] = useState("Pending");
+
+  const bgScale = useRef(new Animated.Value(1)).current;
+  const pageFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    slowBackgroundZoom(bgScale).start();
+    fadeUp(pageFade, 80).start();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,64 +111,86 @@ export default function MyTripsScreen() {
     },
   ];
 
+  const pageTranslate = pageFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>My Trips</Text>
-      <Text style={styles.subtitle}>
-        View rides booked from the Angel Express app or website.
-      </Text>
+    <View style={styles.root}>
+      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+        <ImageBackground
+          source={require("../assets/images/dashboard-bg.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
 
-      {loading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator color="#D4AF37" size="large" />
-          <Text style={styles.loadingText}>Loading your trips...</Text>
-        </View>
-      ) : trips.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyTitle}>No Trips Yet</Text>
-          <Text style={styles.emptyText}>
-            Your bookings will appear here after you request a ride.
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.dropdownBox}>
-          {sections.map((section) => (
-            <View key={section.title} style={styles.dropdownSection}>
-              <TouchableOpacity
-                style={[
-                  styles.dropdownHeader,
-                  openStatus === section.title && styles.dropdownHeaderActive,
-                ]}
-                onPress={() =>
-                  setOpenStatus(openStatus === section.title ? "" : section.title)
-                }
-              >
-                <Text style={styles.dropdownTitle}>
-                  {section.title} ({section.trips.length})
-                </Text>
-                <Text style={styles.dropdownIcon}>
-                  {openStatus === section.title ? "▲" : "▼"}
-                </Text>
-              </TouchableOpacity>
+      <View style={styles.overlay}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </TouchableOpacity>
 
-              {openStatus === section.title && (
-                <View style={styles.dropdownContent}>
-                  {section.trips.length === 0 ? (
-                    <Text style={styles.noTripsText}>
-                      No {section.title.toLowerCase()} trips.
-                    </Text>
-                  ) : (
-                    section.trips.map((trip) => (
-                      <TripCard key={String(trip.id)} trip={trip} />
-                    ))
-                  )}
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-    </ScrollView>
+          <Animated.View
+            style={{
+              opacity: pageFade,
+              transform: [{ translateY: pageTranslate }],
+            }}
+          >
+            <Text style={styles.title}>My Trips</Text>
+            <Text style={styles.subtitle}>
+              View rides booked from the Angel Express app or website.
+            </Text>
+
+            {loading ? (
+              <AngelCard style={styles.loadingBox}>
+                <ActivityIndicator color={GOLD} size="large" />
+                <Text style={styles.loadingText}>Loading your trips...</Text>
+              </AngelCard>
+            ) : trips.length === 0 ? (
+              <AngelCard style={styles.emptyBox}>
+                <Text style={styles.emptyTitle}>No Trips Yet</Text>
+                <Text style={styles.emptyText}>
+                  Your bookings will appear here after you request a ride.
+                </Text>
+
+                <AngelHeroButton
+                  title="Book a Ride"
+                  onPress={() => router.push("/book-ride" as any)}
+                  variant="gold"
+                  style={styles.emptyButton}
+                />
+              </AngelCard>
+            ) : (
+              <View style={styles.dropdownBox}>
+                {sections.map((section, index) => (
+                  <AngelDropdown
+                    key={section.title}
+                    title={`${section.title} (${section.trips.length})`}
+                    defaultOpen={index === 0}
+                  >
+                    {section.trips.length === 0 ? (
+                      <Text style={styles.noTripsText}>
+                        No {section.title.toLowerCase()} trips.
+                      </Text>
+                    ) : (
+                      section.trips.map((trip) => (
+                        <TripCard key={String(trip.id)} trip={trip} />
+                      ))
+                    )}
+                  </AngelDropdown>
+                ))}
+              </View>
+            )}
+          </Animated.View>
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
@@ -178,7 +233,6 @@ function TripCard({ trip }: { trip: any }) {
         .maybeSingle();
 
       if (error) throw error;
-
       setDriver(data || null);
     } catch {
       setDriver(null);
@@ -239,21 +293,31 @@ function TripCard({ trip }: { trip: any }) {
   }
 
   return (
-    <View style={styles.card}>
+    <AngelCard style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.invoice}>{invoice}</Text>
-        <Text style={styles.status}>{status}</Text>
+        <View style={styles.invoiceRow}>
+          <ReceiptText size={18} color={GOLD} />
+          <Text style={styles.invoice}>{invoice}</Text>
+        </View>
+
+        <View style={styles.statusPill}>
+          <Text style={styles.status}>{status}</Text>
+        </View>
       </View>
 
       <View style={styles.lifecycleBox}>
+        <ShieldCheck size={18} color={GOLD} />
         <Text style={styles.lifecycleText}>
           {getLifecycleMessage(status, paymentStatus)}
         </Text>
       </View>
 
-      {trip.driver_id && (
+      {trip.driver_id ? (
         <View style={styles.driverCard}>
-          <Text style={styles.driverCardTitle}>Your Chauffeur</Text>
+          <View style={styles.driverTitleRow}>
+            <UserRound size={20} color={GOLD} />
+            <Text style={styles.driverCardTitle}>Your Chauffeur</Text>
+          </View>
 
           {driverLoading ? (
             <Text style={styles.driverMuted}>Loading chauffeur details...</Text>
@@ -265,55 +329,58 @@ function TripCard({ trip }: { trip: any }) {
                   "Angel Express Chauffeur"}
               </Text>
 
-              <Text style={styles.driverRating}>
-                ⭐ {Number(driver.rating || 5).toFixed(1)} Rating •{" "}
-                {driver.total_trips || 0} Trips
-              </Text>
+              <View style={styles.driverMetaRow}>
+                <Star size={16} color={GOLD} />
+                <Text style={styles.driverRating}>
+                  {Number(driver.rating || 5).toFixed(1)} Rating •{" "}
+                  {driver.total_trips || 0} Trips
+                </Text>
+              </View>
 
               <Text style={styles.driverLevel}>
                 {driver.driver_level || "Bronze"} Chauffeur
               </Text>
 
-              <View style={styles.driverInfoBox}>
-                <Text style={styles.driverInfoLabel}>Vehicle</Text>
-                <Text style={styles.driverInfoValue}>
-                  {[driver.vehicle_year, driver.vehicle_make, driver.vehicle_model]
+              <InfoLine
+                label="Vehicle"
+                value={
+                  [driver.vehicle_year, driver.vehicle_make, driver.vehicle_model]
                     .filter(Boolean)
-                    .join(" ") || "Vehicle not added"}
-                </Text>
-              </View>
+                    .join(" ") || "Vehicle not added"
+                }
+              />
 
-              <View style={styles.driverInfoBox}>
-                <Text style={styles.driverInfoLabel}>Plate Number</Text>
-                <Text style={styles.driverInfoValue}>
-                  {driver.plate_number || "Not provided"}
-                </Text>
-              </View>
+              <InfoLine
+                label="Plate Number"
+                value={driver.plate_number || "Not provided"}
+              />
 
-              <View style={styles.driverInfoBox}>
-                <Text style={styles.driverInfoLabel}>Experience</Text>
-                <Text style={styles.driverInfoValue}>
-                  {driver.years_driving
+              <InfoLine
+                label="Experience"
+                value={
+                  driver.years_driving
                     ? `${driver.years_driving} year(s) driving`
-                    : "Experience not added"}
-                </Text>
-              </View>
+                    : "Experience not added"
+                }
+              />
 
               <View style={styles.safetyBadge}>
                 <Text style={styles.safetyBadgeText}>
                   {driver.safety_badge
-                    ? "Angel Express Safety Verified ✅"
+                    ? "Angel Express Safety Verified"
                     : "Angel Express Approved Chauffeur"}
                 </Text>
               </View>
 
               <View style={styles.driverContactRow}>
                 <TouchableOpacity style={styles.driverContactButton} onPress={callDriver}>
-                  <Text style={styles.driverContactText}>Call Chauffeur</Text>
+                  <Phone size={16} color={AE_COLORS.navy2} />
+                  <Text style={styles.driverContactText}>Call</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.driverContactButton} onPress={textDriver}>
-                  <Text style={styles.driverContactText}>Text Chauffeur</Text>
+                  <MessageCircle size={16} color={AE_COLORS.navy2} />
+                  <Text style={styles.driverContactText}>Text</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -323,27 +390,33 @@ function TripCard({ trip }: { trip: any }) {
             </Text>
           )}
         </View>
-      )}
-
-      {!trip.driver_id && (
+      ) : (
         <View style={styles.noDriverBox}>
-          <Text style={styles.noDriverText}>
-            Chauffeur assignment pending.
-          </Text>
+          <Text style={styles.noDriverText}>Chauffeur assignment pending.</Text>
         </View>
       )}
 
-      <Text style={styles.route}>{pickup}</Text>
-      <Text style={styles.arrow}>↓</Text>
-      <Text style={styles.route}>{dropoff}</Text>
+      <View style={styles.routeBox}>
+        <View style={styles.routeLine}>
+          <MapPinned size={18} color={GOLD} />
+          <Text style={styles.route}>{pickup}</Text>
+        </View>
+
+        <Text style={styles.routeArrow}>↓</Text>
+
+        <View style={styles.routeLine}>
+          <CarFront size={18} color={GOLD} />
+          <Text style={styles.route}>{dropoff}</Text>
+        </View>
+      </View>
 
       <View style={styles.details}>
-        <Text style={styles.detailText}>Date: {date}</Text>
-        <Text style={styles.detailText}>Time: {time}</Text>
-        <Text style={styles.detailText}>Distance: {miles} miles</Text>
-        <Text style={styles.detailText}>Total: ${total.toFixed(2)}</Text>
-        <Text style={styles.detailText}>Payment: {paymentStatus}</Text>
-        <Text style={styles.detailText}>Source: {source}</Text>
+        <Detail icon={<CalendarDays size={16} color={GOLD} />} text={`Date: ${date}`} />
+        <Detail icon={<CalendarDays size={16} color={GOLD} />} text={`Time: ${time}`} />
+        <Detail icon={<NavigationIcon />} text={`Distance: ${miles} miles`} />
+        <Detail icon={<CreditCard size={16} color={GOLD} />} text={`Total: $${total.toFixed(2)}`} />
+        <Detail icon={<CreditCard size={16} color={GOLD} />} text={`Payment: ${paymentStatus}`} />
+        <Detail icon={<ReceiptText size={16} color={GOLD} />} text={`Source: ${source}`} />
       </View>
 
       {canPayRide && (
@@ -353,15 +426,18 @@ function TripCard({ trip }: { trip: any }) {
             Full Ride Fare: ${total.toFixed(2)}
           </Text>
 
-          <TouchableOpacity style={styles.payButton} onPress={openPayRide}>
-            <Text style={styles.payButtonText}>Pay Ride</Text>
-          </TouchableOpacity>
+          <AngelHeroButton
+            title="Pay Ride"
+            onPress={openPayRide}
+            variant="gold"
+            style={styles.payButton}
+          />
         </View>
       )}
 
       {isPaid && (
         <View style={styles.paidBox}>
-          <Text style={styles.paidText}>Paid ✅</Text>
+          <Text style={styles.paidText}>Paid</Text>
         </View>
       )}
 
@@ -374,8 +450,30 @@ function TripCard({ trip }: { trip: any }) {
           <Text style={styles.rateButtonText}>Rate Your Chauffeur</Text>
         </TouchableOpacity>
       )}
+    </AngelCard>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.driverInfoBox}>
+      <Text style={styles.driverInfoLabel}>{label}</Text>
+      <Text style={styles.driverInfoValue}>{value}</Text>
     </View>
   );
+}
+
+function Detail({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <View style={styles.detailRow}>
+      {icon}
+      <Text style={styles.detailText}>{text}</Text>
+    </View>
+  );
+}
+
+function NavigationIcon() {
+  return <MapPinned size={16} color={GOLD} />;
 }
 
 function getLifecycleMessage(status: string, paymentStatus: string) {
@@ -418,173 +516,218 @@ function normalize(status: string) {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: AE_COLORS.navy,
+    overflow: "hidden",
+  },
+
+  bgWrap: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  background: {
+    flex: 1,
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(5,11,22,0.91)",
+  },
+
   container: {
     flex: 1,
-    backgroundColor: "#040C18",
   },
+
   content: {
     padding: 22,
-    paddingTop: 70,
+    paddingTop: 56,
     paddingBottom: 50,
   },
+
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 18,
+  },
+
+  backText: {
+    color: GOLD,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
   title: {
-    color: "#D4AF37",
-    fontSize: 34,
+    color: GOLD,
+    fontSize: 38,
     fontWeight: "900",
     marginBottom: 10,
   },
+
   subtitle: {
-    color: "#C9D0D8",
+    color: AE_COLORS.textSoft,
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 24,
   },
+
   loadingBox: {
-    backgroundColor: "#071426",
-    borderRadius: 18,
-    padding: 28,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
+    padding: 28,
   },
+
   loadingText: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     marginTop: 14,
     fontSize: 16,
   },
+
   emptyBox: {
-    backgroundColor: "#071426",
-    borderRadius: 18,
     padding: 24,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
   },
+
   emptyTitle: {
-    color: "#D4AF37",
-    fontSize: 22,
+    color: GOLD,
+    fontSize: 24,
     fontWeight: "900",
     marginBottom: 10,
   },
+
   emptyText: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 16,
     lineHeight: 24,
+    marginBottom: 22,
   },
+
+  emptyButton: {
+    marginTop: 6,
+  },
+
   dropdownBox: {
     gap: 14,
   },
-  dropdownSection: {
-    backgroundColor: "#071426",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    overflow: "hidden",
-  },
-  dropdownHeader: {
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#071426",
-  },
-  dropdownHeaderActive: {
-    backgroundColor: "rgba(212,175,55,0.1)",
-  },
-  dropdownTitle: {
-    color: "#D4AF37",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-  dropdownIcon: {
-    color: "#D4AF37",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  dropdownContent: {
-    padding: 14,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(212,175,55,0.14)",
-  },
+
   noTripsText: {
-    color: "#C9D0D8",
+    color: AE_COLORS.muted,
     fontSize: 15,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
+
   card: {
-    backgroundColor: "#040C18",
-    borderRadius: 18,
     padding: 18,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
+    marginBottom: 16,
   },
+
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 12,
     marginBottom: 14,
+    alignItems: "center",
   },
+
+  invoiceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+
   invoice: {
-    color: "#D4AF37",
+    color: GOLD,
     fontSize: 15,
     fontWeight: "900",
     flex: 1,
   },
-  status: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "800",
+
+  statusPill: {
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.34)",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: "rgba(212,175,55,0.10)",
   },
+
+  status: {
+    color: AE_COLORS.white,
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+
   lifecycleBox: {
     backgroundColor: "rgba(212,175,55,0.08)",
     borderWidth: 1,
     borderColor: "rgba(212,175,55,0.18)",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 13,
     marginBottom: 14,
+    flexDirection: "row",
+    gap: 10,
   },
+
   lifecycleText: {
-    color: "#D4AF37",
+    color: GOLD,
     fontSize: 14,
     fontWeight: "800",
     lineHeight: 20,
+    flex: 1,
   },
+
   driverCard: {
     backgroundColor: "rgba(212,175,55,0.08)",
     borderWidth: 1,
-    borderColor: "#D4AF37",
-    borderRadius: 16,
+    borderColor: "rgba(212,175,55,0.45)",
+    borderRadius: 18,
     padding: 16,
     marginBottom: 16,
   },
-  driverCardTitle: {
-    color: "#D4AF37",
-    fontSize: 18,
-    fontWeight: "900",
+
+  driverTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
     marginBottom: 8,
   },
+
+  driverCardTitle: {
+    color: GOLD,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
   driverName: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 23,
     fontWeight: "900",
+    marginBottom: 6,
+  },
+
+  driverMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
     marginBottom: 5,
   },
+
   driverRating: {
-    color: "#D4AF37",
+    color: GOLD,
     fontSize: 15,
     fontWeight: "800",
-    marginBottom: 5,
   },
+
   driverLevel: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 14,
     fontWeight: "800",
     marginBottom: 12,
   },
+
   driverInfoBox: {
     marginBottom: 10,
   },
+
   driverInfoLabel: {
     color: "#8A93A3",
     fontSize: 12,
@@ -592,10 +735,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 3,
   },
+
   driverInfoValue: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 15,
   },
+
   safetyBadge: {
     backgroundColor: "rgba(46,204,113,0.12)",
     borderWidth: 1,
@@ -605,98 +750,126 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 12,
   },
+
   safetyBadgeText: {
     color: "#2ECC71",
     fontWeight: "900",
     textAlign: "center",
   },
+
   driverContactRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     gap: 10,
   },
+
   driverContactButton: {
     flex: 1,
-    backgroundColor: "#D4AF37",
-    borderRadius: 12,
+    backgroundColor: GOLD,
+    borderRadius: 14,
     paddingVertical: 13,
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 7,
   },
+
   driverContactText: {
-    color: "#071426",
-    fontSize: 13,
+    color: AE_COLORS.navy2,
+    fontSize: 14,
     fontWeight: "900",
   },
+
   driverMuted: {
-    color: "#C9D0D8",
+    color: AE_COLORS.muted,
     fontSize: 14,
     lineHeight: 20,
   },
+
   noDriverBox: {
     backgroundColor: "rgba(212,175,55,0.08)",
     borderWidth: 1,
     borderColor: "rgba(212,175,55,0.18)",
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 13,
     marginBottom: 14,
   },
+
   noDriverText: {
-    color: "#D4AF37",
+    color: GOLD,
     fontWeight: "800",
   },
+
+  routeBox: {
+    marginTop: 2,
+  },
+
+  routeLine: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+
   route: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 16,
     lineHeight: 23,
+    flex: 1,
   },
-  arrow: {
-    color: "#D4AF37",
+
+  routeArrow: {
+    color: GOLD,
     fontSize: 20,
     marginVertical: 4,
+    marginLeft: 4,
   },
+
   details: {
     marginTop: 14,
     borderTopWidth: 1,
     borderTopColor: "rgba(212,175,55,0.12)",
     paddingTop: 12,
+    gap: 8,
   },
+
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+
   detailText: {
-    color: "#C9D0D8",
+    color: AE_COLORS.muted,
     fontSize: 14,
-    marginBottom: 6,
+    flex: 1,
   },
+
   paymentBox: {
     marginTop: 14,
     padding: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(212,175,55,0.1)",
+    borderRadius: 16,
+    backgroundColor: "rgba(212,175,55,0.10)",
     borderWidth: 1,
-    borderColor: "#D4AF37",
+    borderColor: GOLD,
   },
+
   paymentTitle: {
-    color: "#D4AF37",
+    color: GOLD,
     fontSize: 17,
     fontWeight: "900",
     marginBottom: 8,
   },
+
   paymentText: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 14,
-    marginBottom: 6,
+    marginBottom: 10,
     fontWeight: "700",
   },
+
   payButton: {
-    backgroundColor: "#D4AF37",
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: "center",
-    marginTop: 12,
+    marginTop: 8,
   },
-  payButtonText: {
-    color: "#071426",
-    fontSize: 15,
-    fontWeight: "900",
-  },
+
   paidBox: {
     marginTop: 14,
     padding: 14,
@@ -705,34 +878,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(46,204,113,0.4)",
   },
+
   paidText: {
     color: "#2ECC71",
     fontSize: 16,
     fontWeight: "900",
     textAlign: "center",
   },
+
   manageButton: {
-    backgroundColor: "#D4AF37",
+    backgroundColor: GOLD,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 14,
   },
+
   manageButtonText: {
-    color: "#071426",
+    color: AE_COLORS.navy2,
     fontSize: 15,
     fontWeight: "900",
   },
+
   rateButton: {
     borderWidth: 1,
-    borderColor: "#D4AF37",
+    borderColor: GOLD,
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
     marginTop: 12,
   },
+
   rateButtonText: {
-    color: "#D4AF37",
+    color: GOLD,
     fontSize: 15,
     fontWeight: "900",
   },

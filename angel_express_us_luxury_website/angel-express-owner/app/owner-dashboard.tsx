@@ -225,6 +225,13 @@ export default function OwnerDashboardScreen() {
              Track every live driver and route.
             </Text>
              </TouchableOpacity>
+           <TouchableOpacity
+          style={styles.actionCard}
+           onPress={() => router.push("/student-verification" as any)}
+           >
+           <Text style={styles.actionTitle}>Student Verification</Text>
+            <Text style={styles.actionText}>Review student ID requests</Text>
+           </TouchableOpacity>
 
             <TouchableOpacity
             style={styles.actionCard}
