@@ -1267,17 +1267,12 @@
         grid-template-columns: 1fr;
       }
     }
-
-    /* ===== FINAL MOBILE FIX: LOGO SUBTITLE + MOBILE SUPPORT DOCK ===== */
+    /* ===== FINAL MOBILE FIX: LOGO SUBTITLE + SINGLE FLOATING BUTTONS ===== */
     .logo-text{
       display:flex;
       flex-direction:column;
       justify-content:center;
       min-width:0;
-    }
-
-    .mobile-support-dock{
-      display:none;
     }
 
     @media (max-width: 640px){
@@ -1303,52 +1298,26 @@
 
       .chat-toggle,
       .whatsapp-float{
-        display:none !important;
-      }
-
-      .mobile-support-dock{
-        position:fixed !important;
-        left:12px !important;
-        right:12px !important;
-        bottom:calc(env(safe-area-inset-bottom) + 14px) !important;
-        z-index:2147483647 !important;
-        display:grid !important;
-        grid-template-columns:1fr 1fr !important;
-        gap:10px !important;
-        pointer-events:auto !important;
-      }
-
-      .mobile-support-btn{
-        min-height:48px !important;
-        border-radius:999px !important;
-        border:none !important;
-        font-weight:900 !important;
-        font-size:13px !important;
-        display:flex !important;
+        display:inline-flex !important;
         align-items:center !important;
         justify-content:center !important;
-        text-decoration:none !important;
-        box-shadow:0 14px 35px rgba(0,0,0,.45) !important;
-        color:#050b16 !important;
-        padding:0 12px !important;
-        white-space:nowrap !important;
+        right:14px !important;
+        padding:12px 15px !important;
+        font-size:13px !important;
+        z-index:2147483647 !important;
       }
 
-      .mobile-support-btn.ai{
-        background:#D4AF37 !important;
+      .chat-toggle{
+        bottom:86px !important;
       }
 
-      .mobile-support-btn.whatsapp{
-        background:#25D366 !important;
-      }
-
-      body{
-        padding-bottom:86px !important;
+      .whatsapp-float{
+        bottom:20px !important;
       }
 
       .chatbot-box{
         z-index:2147483646 !important;
-        bottom:82px !important;
+        bottom:145px !important;
         right:12px !important;
         width:calc(100vw - 24px) !important;
         max-width:calc(100vw - 24px) !important;
@@ -1810,15 +1779,7 @@
   <a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
     💬 Chat With Us
   </a>
-<div class="mobile-support-dock">
-  <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">
-    💬 AI Assistant
-  </button>
 
-  <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">
-    💬 Chat With Us
-  </a>
-</div>
   <script>
     window.addEventListener("load", () => {
       const loader = document.getElementById("luxuryLoader");
@@ -1887,12 +1848,15 @@
 
 
   <script>
-    const mobileChatBtn = document.getElementById("mobileChatBtn");
-    const chatbotBoxMobile = document.getElementById("chatbotBox");
+    const chatToggle = document.getElementById("chatToggle");
+    const chatbotBox = document.getElementById("chatbotBox");
 
-    mobileChatBtn?.addEventListener("click", () => {
-      chatbotBoxMobile?.classList.toggle("open");
-    });
+    if (chatToggle && chatbotBox) {
+      chatToggle.addEventListener("click", () => {
+        chatbotBox.style.display =
+          chatbotBox.style.display === "block" ? "none" : "block";
+      });
+    }
   </script>
 
   <script src="script.js"></script>
