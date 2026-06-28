@@ -1,13 +1,31 @@
 document.addEventListener("DOMContentLoaded", () => {
+  /* Remove old mobile duplicate dock */
   document.querySelectorAll(".mobile-support-dock").forEach(el => el.remove());
+  document.querySelectorAll("#mobileChatBtn").forEach(el => el.remove());
 
-  const duplicateMobileBtn = document.getElementById("mobileChatBtn");
-  if (duplicateMobileBtn) duplicateMobileBtn.remove();
+  /* Keep only one AI button */
+  let chatButtons = document.querySelectorAll("#chatToggle");
+  chatButtons.forEach((btn, index) => {
+    if (index > 0) btn.remove();
+  });
+
+  /* Keep only one WhatsApp button */
+  let whatsappButtons = document.querySelectorAll(".whatsapp-float");
+  whatsappButtons.forEach((btn, index) => {
+    if (index > 0) btn.remove();
+  });
+
+  /* Keep only one chatbot box */
+  let chatBoxes = document.querySelectorAll("#chatbotBox");
+  chatBoxes.forEach((box, index) => {
+    if (index > 0) box.remove();
+  });
 
   let chatToggle = document.getElementById("chatToggle");
   let chatbotBox = document.getElementById("chatbotBox");
   let whatsappFloat = document.querySelector(".whatsapp-float");
 
+  /* Create AI button if missing */
   if (!chatToggle) {
     chatToggle = document.createElement("button");
     chatToggle.id = "chatToggle";
@@ -17,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.appendChild(chatToggle);
   }
 
+  /* Create WhatsApp button if missing */
   if (!whatsappFloat) {
     whatsappFloat = document.createElement("a");
     whatsappFloat.href = "https://wa.me/19728367910";
@@ -26,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.appendChild(whatsappFloat);
   }
 
+  /* Create chatbot box if missing */
   if (!chatbotBox) {
     chatbotBox = document.createElement("div");
     chatbotBox.id = "chatbotBox";
@@ -39,39 +59,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
       <div class="chatbot-input">
         <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
-        <button type="button" onclick="sendChat()">Send</button>
+        <button type="button" id="chatSendBtn">Send</button>
       </div>
     `;
     document.body.appendChild(chatbotBox);
   }
 
-  const allChatButtons = document.querySelectorAll("#chatToggle");
-  allChatButtons.forEach((btn, index) => {
-    if (index > 0) btn.remove();
-  });
-
-  const allWhatsAppButtons = document.querySelectorAll(".whatsapp-float");
-  allWhatsAppButtons.forEach((btn, index) => {
-    if (index > 0) btn.remove();
-  });
-
-  const allChatBoxes = document.querySelectorAll("#chatbotBox");
-  allChatBoxes.forEach((box, index) => {
-    if (index > 0) box.remove();
-  });
-
-  chatToggle = document.getElementById("chatToggle");
-  chatbotBox = document.getElementById("chatbotBox");
-
-  chatToggle?.addEventListener("click", () => {
+  function openAngelChat() {
+    chatbotBox = document.getElementById("chatbotBox");
     if (!chatbotBox) return;
 
+    chatbotBox.classList.toggle("open");
+
     if (chatbotBox.classList.contains("open")) {
-      chatbotBox.classList.remove("open");
-      chatbotBox.style.display = "none";
-    } else {
-      chatbotBox.classList.add("open");
       chatbotBox.style.display = "block";
+    } else {
+      chatbotBox.style.display = "none";
     }
-  });
+  }
+
+  /* Force fresh click behavior */
+  chatToggle = document.getElementById("chatToggle");
+  chatToggle.onclick = openAngelChat;
 });
