@@ -1763,4 +1763,27 @@ a.whatsapp-float {
   display: grid !important;
   grid-template-columns: 1fr;
   gap: 9px;
+}/* FINAL MOBILE VISIBILITY FIX */
+@media (max-width: 768px) {
+  main,
+  section,
+  .page-hero,
+  .section,
+  .contact-shell,
+  .passenger-shell,
+  .driver-shell,
+  .terms-shell,
+  .blog-shell {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .reveal,
+  .reveal.active {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    visibility: visible !important;
+  }
 }
