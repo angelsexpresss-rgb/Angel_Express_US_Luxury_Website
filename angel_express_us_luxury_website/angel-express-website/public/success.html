@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -8,316 +7,461 @@
 <title>Booking Confirmed | Angel Express</title>
 
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
 <style>
-
-.success-page{
-min-height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
-padding:40px 20px;
+:root{
+  --ae-navy:#050b16;
+  --ae-gold:#D4AF37;
+  --ae-muted:#B8C1CC;
+  --ae-border:rgba(212,175,55,.28);
 }
 
-.success-wrapper{
-width:100%;
-max-width:900px;
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  background:#050b16;
+  color:white;
+  overflow-x:hidden;
+}
+
+.mobile-menu{display:none!important;}
+.mobile-menu.open{
+  display:grid!important;
+  grid-template-columns:1fr;
+  gap:9px;
+}
+
+.success-bg{
+  position:fixed;
+  inset:0;
+  z-index:-3;
+  background:
+    linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.72)),
+    url("images/hero/10-dallas-night.jpg");
+  background-size:cover;
+  background-position:center;
+}
+
+.success-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 75% 20%,rgba(212,175,55,.22),transparent 30%),
+    linear-gradient(180deg,rgba(5,11,22,.1),#050b16 95%);
+}
+
+.success-shell{
+  min-height:100vh;
+  padding:125px 5.5% 90px;
+}
+
+.success-wrap{
+  max-width:1050px;
+  margin:0 auto;
 }
 
 .success-card{
-background:rgba(16,24,39,.85);
-border:1px solid rgba(212,175,55,.25);
-border-radius:28px;
-padding:40px;
-backdrop-filter:blur(18px);
-text-align:center;
-box-shadow:0 25px 80px rgba(0,0,0,.35);
+  background:rgba(13,20,34,.78);
+  border:1px solid var(--ae-border);
+  border-radius:34px;
+  padding:clamp(24px,5vw,50px);
+  backdrop-filter:blur(20px);
+  text-align:center;
+  box-shadow:0 30px 90px rgba(0,0,0,.38);
 }
 
 .success-icon{
-font-size:80px;
-margin-bottom:20px;
+  width:96px;
+  height:96px;
+  margin:0 auto 24px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:rgba(37,211,102,.14);
+  border:1px solid rgba(37,211,102,.35);
+  color:#8ff5b6;
+  font-size:48px;
+}
+
+.success-kicker{
+  display:inline-flex;
+  gap:10px;
+  align-items:center;
+  color:var(--ae-gold);
+  border:1px solid rgba(212,175,55,.35);
+  border-radius:999px;
+  padding:9px 14px;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.07);
 }
 
 .success-card h1{
-font-size:48px;
-margin-bottom:10px;
+  font-size:clamp(44px,7vw,82px);
+  line-height:.95;
+  margin:22px 0 14px;
+  letter-spacing:-2px;
+}
+
+.success-card h1 span{
+  color:var(--ae-gold);
 }
 
 .success-card p{
-color:#B8C1CC;
-line-height:1.7;
+  color:#dce5ee;
+  line-height:1.75;
+  max-width:760px;
+  margin-left:auto;
+  margin-right:auto;
 }
 
 .status-grid{
-margin-top:35px;
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:15px;
+  margin-top:38px;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:16px;
 }
 
 .status-item{
-background:#0B1426;
-border:1px solid rgba(212,175,55,.20);
-border-radius:18px;
-padding:18px;
-text-align:left;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+  border-radius:22px;
+  padding:22px;
+  text-align:left;
+  box-shadow:0 20px 60px rgba(0,0,0,.22);
 }
 
 .status-item strong{
-display:block;
-margin-bottom:5px;
-color:#D4AF37;
+  display:flex;
+  gap:10px;
+  align-items:center;
+  margin-bottom:8px;
+  color:var(--ae-gold);
+  font-size:17px;
+}
+
+.status-item span{
+  color:var(--ae-muted);
+  line-height:1.6;
 }
 
 .success-actions{
-margin-top:35px;
-display:flex;
-gap:15px;
-justify-content:center;
-flex-wrap:wrap;
+  margin-top:38px;
+  display:flex;
+  gap:15px;
+  justify-content:center;
+  flex-wrap:wrap;
 }
 
 .download-banner{
-margin-top:40px;
-padding:30px;
-border-radius:24px;
-background:linear-gradient(
-135deg,
-rgba(212,175,55,.12),
-rgba(255,255,255,.04)
-);
-border:1px solid rgba(212,175,55,.25);
+  margin-top:42px;
+  padding:34px;
+  border-radius:30px;
+  background:
+    radial-gradient(circle at 50% 0%,rgba(212,175,55,.18),rgba(255,255,255,.05)),
+    rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.25);
 }
 
 .download-banner h2{
-margin-bottom:10px;
-}
-
-.download-banner p{
-max-width:600px;
-margin:auto;
+  font-size:clamp(30px,4vw,48px);
+  margin:0 0 12px;
 }
 
 .store-buttons{
-margin-top:20px;
-display:flex;
-justify-content:center;
-gap:15px;
-flex-wrap:wrap;
+  margin-top:24px;
+  display:flex;
+  justify-content:center;
+  gap:15px;
+  flex-wrap:wrap;
 }
 
 .store-btn{
-display:flex;
-align-items:center;
-gap:10px;
-padding:14px 20px;
-border-radius:16px;
-background:#0B1426;
-border:1px solid rgba(212,175,55,.25);
-font-weight:700;
-text-decoration:none;
-color:white;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:54px;
+  padding:0 22px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(212,175,55,.25);
+  font-weight:900;
+  text-decoration:none;
+  color:white;
+  transition:.25s ease;
+}
+
+.store-btn:hover{
+  transform:translateY(-4px);
+  border-color:var(--ae-gold);
 }
 
 .trip-features{
-margin-top:25px;
-display:grid;
-grid-template-columns:repeat(3,1fr);
-gap:12px;
+  margin-top:26px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
 }
 
 .trip-feature{
-background:#0B1426;
-border-radius:16px;
-padding:15px;
-font-size:14px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(212,175,55,.16);
+  border-radius:18px;
+  padding:16px;
+  font-size:14px;
+  font-weight:800;
+  color:#dce5ee;
 }
 
-@media(max-width:768px){
-
-.status-grid{
-grid-template-columns:1fr;
+@media(max-width:980px){
+  .success-shell{
+    padding-top:112px;
+  }
 }
 
-.trip-features{
-grid-template-columns:1fr;
-}
+@media(max-width:640px){
+  .success-shell{
+    padding:100px 4.5% 120px;
+  }
 
-.success-card h1{
-font-size:34px;
-}
+  .success-card{
+    border-radius:26px;
+  }
 
-}
+  .success-card h1{
+    font-size:42px;
+  }
 
+  .status-grid,
+  .trip-features{
+    grid-template-columns:1fr;
+  }
+
+  .success-actions{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+
+  .success-actions .btn{
+    width:100%;
+  }
+
+  .download-banner{
+    padding:24px;
+    border-radius:24px;
+  }
+
+  .store-buttons{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+}
 </style>
-
 </head>
 
 <body>
 
-<main class="success-page">
+<header class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">A</div>
+    <div class="logo-text">
+      <h1>ANGEL EXPRESS</h1>
+      <span>MOBILITY ECOSYSTEM</span>
+    </div>
+  </a>
 
-<div class="success-wrapper">
+  <nav class="desktop-nav">
+    <a href="index.html">Home</a>
+    <a href="book-ride.html">Book Ride</a>
+    <a href="passenger.html">Passengers</a>
+    <a href="driver.html">Drivers</a>
+    <a href="terms.html">Terms</a>
+    <a href="blog.html">Blog</a>
+    <a href="contact.html">Contact</a>
+  </nav>
 
-<div class="success-card">
+  <div class="desktop-actions">
+    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
+  </div>
 
-<div class="success-icon">
-✅
+  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="fare-estimate.html">Fare Estimate</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
 </div>
 
-<h1>Booking Received</h1>
+<div class="success-bg"></div>
 
-<p>
-Thank you for choosing <strong>Angel Express</strong>.
-Your ride request has been successfully received and submitted to our operations team.
-</p>
+<main class="success-shell">
+  <div class="success-wrap">
 
-<div class="status-grid">
+    <section class="success-card reveal">
+      <div class="success-icon">
+        <i class="fa-solid fa-check"></i>
+      </div>
 
-<div class="status-item">
-<strong>✓ Booking Received</strong>
-Your reservation has been recorded.
-</div>
+      <p class="success-kicker">
+        <i class="fa-solid fa-circle-check"></i>
+        Booking Received
+      </p>
 
-<div class="status-item">
-<strong>✓ Invoice Sent</strong>
-A copy of your invoice has been emailed.
-</div>
+      <h1>Your Ride Request <span>Is In.</span></h1>
 
-<div class="status-item">
-<strong>✓ Calendar Event Created</strong>
-Your trip has been added to your itinerary.
-</div>
+      <p>
+        Thank you for choosing <strong>Angel Express</strong>.
+        Your ride request has been successfully received and submitted to our operations team.
+      </p>
 
-<div class="status-item">
-<strong>✓ WhatsApp Confirmation Sent</strong>
-Our team has received your booking.
-</div>
+      <div class="status-grid">
+        <div class="status-item">
+          <strong><i class="fa-solid fa-check"></i> Booking Received</strong>
+          <span>Your reservation has been recorded.</span>
+        </div>
 
-</div>
+        <div class="status-item">
+          <strong><i class="fa-solid fa-file-invoice"></i> Invoice Sent</strong>
+          <span>A copy of your invoice has been emailed.</span>
+        </div>
 
-<div class="success-actions">
+        <div class="status-item">
+          <strong><i class="fa-solid fa-calendar-check"></i> Calendar Event Created</strong>
+          <span>Your trip has been added to your itinerary.</span>
+        </div>
 
-<a href="index.html" class="btn btn-light">
-Back Home
-</a>
+        <div class="status-item">
+          <strong><i class="fa-brands fa-whatsapp"></i> WhatsApp Confirmation Sent</strong>
+          <span>Our team has received your booking.</span>
+        </div>
+      </div>
 
-<a href="book-ride.html" class="btn btn-primary">
-Book Another Ride
-</a>
+      <div class="success-actions">
+        <a href="index.html" class="btn btn-secondary">
+          <i class="fa-solid fa-house"></i>
+          Back Home
+        </a>
 
-<a
-href="https://wa.me/19728367910"
-target="_blank"
-class="btn btn-dark"
+        <a href="book-ride.html" class="btn btn-primary">
+          <i class="fa-solid fa-route"></i>
+          Book Another Ride
+        </a>
 
->
+        <a href="https://wa.me/19728367910" target="_blank" class="btn btn-secondary">
+          <i class="fa-brands fa-whatsapp"></i>
+          Contact Support
+        </a>
+      </div>
 
-Contact Support </a>
+      <div class="download-banner">
+        <h2>Download the Angel Express App</h2>
 
-</div>
+        <p>
+          Get live trip tracking, chauffeur updates, ride history,
+          notifications, rewards, emergency sharing, and real-time ride status.
+        </p>
 
-<div class="download-banner">
+        <div class="store-buttons">
+          <a href="#" class="store-btn">
+            <i class="fa-brands fa-apple"></i>
+            Download on App Store
+          </a>
 
-<h2>Download the Angel Express App</h2>
+          <a href="#" class="store-btn">
+            <i class="fa-brands fa-google-play"></i>
+            Get it on Google Play
+          </a>
+        </div>
 
-<p>
-Get live trip tracking, chauffeur updates, ride history,
-notifications, rewards, emergency sharing, and real-time ride status.
-</p>
+        <div class="trip-features">
+          <div class="trip-feature">📍 Live Trip Tracking</div>
+          <div class="trip-feature">🚗 Chauffeur Updates</div>
+          <div class="trip-feature">🛡 Safety Monitoring</div>
+          <div class="trip-feature">🎓 Student Travel Mode</div>
+          <div class="trip-feature">🏆 Rewards & Referrals</div>
+          <div class="trip-feature">🌎 World Cup Transportation</div>
+        </div>
+      </div>
+    </section>
 
-<div class="store-buttons">
-
-<a href="#" class="store-btn">
-📱 Download on App Store
-</a>
-
-<a href="#" class="store-btn">
-🤖 Get it on Google Play
-</a>
-
-</div>
-
-<div class="trip-features">
-
-<div class="trip-feature">
-📍 Live Trip Tracking
-</div>
-
-<div class="trip-feature">
-🚗 Chauffeur Updates
-</div>
-
-<div class="trip-feature">
-🛡 Safety Monitoring
-</div>
-
-<div class="trip-feature">
-🎓 Student Travel Mode
-</div>
-
-<div class="trip-feature">
-🏆 Rewards & Referrals
-</div>
-
-<div class="trip-feature">
-🌎 World Cup Transportation
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
+  </div>
 </main>
-<!-- AI Assistant -->
 
-<button id="chatToggle" class="chat-toggle">
-  💬 AI Assistant
-</button>
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <h3>Angel Express Mobility (AEM)</h3>
+      <p>
+        Private long-distance transportation across Texas for students,
+        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
+      </p>
+      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
+    </div>
 
-<div class="chatbot-box" id="chatbotBox">
+    <div>
+      <h4>Contact Information</h4>
+      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
+    </div>
 
-  <div class="chatbot-header">
-    Angel Express Assistant
+    <div>
+      <h4>Quick Links</h4>
+      <p><a href="index.html">Home</a></p>
+      <p><a href="book-ride.html">Book a Ride</a></p>
+      <p><a href="passenger.html">Passenger Services</a></p>
+      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
+      <p><a href="terms.html">Terms & Privacy</a></p>
+    </div>
+
+    <div>
+      <h4>Follow Us</h4>
+      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
+      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
+      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+    </div>
   </div>
 
-  <div class="chatbot-messages" id="chatbotMessages">
-    <p>
-      <strong>Angel Assistant:</strong>
-      Hi! How can I help you today?
-    </p>
+  <div class="footer-bottom">
+    © 2026 Angel Express Mobility. All rights reserved.
   </div>
+</footer>
 
-  <div class="chatbot-input">
+<script>
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const mobileMenu = document.getElementById("mobileMenu");
 
-    <input
-      type="text"
-      id="chatInput"
-      placeholder="Ask about booking, pricing, routes..."
-    >
+mobileMenuBtn?.addEventListener("click", () => {
+  mobileMenu?.classList.toggle("open");
+});
 
-    <button onclick="sendChat()">
-      Send
-    </button>
+mobileMenu?.querySelectorAll("a").forEach(link => {
+  link.addEventListener("click", () => {
+    mobileMenu.classList.remove("open");
+  });
+});
+</script>
 
-  </div>
-
-</div>
-
-<!-- Chat With Us -->
-
-<a
-href="https://wa.me/19728367910"
-target="_blank"
-class="whatsapp-float"
->
-💬 Chat With Us
-</a>
 <script src="script.js"></script>
+<script src="floating-support.js"></script>
+
 </body>
 </html>

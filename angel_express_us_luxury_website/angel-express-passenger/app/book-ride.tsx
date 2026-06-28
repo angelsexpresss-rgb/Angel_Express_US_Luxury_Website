@@ -1,8 +1,10 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  ImageBackground,
   Platform,
   ScrollView,
   StyleSheet,
@@ -11,6 +13,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  AE_COLORS,
+  AngelCard,
+  AngelHeroButton,
+  fadeUp,
+  slowBackgroundZoom,
+} from "../components/angel";
 
 export default function BookRideScreen() {
   const [pickupAddress, setPickupAddress] = useState("");
@@ -38,6 +47,14 @@ export default function BookRideScreen() {
 
   const [notes, setNotes] = useState("");
   const [promoCode, setPromoCode] = useState("");
+
+  const bgScale = useRef(new Animated.Value(1)).current;
+  const pageFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    slowBackgroundZoom(bgScale).start();
+    fadeUp(pageFade, 80).start();
+  }, []);
 
   async function searchAddress(text: string, type: "pickup" | "dropoff") {
     if (type === "pickup") {
@@ -82,11 +99,8 @@ export default function BookRideScreen() {
           };
         }) || [];
 
-      if (type === "pickup") {
-        setPickupSuggestions(suggestions);
-      } else {
-        setDropoffSuggestions(suggestions);
-      }
+      if (type === "pickup") setPickupSuggestions(suggestions);
+      else setDropoffSuggestions(suggestions);
     } catch {
       type === "pickup" ? setPickupSuggestions([]) : setDropoffSuggestions([]);
     }
@@ -125,12 +139,10 @@ export default function BookRideScreen() {
       params: {
         pickupAddress: pickupAddress.trim(),
         dropoffAddress: dropoffAddress.trim(),
-
         pickupLat: pickupLat.toString(),
         pickupLng: pickupLng.toString(),
         dropoffLat: dropoffLat.toString(),
         dropoffLng: dropoffLng.toString(),
-
         rideDate: formatDate(rideDate),
         rideTime: formatTime(rideTime),
         tripType,
@@ -143,186 +155,224 @@ export default function BookRideScreen() {
     });
   }
 
+  const pageTranslate = pageFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Book a Ride</Text>
+    <View style={styles.root}>
+      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+        <ImageBackground
+          source={require("../assets/images/dashboard-bg.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
 
-      <Text style={styles.subtitle}>
-        Enter your trip details. Your fare estimate will be calculated next.
-      </Text>
-
-      <Section title="Pickup Address" />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Start typing pickup address"
-        placeholderTextColor="#8A93A3"
-        value={pickupAddress}
-        onChangeText={(text) => searchAddress(text, "pickup")}
-      />
-
-      {pickupSuggestions.map((item, index) => (
-        <TouchableOpacity
-          key={index}
-          style={styles.suggestion}
-          onPress={() => {
-            setPickupAddress(item.label);
-            setPickupLat(item.latitude);
-            setPickupLng(item.longitude);
-            setPickupSuggestions([]);
-          }}
+      <View style={styles.overlay}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.suggestionText}>{item.label}</Text>
-        </TouchableOpacity>
-      ))}
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backText}>‹ Back</Text>
+          </TouchableOpacity>
 
-      {pickupLat && pickupLng && (
-        <Text style={styles.gpsText}>Pickup GPS saved ✓</Text>
-      )}
+          <Animated.View
+            style={{
+              opacity: pageFade,
+              transform: [{ translateY: pageTranslate }],
+            }}
+          >
+            <Text style={styles.title}>Book a Ride</Text>
 
-      <Section title="Drop-off Address" />
+            <Text style={styles.subtitle}>
+              Enter your trip details. Your fare estimate will be calculated next.
+            </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Start typing drop-off address"
-        placeholderTextColor="#8A93A3"
-        value={dropoffAddress}
-        onChangeText={(text) => searchAddress(text, "dropoff")}
-      />
+            <AngelCard style={styles.card}>
+              <Section title="Pickup Address" />
 
-      {dropoffSuggestions.map((item, index) => (
-        <TouchableOpacity
-          key={index}
-          style={styles.suggestion}
-          onPress={() => {
-            setDropoffAddress(item.label);
-            setDropoffLat(item.latitude);
-            setDropoffLng(item.longitude);
-            setDropoffSuggestions([]);
-          }}
-        >
-          <Text style={styles.suggestionText}>{item.label}</Text>
-        </TouchableOpacity>
-      ))}
+              <TextInput
+                style={styles.input}
+                placeholder="Start typing pickup address"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={pickupAddress}
+                onChangeText={(text) => searchAddress(text, "pickup")}
+              />
 
-      {dropoffLat && dropoffLng && (
-        <Text style={styles.gpsText}>Drop-off GPS saved ✓</Text>
-      )}
+              {pickupSuggestions.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.suggestion}
+                  onPress={() => {
+                    setPickupAddress(item.label);
+                    setPickupLat(item.latitude);
+                    setPickupLng(item.longitude);
+                    setPickupSuggestions([]);
+                  }}
+                >
+                  <Text style={styles.suggestionText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
 
-      <Section title="Date & Time" />
+              {pickupLat && pickupLng && (
+                <Text style={styles.gpsText}>Pickup GPS saved</Text>
+              )}
 
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShowDatePicker(true)}
-      >
-        <Text style={styles.inputText}>Date: {formatDate(rideDate)}</Text>
-      </TouchableOpacity>
+              <Section title="Drop-off Address" />
 
-      <TouchableOpacity
-        style={styles.input}
-        onPress={() => setShowTimePicker(true)}
-      >
-        <Text style={styles.inputText}>Time: {formatTime(rideTime)}</Text>
-      </TouchableOpacity>
+              <TextInput
+                style={styles.input}
+                placeholder="Start typing drop-off address"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={dropoffAddress}
+                onChangeText={(text) => searchAddress(text, "dropoff")}
+              />
 
-      {showDatePicker && (
-        <DateTimePicker
-          value={rideDate}
-          mode="date"
-          onChange={(_, selectedDate) => {
-            setShowDatePicker(Platform.OS === "ios");
-            if (selectedDate) setRideDate(selectedDate);
-          }}
-        />
-      )}
+              {dropoffSuggestions.map((item, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.suggestion}
+                  onPress={() => {
+                    setDropoffAddress(item.label);
+                    setDropoffLat(item.latitude);
+                    setDropoffLng(item.longitude);
+                    setDropoffSuggestions([]);
+                  }}
+                >
+                  <Text style={styles.suggestionText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
 
-      {showTimePicker && (
-        <DateTimePicker
-          value={rideTime}
-          mode="time"
-          onChange={(_, selectedTime) => {
-            setShowTimePicker(Platform.OS === "ios");
-            if (selectedTime) setRideTime(selectedTime);
-          }}
-        />
-      )}
+              {dropoffLat && dropoffLng && (
+                <Text style={styles.gpsText}>Drop-off GPS saved</Text>
+              )}
 
-      <Section title="Trip Type" />
+              <Section title="Date & Time" />
 
-      <View style={styles.optionRow}>
-        <OptionButton
-          title="One Way"
-          active={tripType === "One Way"}
-          onPress={() => setTripType("One Way")}
-        />
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.inputText}>Date: {formatDate(rideDate)}</Text>
+              </TouchableOpacity>
 
-        <OptionButton
-          title="Round Trip"
-          active={tripType === "Round Trip"}
-          onPress={() => setTripType("Round Trip")}
-        />
+              <TouchableOpacity
+                style={styles.input}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text style={styles.inputText}>Time: {formatTime(rideTime)}</Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={rideDate}
+                  mode="date"
+                  onChange={(_, selectedDate) => {
+                    setShowDatePicker(Platform.OS === "ios");
+                    if (selectedDate) setRideDate(selectedDate);
+                  }}
+                />
+              )}
+
+              {showTimePicker && (
+                <DateTimePicker
+                  value={rideTime}
+                  mode="time"
+                  onChange={(_, selectedTime) => {
+                    setShowTimePicker(Platform.OS === "ios");
+                    if (selectedTime) setRideTime(selectedTime);
+                  }}
+                />
+              )}
+
+              <Section title="Trip Type" />
+
+              <View style={styles.optionRow}>
+                <OptionButton
+                  title="One Way"
+                  active={tripType === "One Way"}
+                  onPress={() => setTripType("One Way")}
+                />
+
+                <OptionButton
+                  title="Round Trip"
+                  active={tripType === "Round Trip"}
+                  onPress={() => setTripType("Round Trip")}
+                />
+              </View>
+
+              <Section title="Ride Category" />
+
+              {[
+                "Standard Ride",
+                "Airport Transfer",
+                "Student Group Ride",
+                "Tourist/Event Ride",
+              ].map((item) => (
+                <OptionButton
+                  key={item}
+                  full
+                  title={item}
+                  active={rideCategory === item}
+                  onPress={() => setRideCategory(item)}
+                />
+              ))}
+
+              <Section title="Passengers & Luggage" />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Number of Passengers"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={passengers}
+                onChangeText={setPassengers}
+                keyboardType="numeric"
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Luggage Count"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={luggageCount}
+                onChangeText={setLuggageCount}
+                keyboardType="numeric"
+              />
+
+              <Section title="Extra Details" />
+
+              <TextInput
+                style={[styles.input, styles.notesInput]}
+                placeholder="Notes e.g. flight number, pickup instructions, luggage details"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={notes}
+                onChangeText={setNotes}
+                multiline
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="Promo / Referral Code"
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                value={promoCode}
+                onChangeText={setPromoCode}
+              />
+
+              <AngelHeroButton
+                title="Continue to Fare Estimate"
+                onPress={continueToFareEstimate}
+                variant="gold"
+                style={styles.submitButton}
+              />
+            </AngelCard>
+          </Animated.View>
+        </ScrollView>
       </View>
-
-      <Section title="Ride Category" />
-
-      {[
-        "Standard Ride",
-        "Airport Transfer",
-        "Student Group Ride",
-        "Tourist/Event Ride",
-      ].map((item) => (
-        <OptionButton
-          key={item}
-          full
-          title={item}
-          active={rideCategory === item}
-          onPress={() => setRideCategory(item)}
-        />
-      ))}
-
-      <Section title="Passengers & Luggage" />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Number of Passengers"
-        placeholderTextColor="#8A93A3"
-        value={passengers}
-        onChangeText={setPassengers}
-        keyboardType="numeric"
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Luggage Count"
-        placeholderTextColor="#8A93A3"
-        value={luggageCount}
-        onChangeText={setLuggageCount}
-        keyboardType="numeric"
-      />
-
-      <Section title="Extra Details" />
-
-      <TextInput
-        style={[styles.input, styles.notesInput]}
-        placeholder="Notes e.g. flight number, pickup instructions, luggage details"
-        placeholderTextColor="#8A93A3"
-        value={notes}
-        onChangeText={setNotes}
-        multiline
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Promo / Referral Code"
-        placeholderTextColor="#8A93A3"
-        value={promoCode}
-        onChangeText={setPromoCode}
-      />
-
-      <TouchableOpacity style={styles.button} onPress={continueToFareEstimate}>
-        <Text style={styles.buttonText}>Continue to Fare Estimate</Text>
-      </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -349,6 +399,7 @@ function OptionButton({
         active && styles.optionButtonActive,
       ]}
       onPress={onPress}
+      activeOpacity={0.85}
     >
       <Text style={[styles.optionText, active && styles.optionTextActive]}>
         {title}
@@ -358,113 +409,156 @@ function OptionButton({
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: AE_COLORS.navy,
+    overflow: "hidden",
+  },
+
+  bgWrap: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
+  background: {
+    flex: 1,
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(5,11,22,0.91)",
+  },
+
   container: {
     flex: 1,
-    backgroundColor: "#040C18",
   },
+
   content: {
     padding: 22,
-    paddingTop: 70,
+    paddingTop: 56,
     paddingBottom: 50,
   },
+
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 18,
+  },
+
+  backText: {
+    color: AE_COLORS.gold,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
   title: {
-    color: "#D4AF37",
-    fontSize: 34,
+    color: AE_COLORS.gold,
+    fontSize: 38,
     fontWeight: "900",
     marginBottom: 10,
   },
+
   subtitle: {
-    color: "#C9D0D8",
+    color: AE_COLORS.textSoft,
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 24,
   },
+
+  card: {
+    padding: 22,
+  },
+
   sectionTitle: {
-    color: "#D4AF37",
-    fontSize: 20,
-    fontWeight: "800",
+    color: AE_COLORS.gold,
+    fontSize: 19,
+    fontWeight: "900",
     marginTop: 20,
     marginBottom: 14,
   },
+
   input: {
-    backgroundColor: "#071426",
-    color: "#FFFFFF",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    color: AE_COLORS.white,
     padding: 17,
-    borderRadius: 14,
+    borderRadius: 16,
     fontSize: 16,
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.16)",
+    borderColor: "rgba(255,255,255,0.12)",
   },
+
   inputText: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 16,
   },
+
   gpsText: {
     color: "#22c55e",
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "900",
     marginTop: -6,
     marginBottom: 8,
   },
+
   suggestion: {
-    backgroundColor: "#101F33",
-    padding: 12,
-    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    padding: 13,
+    borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.14)",
+    borderColor: "rgba(212,175,55,0.18)",
   },
+
   suggestionText: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 14,
     lineHeight: 20,
   },
+
   optionRow: {
     flexDirection: "row",
     gap: 12,
   },
+
   optionButton: {
-    backgroundColor: "#071426",
+    backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    borderRadius: 14,
+    borderColor: "rgba(212,175,55,0.22)",
+    borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 14,
     marginBottom: 12,
     alignItems: "center",
   },
+
   halfOption: {
     flex: 1,
   },
+
   fullOption: {
     width: "100%",
   },
+
   optionButtonActive: {
-    backgroundColor: "#D4AF37",
-    borderColor: "#D4AF37",
+    backgroundColor: AE_COLORS.gold,
+    borderColor: AE_COLORS.goldLight,
   },
+
   optionText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
+    color: AE_COLORS.white,
+    fontWeight: "900",
+    textAlign: "center",
   },
+
   optionTextActive: {
-    color: "#071426",
+    color: AE_COLORS.navy2,
   },
+
   notesInput: {
-    height: 100,
+    height: 105,
     textAlignVertical: "top",
   },
-  button: {
-    backgroundColor: "#D4AF37",
-    paddingVertical: 18,
-    borderRadius: 15,
-    alignItems: "center",
+
+  submitButton: {
     marginTop: 24,
-  },
-  buttonText: {
-    color: "#071426",
-    fontSize: 19,
-    fontWeight: "900",
   },
 });

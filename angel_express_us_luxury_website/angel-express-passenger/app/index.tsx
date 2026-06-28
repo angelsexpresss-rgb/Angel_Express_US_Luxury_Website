@@ -1,86 +1,173 @@
+import { router } from "expo-router";
+import { useEffect, useRef } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  Animated,
   Image,
   ImageBackground,
-  TouchableOpacity,
   SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { router } from "expo-router";
+
+import {
+  AE_COLORS,
+  AngelHeroButton,
+  fadeUp,
+  slowBackgroundZoom,
+} from "../components/angel";
 
 export default function HomeScreen() {
+  const logoFade = useRef(new Animated.Value(0)).current;
+  const headlineFade = useRef(new Animated.Value(0)).current;
+  const subtitleFade = useRef(new Animated.Value(0)).current;
+  const buttonsFade = useRef(new Animated.Value(0)).current;
+  const bgScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    slowBackgroundZoom(bgScale).start();
+
+    Animated.sequence([
+      fadeUp(logoFade, 80),
+      fadeUp(headlineFade, 60),
+      fadeUp(subtitleFade, 50),
+      fadeUp(buttonsFade, 40),
+    ]).start();
+  }, []);
+
+  const logoTranslate = logoFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
+  const headlineTranslate = headlineFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
+  const subtitleTranslate = subtitleFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
+  const buttonsTranslate = buttonsFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
   return (
-    <ImageBackground
-      source={require("../assets/images/gmc-background.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.root}>
+      <Animated.View
+        style={[
+          styles.bgWrap,
+          {
+            transform: [{ scale: bgScale }],
+          },
+        ]}
+      >
+        <ImageBackground
+          source={require("../assets/images/gmc-background.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
+
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.content}>
-            <Image
-              source={require("../assets/images/angel-logo-transparent.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-
-            <Text style={styles.headline}>
-              Travel Smarter.{"\n"}Travel Safer.
-            </Text>
-
-            <View style={styles.divider} />
-
-            <Text style={styles.subtitle}>
-              Premium regional transportation across{"\n"}Texas and beyond.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.primaryButton}
-              activeOpacity={0.85}
-              onPress={() => router.push("/signup" as any)}
+            <Animated.View
+              style={{
+                opacity: logoFade,
+                transform: [{ translateY: logoTranslate }],
+              }}
             >
-              <View style={styles.buttonIconBox}>
-                <Text style={styles.buttonIcon}>A</Text>
-              </View>
-              <Text style={styles.primaryButtonText}>Create an Account</Text>
-              <Text style={styles.arrow}>›</Text>
-            </TouchableOpacity>
+              <Image
+                source={require("../assets/images/angel-logo-transparent.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </Animated.View>
 
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              activeOpacity={0.85}
-              onPress={() => router.push("/login" as any)}
+            <Animated.View
+              style={{
+                opacity: headlineFade,
+                transform: [{ translateY: headlineTranslate }],
+              }}
             >
-              <View style={styles.buttonIconBoxSecondary}>
-                <Text style={styles.buttonIconSecondary}>A</Text>
-              </View>
-              <Text style={styles.secondaryButtonText}>Sign In</Text>
-              <Text style={styles.arrowGold}>›</Text>
-            </TouchableOpacity>
+              <Text style={styles.headline}>
+                Travel Smarter.{"\n"}Travel Safer.
+              </Text>
 
-            <Text style={styles.shield}>⌵</Text>
-            <Text style={styles.footerText}>Safe. Reliable. Professional.</Text>
+              <View style={styles.divider} />
+            </Animated.View>
 
-            <TouchableOpacity onPress={() => router.push("/privacy" as any)}>
-              <Text style={styles.privacy}>Privacy Policy</Text>
-            </TouchableOpacity>
+            <Animated.View
+              style={{
+                opacity: subtitleFade,
+                transform: [{ translateY: subtitleTranslate }],
+              }}
+            >
+              <Text style={styles.subtitle}>
+                Premium regional transportation across{"\n"}Texas and beyond.
+              </Text>
+            </Animated.View>
+
+            <Animated.View
+              style={[
+                styles.buttonArea,
+                {
+                  opacity: buttonsFade,
+                  transform: [{ translateY: buttonsTranslate }],
+                },
+              ]}
+            >
+              <AngelHeroButton
+                title="Create an Account"
+                onPress={() => router.push("/signup" as any)}
+                variant="gold"
+                style={styles.heroButton}
+              />
+
+              <AngelHeroButton
+                title="Sign In"
+                onPress={() => router.push("/login" as any)}
+                variant="outline"
+                style={styles.heroButton}
+              />
+
+              <Text style={styles.footerMark}>⌄</Text>
+              <Text style={styles.footerText}>Safe. Reliable. Professional.</Text>
+
+              <TouchableOpacity onPress={() => router.push("/privacy" as any)}>
+                <Text style={styles.privacy}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
         </SafeAreaView>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: AE_COLORS.navy,
+    overflow: "hidden",
+  },
+
+  bgWrap: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
   background: {
     flex: 1,
-    backgroundColor: "#050b16",
   },
 
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(5,11,22,0.82)",
+    backgroundColor: "rgba(5,11,22,0.84)",
   },
 
   safeArea: {
@@ -101,7 +188,7 @@ const styles = StyleSheet.create({
   },
 
   headline: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 38,
     fontWeight: "900",
     textAlign: "center",
@@ -114,10 +201,11 @@ const styles = StyleSheet.create({
   },
 
   divider: {
+    alignSelf: "center",
     width: 120,
     height: 3,
     borderRadius: 20,
-    backgroundColor: "#D4AF37",
+    backgroundColor: AE_COLORS.gold,
     marginBottom: 24,
   },
 
@@ -132,120 +220,34 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
 
-  primaryButton: {
+  buttonArea: {
     width: "100%",
-    minHeight: 64,
-    backgroundColor: "#D4AF37",
-    borderRadius: 18,
     alignItems: "center",
-    justifyContent: "space-between",
-    flexDirection: "row",
-    paddingHorizontal: 18,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: "#F5D76E",
-    shadowColor: "#D4AF37",
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    elevation: 5,
   },
 
-  primaryButtonText: {
-    color: "#06111f",
-    fontSize: 18,
+  heroButton: {
+    marginBottom: 16,
+  },
+
+  footerMark: {
+    color: AE_COLORS.gold,
+    fontSize: 34,
     fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-
-  secondaryButton: {
-    width: "100%",
-    minHeight: 64,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexDirection: "row",
-    paddingHorizontal: 18,
-    marginBottom: 34,
-    borderWidth: 1.5,
-    borderColor: "#D4AF37",
-    backgroundColor: "rgba(5,11,22,0.72)",
-  },
-
-  secondaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-
-  buttonIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#06111f",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  buttonIcon: {
-    color: "#D4AF37",
-    fontSize: 26,
-    fontWeight: "900",
-    fontStyle: "italic",
-  },
-
-  buttonIconBoxSecondary: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "rgba(212,175,55,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  buttonIconSecondary: {
-    color: "#D4AF37",
-    fontSize: 26,
-    fontWeight: "900",
-    fontStyle: "italic",
-  },
-
-  arrow: {
-    color: "#06111f",
-    fontSize: 42,
-    fontWeight: "300",
-    marginTop: -4,
-  },
-
-  arrowGold: {
-    color: "#D4AF37",
-    fontSize: 42,
-    fontWeight: "300",
-    marginTop: -4,
-  },
-
-  shield: {
-    color: "#D4AF37",
-    fontSize: 30,
-    fontWeight: "900",
-    marginBottom: 6,
+    marginTop: 6,
+    marginBottom: 4,
   },
 
   footerText: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 16,
-    marginBottom: 22,
+    marginBottom: 20,
     textShadowColor: "rgba(0,0,0,0.7)",
     textShadowOffset: { width: 1, height: 2 },
     textShadowRadius: 4,
   },
 
   privacy: {
-    color: "#D4AF37",
+    color: AE_COLORS.gold,
     fontSize: 16,
     textDecorationLine: "underline",
   },

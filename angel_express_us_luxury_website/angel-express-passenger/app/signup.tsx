@@ -1,18 +1,27 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Image,
+  ImageBackground,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  SafeAreaView,
-  Image,
-  ImageBackground,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+
+import {
+  AE_COLORS,
+  AngelCard,
+  AngelHeroButton,
+  fadeUp,
+  slowBackgroundZoom,
+} from "../components/angel";
 
 export default function SignupScreen() {
   const [firstName, setFirstName] = useState("");
@@ -21,6 +30,23 @@ export default function SignupScreen() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const logoFade = useRef(new Animated.Value(0)).current;
+  const titleFade = useRef(new Animated.Value(0)).current;
+  const cardFade = useRef(new Animated.Value(0)).current;
+  const linkFade = useRef(new Animated.Value(0)).current;
+  const bgScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    slowBackgroundZoom(bgScale).start();
+
+    Animated.sequence([
+      fadeUp(logoFade, 80),
+      fadeUp(titleFade, 60),
+      fadeUp(cardFade, 50),
+      fadeUp(linkFade, 40),
+    ]).start();
+  }, []);
 
   async function handleSignup() {
     if (loading) return;
@@ -87,12 +113,43 @@ export default function SignupScreen() {
     }
   }
 
+  const logoTranslate = logoFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
+  const titleTranslate = titleFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
+  const cardTranslate = cardFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
+  const linkTranslate = linkFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
   return (
-    <ImageBackground
-      source={require("../assets/images/gmc-background.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.root}>
+      <Animated.View
+        style={[
+          styles.bgWrap,
+          {
+            transform: [{ scale: bgScale }],
+          },
+        ]}
+      >
+        <ImageBackground
+          source={require("../assets/images/gmc-background.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
+
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safeArea}>
           <ScrollView
@@ -104,107 +161,134 @@ export default function SignupScreen() {
               <Text style={styles.backText}>‹ Back</Text>
             </TouchableOpacity>
 
-            <Image
-              source={require("../assets/images/angel-logo-transparent.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-
-            <Text style={styles.title}>
-              Create{"\n"}
-              <Text style={styles.gold}>Account.</Text>
-            </Text>
-
-            <Text style={styles.subtitle}>
-              Join Angel Express and manage your private rides from one connected app.
-            </Text>
-
-            <View style={styles.card}>
-              <Text style={styles.label}>First Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your first name"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={firstName}
-                onChangeText={setFirstName}
+            <Animated.View
+              style={{
+                opacity: logoFade,
+                transform: [{ translateY: logoTranslate }],
+              }}
+            >
+              <Image
+                source={require("../assets/images/angel-logo-transparent.png")}
+                style={styles.logo}
+                resizeMode="contain"
               />
+            </Animated.View>
 
-              <Text style={styles.label}>Last Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your last name"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={lastName}
-                onChangeText={setLastName}
-              />
-
-              <Text style={styles.label}>Email Address</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your phone number"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-
-              <Text style={styles.label}>Password</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Create a password"
-                placeholderTextColor="rgba(255,255,255,0.45)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-              />
-
-              <TouchableOpacity
-                style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={handleSignup}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                <View style={styles.buttonIconBox}>
-                  <Text style={styles.buttonIcon}>A</Text>
-                </View>
-
-                <Text style={styles.buttonText}>
-                  {loading ? "Creating..." : "Create Account"}
-                </Text>
-
-                <Text style={styles.arrow}>›</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity onPress={() => router.replace("/login" as any)}>
-              <Text style={styles.loginText}>
-                Already have an account?{" "}
-                <Text style={styles.loginGold}>Sign In</Text>
+            <Animated.View
+              style={{
+                opacity: titleFade,
+                transform: [{ translateY: titleTranslate }],
+              }}
+            >
+              <Text style={styles.title}>
+                Create{"\n"}
+                <Text style={styles.gold}>Account.</Text>
               </Text>
-            </TouchableOpacity>
+
+              <Text style={styles.subtitle}>
+                Join Angel Express and manage your private rides from one connected app.
+              </Text>
+            </Animated.View>
+
+            <Animated.View
+              style={{
+                opacity: cardFade,
+                transform: [{ translateY: cardTranslate }],
+              }}
+            >
+              <AngelCard style={styles.card}>
+                <Text style={styles.label}>First Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your first name"
+                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                />
+
+                <Text style={styles.label}>Last Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your last name"
+                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  value={lastName}
+                  onChangeText={setLastName}
+                />
+
+                <Text style={styles.label}>Email Address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <Text style={styles.label}>Phone Number</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your phone number"
+                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                />
+
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Create a password"
+                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                />
+
+                <AngelHeroButton
+                  title={loading ? "Creating..." : "Create Account"}
+                  onPress={handleSignup}
+                  variant="gold"
+                  style={loading ? styles.buttonDisabled : undefined}
+                />
+              </AngelCard>
+            </Animated.View>
+
+            <Animated.View
+              style={{
+                opacity: linkFade,
+                transform: [{ translateY: linkTranslate }],
+              }}
+            >
+              <TouchableOpacity onPress={() => router.replace("/login" as any)}>
+                <Text style={styles.loginText}>
+                  Already have an account?{" "}
+                  <Text style={styles.loginGold}>Sign In</Text>
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           </ScrollView>
         </SafeAreaView>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: AE_COLORS.navy,
+    overflow: "hidden",
+  },
+
+  bgWrap: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
   background: {
     flex: 1,
-    backgroundColor: "#050b16",
   },
 
   overlay: {
@@ -229,7 +313,7 @@ const styles = StyleSheet.create({
   },
 
   backText: {
-    color: "#D4AF37",
+    color: AE_COLORS.gold,
     fontSize: 18,
     fontWeight: "900",
   },
@@ -241,7 +325,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     fontSize: 46,
     fontWeight: "900",
     lineHeight: 48,
@@ -253,7 +337,7 @@ const styles = StyleSheet.create({
   },
 
   gold: {
-    color: "#D4AF37",
+    color: AE_COLORS.gold,
   },
 
   subtitle: {
@@ -264,16 +348,12 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "rgba(13,20,34,0.84)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    borderRadius: 28,
     padding: 22,
     marginBottom: 24,
   },
 
   label: {
-    color: "#D4AF37",
+    color: AE_COLORS.gold,
     fontSize: 13,
     fontWeight: "900",
     letterSpacing: 1,
@@ -283,7 +363,7 @@ const styles = StyleSheet.create({
 
   input: {
     backgroundColor: "rgba(255,255,255,0.07)",
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     padding: 17,
     borderRadius: 16,
     fontSize: 16,
@@ -292,68 +372,19 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.12)",
   },
 
-  button: {
-    width: "100%",
-    minHeight: 64,
-    backgroundColor: "#D4AF37",
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexDirection: "row",
-    paddingHorizontal: 18,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: "#F5D76E",
-    shadowColor: "#D4AF37",
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    elevation: 5,
-  },
-
   buttonDisabled: {
     opacity: 0.7,
   },
 
-  buttonIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: "#06111f",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  buttonIcon: {
-    color: "#D4AF37",
-    fontSize: 26,
-    fontWeight: "900",
-    fontStyle: "italic",
-  },
-
-  buttonText: {
-    color: "#06111f",
-    fontSize: 17,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-
-  arrow: {
-    color: "#06111f",
-    fontSize: 42,
-    fontWeight: "300",
-    marginTop: -4,
-  },
-
   loginText: {
-    color: "#FFFFFF",
+    color: AE_COLORS.white,
     textAlign: "center",
     fontSize: 15.5,
     lineHeight: 24,
   },
 
   loginGold: {
-    color: "#D4AF37",
+    color: AE_COLORS.gold,
     fontWeight: "900",
     textDecorationLine: "underline",
   },

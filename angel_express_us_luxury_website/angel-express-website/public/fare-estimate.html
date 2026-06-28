@@ -1,48 +1,354 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Fare Estimate | Angel Express</title>
+<title>Fare Estimate | Angel Express</title>
 
-  <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-  <style>
-    .back-btn{
-      display:inline-flex;
-      align-items:center;
-      gap:10px;
-      padding:14px 22px;
-      margin-bottom:25px;
-      border-radius:50px;
-      background:rgba(11,20,38,.95);
-      border:1px solid rgba(212,175,55,.25);
-      color:white;
-      text-decoration:none;
-      font-weight:700;
-      transition:.3s;
-    }
+<style>
+:root{
+  --ae-navy:#050b16;
+  --ae-gold:#D4AF37;
+  --ae-muted:#B8C1CC;
+  --ae-border:rgba(212,175,55,.28);
+}
 
-    .back-btn:hover{
-      border-color:#D4AF37;
-      transform:translateY(-2px);
-    }
-  </style>
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  background:#050b16;
+  color:white;
+  overflow-x:hidden;
+}
+
+.mobile-menu{
+  display:none!important;
+}
+
+.mobile-menu.open{
+  display:grid!important;
+  grid-template-columns:1fr;
+  gap:9px;
+}
+
+.fare-bg{
+  position:fixed;
+  inset:0;
+  z-index:-3;
+  background:
+    linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.72)),
+    url("images/hero/07-texas-highway.jpg");
+  background-size:cover;
+  background-position:center;
+}
+
+.fare-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 75% 20%,rgba(212,175,55,.22),transparent 30%),
+    linear-gradient(180deg,rgba(5,11,22,.1),#050b16 95%);
+}
+
+.fare-shell{
+  min-height:100vh;
+  padding:125px 5.5% 90px;
+}
+
+.fare-wrap{
+  max-width:980px;
+  margin:0 auto;
+}
+
+.back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:13px 20px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid var(--ae-border);
+  color:white;
+  font-weight:900;
+  margin-bottom:24px;
+  backdrop-filter:blur(14px);
+  text-decoration:none;
+  transition:.25s ease;
+}
+
+.back-btn:hover{
+  transform:translateY(-3px);
+  border-color:var(--ae-gold);
+}
+
+.fare-card{
+  background:rgba(13,20,34,.78);
+  border:1px solid var(--ae-border);
+  border-radius:34px;
+  padding:clamp(24px,5vw,46px);
+  backdrop-filter:blur(20px);
+  box-shadow:0 30px 90px rgba(0,0,0,.38);
+}
+
+.fare-kicker{
+  display:inline-flex;
+  gap:10px;
+  align-items:center;
+  color:var(--ae-gold);
+  border:1px solid rgba(212,175,55,.35);
+  border-radius:999px;
+  padding:9px 14px;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.07);
+}
+
+.fare-title{
+  font-size:clamp(44px,7vw,82px);
+  line-height:.95;
+  margin:22px 0 14px;
+  letter-spacing:-2px;
+}
+
+.fare-title span{
+  color:var(--ae-gold);
+}
+
+.fare-subtitle{
+  color:#dce5ee;
+  font-size:18px;
+  line-height:1.7;
+  max-width:720px;
+  margin-bottom:36px;
+}
+
+.fare-box{
+  margin-top:26px;
+  padding:28px;
+  border-radius:28px;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+  box-shadow:0 20px 60px rgba(0,0,0,.22);
+}
+
+.fare-box h2{
+  color:var(--ae-gold);
+  font-size:26px;
+  margin:0 0 20px;
+}
+
+.fare-label{
+  margin:18px 0 7px;
+  color:var(--ae-gold);
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1.4px;
+}
+
+.fare-box p{
+  color:#dce5ee;
+  line-height:1.7;
+  margin-top:0;
+}
+
+.gps-note{
+  margin-top:20px!important;
+  padding:14px 16px;
+  border-radius:16px;
+  background:rgba(37,211,102,.1);
+  border:1px solid rgba(37,211,102,.25);
+  color:#8ff5b6!important;
+  font-weight:800;
+}
+
+.summary-row,
+.final-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:16px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.summary-row span,
+.final-row span{
+  color:var(--ae-muted);
+  font-weight:800;
+}
+
+.summary-row strong{
+  color:white;
+  text-align:right;
+}
+
+.fare-divider{
+  border:none;
+  border-top:1px solid rgba(212,175,55,.35);
+  margin:18px 0;
+}
+
+.final-row{
+  border-bottom:none;
+  padding-top:20px;
+}
+
+.final-row strong{
+  color:var(--ae-gold);
+  font-size:clamp(30px,5vw,48px);
+  text-align:right;
+}
+
+.estimate-disclaimer{
+  margin:28px 0 0;
+  color:var(--ae-muted);
+  line-height:1.75;
+  font-size:15px;
+}
+
+.continue-btn{
+  width:100%;
+  min-height:64px;
+  margin-top:34px;
+  border:none;
+  border-radius:999px;
+  background:var(--ae-gold);
+  color:#050b16;
+  font-size:19px;
+  font-weight:950;
+  cursor:pointer;
+  box-shadow:0 20px 55px rgba(212,175,55,.28);
+  transition:.25s ease;
+}
+
+.continue-btn:hover{
+  transform:translateY(-4px);
+}
+
+.back-link{
+  display:block;
+  margin-top:22px;
+  color:var(--ae-gold);
+  text-align:center;
+  font-weight:900;
+  text-decoration:none;
+}
+
+@media(max-width:980px){
+  .fare-shell{
+    padding-top:112px;
+  }
+}
+
+@media(max-width:640px){
+  .fare-shell{
+    padding:100px 4.5% 120px;
+  }
+
+  .fare-card{
+    border-radius:26px;
+  }
+
+  .fare-title{
+    font-size:42px;
+  }
+
+  .fare-subtitle{
+    font-size:16px;
+  }
+
+  .fare-box{
+    padding:22px;
+    border-radius:24px;
+  }
+
+  .summary-row,
+  .final-row{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:7px;
+  }
+
+  .summary-row strong,
+  .final-row strong{
+    text-align:left;
+  }
+}
+</style>
 </head>
 
 <body>
-  <main class="booking-page">
+
+<header class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">A</div>
+    <div class="logo-text">
+      <h1>ANGEL EXPRESS</h1>
+      <span>MOBILITY ECOSYSTEM</span>
+    </div>
+  </a>
+
+  <nav class="desktop-nav">
+    <a href="index.html">Home</a>
+    <a href="book-ride.html">Book Ride</a>
+    <a href="passenger.html">Passengers</a>
+    <a href="driver.html">Drivers</a>
+    <a href="terms.html">Terms</a>
+    <a href="blog.html">Blog</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <div class="desktop-actions">
+    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
+  </div>
+
+  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="fare-estimate.html">Fare Estimate</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
+</div>
+
+<div class="fare-bg"></div>
+
+<main class="fare-shell">
+  <div class="fare-wrap">
 
     <a href="book-ride.html" class="back-btn">
-      ← Back to Booking Form
+      <i class="fa-solid fa-arrow-left"></i>
+      Back to Booking Form
     </a>
 
-    <div class="booking-card">
-      <h1 class="booking-title">Fare Estimate</h1>
+    <section class="fare-card reveal">
+      <p class="fare-kicker">
+        <i class="fa-solid fa-calculator"></i>
+        Angel Express Fare Estimate
+      </p>
 
-      <p class="booking-subtitle">
-        Review your estimated trip distance, price, and ride details.
+      <h1 class="fare-title">Fare <span>Estimate.</span></h1>
+
+      <p class="fare-subtitle">
+        Review your estimated trip distance, price, and ride details before confirming your Angel Express booking.
       </p>
 
       <div class="fare-box">
@@ -58,7 +364,8 @@
         <p id="dateTimeText">Loading...</p>
 
         <p class="gps-note">
-          GPS coordinates saved for chauffeur navigation ✓
+          <i class="fa-solid fa-location-dot"></i>
+          GPS coordinates saved for chauffeur navigation
         </p>
       </div>
 
@@ -128,111 +435,172 @@
         wait time, airport pickup, event traffic, and special requests.
       </p>
 
-      <button class="continue-btn" onclick="continueToConfirm()">
+      <button class="continue-btn" type="button" onclick="continueToConfirm()">
         Continue to Confirm Booking
       </button>
 
       <a href="book-ride.html" class="back-link">
         ← Back to Booking Form
       </a>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <h3>Angel Express Mobility (AEM)</h3>
+      <p>
+        Private long-distance transportation across Texas for students,
+        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
+      </p>
+      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
     </div>
-  </main>
 
-  <script>
-    const booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
+    <div>
+      <h4>Contact Information</h4>
+      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
+    </div>
 
-    const BASE_FARE = 35;
-    const RATE_PER_MILE = 1.10;
+    <div>
+      <h4>Quick Links</h4>
+      <p><a href="index.html">Home</a></p>
+      <p><a href="book-ride.html">Book a Ride</a></p>
+      <p><a href="passenger.html">Passenger Services</a></p>
+      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
+      <p><a href="terms.html">Terms & Privacy</a></p>
+    </div>
 
-    function money(value) {
-      return "$" + Number(value || 0).toFixed(2);
-    }
+    <div>
+      <h4>Follow Us</h4>
+      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
+      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
+      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+    </div>
+  </div>
 
-    function estimateMiles(pickup, dropoff) {
-      const text = `${pickup} ${dropoff}`.toLowerCase();
+  <div class="footer-bottom">
+    © 2026 Angel Express Mobility. All rights reserved.
+  </div>
+</footer>
 
-      if (text.includes("austin")) return 221.5;
-      if (text.includes("houston")) return 240;
-      if (text.includes("san antonio")) return 275;
-      if (text.includes("oklahoma")) return 205;
-      if (text.includes("college station")) return 180;
-      if (text.includes("dfw")) return 25;
-      if (text.includes("love field")) return 15;
+<script>
+const booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
 
-      return 100;
-    }
+const BASE_FARE = 35;
+const RATE_PER_MILE = 1.10;
 
-    function estimateDriveTime(miles) {
-      const hours = miles / 55;
-      const h = Math.floor(hours);
-      const m = Math.round((hours - h) * 60);
+function money(value) {
+  return "$" + Number(value || 0).toFixed(2);
+}
 
-      if (h <= 0) return `${m} min`;
-      return `${h}h ${m}m`;
-    }
+function estimateMiles(pickup, dropoff) {
+  const text = `${pickup} ${dropoff}`.toLowerCase();
 
-    function calculateFare() {
-      if (!booking.pickup || !booking.dropoff) {
-        window.location.href = "book-ride.html";
-        return;
-      }
+  if (text.includes("austin")) return 221.5;
+  if (text.includes("houston")) return 240;
+  if (text.includes("san antonio")) return 275;
+  if (text.includes("oklahoma")) return 205;
+  if (text.includes("college station")) return 180;
+  if (text.includes("dfw")) return 25;
+  if (text.includes("love field")) return 15;
 
-      const miles = estimateMiles(booking.pickup, booking.dropoff);
-      const mileageFare = miles * RATE_PER_MILE;
-      const baseMileage = BASE_FARE + mileageFare;
+  return 100;
+}
 
-      const isRoundTrip = booking.tripType === "Round Trip";
-      const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
+function estimateDriveTime(miles) {
+  const hours = miles / 55;
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
 
-      const isStudentRide =
-        booking.rideCategory === "Student Group Ride" ||
-        String(booking.referral || "").toLowerCase().includes("student");
+  if (h <= 0) return `${m} min`;
+  return `${h}h ${m}m`;
+}
 
-      const studentDiscount = isStudentRide ? beforeDiscount * 0.20 : 0;
-      const finalPrice = beforeDiscount - studentDiscount;
+function calculateFare() {
+  if (!booking.pickup || !booking.dropoff) {
+    window.location.href = "book-ride.html";
+    return;
+  }
 
-      const updatedBooking = {
-        ...booking,
-        miles: miles.toFixed(1),
-        base: BASE_FARE,
-        mileageFare: mileageFare.toFixed(2),
-        total: finalPrice.toFixed(2),
-        estimatedDriveTime: estimateDriveTime(miles),
-        pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
-        fareMethod: "$35.00 base + $1.10/mile",
-        studentDiscount: studentDiscount.toFixed(2)
-      };
+  const miles = estimateMiles(booking.pickup, booking.dropoff);
+  const mileageFare = miles * RATE_PER_MILE;
+  const baseMileage = BASE_FARE + mileageFare;
 
-      localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
+  const isRoundTrip = booking.tripType === "Round Trip";
+  const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
 
-      document.getElementById("pickupText").textContent = booking.pickup;
-      document.getElementById("dropoffText").textContent = booking.dropoff;
-      document.getElementById("dateTimeText").textContent =
-        `${booking.date || "No date selected"} at ${booking.time || "No time selected"}`;
+  const isStudentRide =
+    booking.rideCategory === "Student Group Ride" ||
+    String(booking.referral || "").toLowerCase().includes("student");
 
-      document.getElementById("pricingTier").textContent = updatedBooking.pricingTier;
-      document.getElementById("distanceText").textContent = `${updatedBooking.miles} miles`;
-      document.getElementById("driveTimeText").textContent = updatedBooking.estimatedDriveTime;
-      document.getElementById("tripTypeText").textContent = booking.tripType || "One Way";
-      document.getElementById("rideCategoryText").textContent = booking.rideCategory || "Standard Ride";
-      document.getElementById("mileageFareText").textContent = money(mileageFare);
-      document.getElementById("baseMileageText").textContent = money(baseMileage);
+  const studentDiscount = isStudentRide ? beforeDiscount * 0.20 : 0;
+  const finalPrice = beforeDiscount - studentDiscount;
 
-      document.getElementById("roundTripText").textContent = isRoundTrip
-        ? money(beforeDiscount)
-        : money(baseMileage);
+  const updatedBooking = {
+    ...booking,
+    miles: miles.toFixed(1),
+    base: BASE_FARE,
+    mileageFare: mileageFare.toFixed(2),
+    total: finalPrice.toFixed(2),
+    estimatedDriveTime: estimateDriveTime(miles),
+    pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
+    fareMethod: "$35.00 base + $1.10/mile",
+    studentDiscount: studentDiscount.toFixed(2)
+  };
 
-      document.getElementById("studentDiscountText").textContent =
-        "-$" + studentDiscount.toFixed(2);
+  localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
 
-      document.getElementById("finalPriceText").textContent = money(finalPrice);
-    }
+  document.getElementById("pickupText").textContent = booking.pickup;
+  document.getElementById("dropoffText").textContent = booking.dropoff;
+  document.getElementById("dateTimeText").textContent =
+    `${booking.date || "No date selected"} at ${booking.time || "No time selected"}`;
 
-    function continueToConfirm() {
-      window.location.href = "confirm-booking.html";
-    }
+  document.getElementById("pricingTier").textContent = updatedBooking.pricingTier;
+  document.getElementById("distanceText").textContent = `${updatedBooking.miles} miles`;
+  document.getElementById("driveTimeText").textContent = updatedBooking.estimatedDriveTime;
+  document.getElementById("tripTypeText").textContent = booking.tripType || "One Way";
+  document.getElementById("rideCategoryText").textContent = booking.rideCategory || "Standard Ride";
+  document.getElementById("mileageFareText").textContent = money(mileageFare);
+  document.getElementById("baseMileageText").textContent = money(baseMileage);
 
-    calculateFare();
-  </script>
+  document.getElementById("roundTripText").textContent = isRoundTrip
+    ? money(beforeDiscount)
+    : money(baseMileage);
+
+  document.getElementById("studentDiscountText").textContent =
+    "-$" + studentDiscount.toFixed(2);
+
+  document.getElementById("finalPriceText").textContent = money(finalPrice);
+}
+
+function continueToConfirm() {
+  window.location.href = "confirm-booking.html";
+}
+
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const mobileMenu = document.getElementById("mobileMenu");
+
+mobileMenuBtn?.addEventListener("click", () => {
+  mobileMenu?.classList.toggle("open");
+});
+
+mobileMenu?.querySelectorAll("a").forEach(link => {
+  link.addEventListener("click", () => {
+    mobileMenu.classList.remove("open");
+  });
+});
+
+calculateFare();
+</script>
+
+<script src="script.js"></script>
+<script src="floating-support.js"></script>
+
 </body>
 </html>
