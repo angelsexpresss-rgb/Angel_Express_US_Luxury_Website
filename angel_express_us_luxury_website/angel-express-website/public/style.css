@@ -1866,4 +1866,16 @@ a.whatsapp-float {
     width: calc(100vw - 24px) !important;
     max-width: calc(100vw - 24px) !important;
   }
+}/* FORCE AI CHAT OPEN FIX */
+.chatbot-box.open {
+  display: block !important;
+}
+
+#chatbotBox {
+  z-index: 1000000 !important;
+}
+
+#chatToggle {
+  z-index: 1000001 !important;
+  pointer-events: auto !important;
 }
