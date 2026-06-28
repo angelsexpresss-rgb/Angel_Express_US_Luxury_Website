@@ -35,27 +35,6 @@ export default function LiveTripsScreen() {
 
       if (error) throw error;
 
-      const activeStatuses = [
-        "pending",
-        "confirmed",
-        "assigned",
-        "driver_assigned",
-        "driver assigned",
-        "arrived at pickup",
-        "driver_arrived",
-        "picked up",
-        "in progress",
-        "in_progress",
-        "active",
-      ];
-
-      const activeTrips =
-        data?.filter((trip) =>
-          activeStatuses.includes(
-            String(trip.status || "").trim().toLowerCase()
-          )
-        ) || [];
-
       setTrips(data || []);
     } catch (error: any) {
       Alert.alert("Error", error.message || "Unable to load live trips.");
@@ -80,8 +59,7 @@ export default function LiveTripsScreen() {
       return;
     }
 
-    const body = encodeURIComponent(message || "");
-    Linking.openURL(`sms:${phone}?body=${body}`);
+    Linking.openURL(`sms:${phone}?body=${encodeURIComponent(message || "")}`);
   }
 
   function getPassengerName(trip: any) {
@@ -99,12 +77,7 @@ export default function LiveTripsScreen() {
   }
 
   function getPickup(trip: any) {
-    return (
-      trip.pickup ||
-      trip.pickup_address ||
-      trip.pickup_location ||
-      "Not Set"
-    );
+    return trip.pickup || trip.pickup_address || trip.pickup_location || "Not Set";
   }
 
   function getDropoff(trip: any) {
@@ -135,9 +108,7 @@ export default function LiveTripsScreen() {
 
   function getSourceLabel(trip: any) {
     const source = String(trip.source || "app").toLowerCase();
-
-    if (source === "website") return "Website Booking";
-    return "App Booking";
+    return source === "website" ? "Website Booking" : "App Booking";
   }
 
   function getTripTotal(trip: any) {
@@ -146,7 +117,7 @@ export default function LiveTripsScreen() {
 
   function openLiveMap(trip: any) {
     router.push({
-      pathname: "/live-map",
+      pathname: "/live-map" as any,
       params: {
         bookingId: String(trip.id),
       },
@@ -179,35 +150,29 @@ export default function LiveTripsScreen() {
       <Text style={styles.title}>🚘 Live Trips Dashboard</Text>
 
       <Text style={styles.subtitle}>
-        Active app and website rides currently being monitored by Angel Express.
+        All website and app ride requests visible to Angel Express operations.
       </Text>
 
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
         <Text style={styles.backButtonText}>← Back to Dashboard</Text>
       </TouchableOpacity>
 
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>What this screen does</Text>
-        <Text style={styles.infoText}>
-          This page helps the owner oversee every active ride, check trip status,
-          view pickup and drop-off, and contact passengers or assigned drivers
-          during a live trip.
-        </Text>
-      </View>
+      <TouchableOpacity style={styles.refreshButton} onPress={loadTrips}>
+        <Text style={styles.refreshButtonText}>Refresh Trips</Text>
+      </TouchableOpacity>
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{trips.length}</Text>
-          <Text style={styles.statLabel}>Live Trips</Text>
+          <Text style={styles.statLabel}>Total Bookings Showing</Text>
         </View>
       </View>
 
       {trips.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No active rides currently</Text>
+          <Text style={styles.emptyTitle}>No bookings showing</Text>
           <Text style={styles.emptyText}>
-            Pending, confirmed, driver assigned, picked up, and in-progress rides
-            from both the app and website will appear here.
+            Website and app bookings will appear here once they are saved in Supabase.
           </Text>
         </View>
       ) : (
@@ -230,7 +195,7 @@ export default function LiveTripsScreen() {
 
                 <View style={styles.statusBadge}>
                   <Text style={styles.statusBadgeText}>
-                    {trip.status || "Pending"}
+                    {trip.status || "No Status"}
                   </Text>
                 </View>
               </View>
@@ -274,20 +239,14 @@ export default function LiveTripsScreen() {
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  style={[
-                    styles.callButton,
-                    !passengerPhone && styles.disabledButton,
-                  ]}
+                  style={[styles.callButton, !passengerPhone && styles.disabledButton]}
                   onPress={() => callNumber(passengerPhone)}
                 >
                   <Text style={styles.buttonText}>Call Passenger</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.smsButton,
-                    !passengerPhone && styles.disabledButton,
-                  ]}
+                  style={[styles.smsButton, !passengerPhone && styles.disabledButton]}
                   onPress={() =>
                     textNumber(
                       passengerPhone,
@@ -301,20 +260,14 @@ export default function LiveTripsScreen() {
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  style={[
-                    styles.driverButton,
-                    !driverPhone && styles.disabledButton,
-                  ]}
+                  style={[styles.driverButton, !driverPhone && styles.disabledButton]}
                   onPress={() => callNumber(driverPhone)}
                 >
                   <Text style={styles.buttonText}>Call Driver</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[
-                    styles.driverButton,
-                    !driverPhone && styles.disabledButton,
-                  ]}
+                  style={[styles.driverButton, !driverPhone && styles.disabledButton]}
                   onPress={() =>
                     textNumber(
                       driverPhone,
@@ -375,31 +328,23 @@ const styles = StyleSheet.create({
     borderColor: "#d4af37",
     borderRadius: 14,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   backButtonText: {
     color: "#d4af37",
     fontWeight: "900",
     textAlign: "center",
   },
-  infoCard: {
-    backgroundColor: "#0f172a",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#1e293b",
-    marginBottom: 18,
+  refreshButton: {
+    backgroundColor: "#d4af37",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
   },
-  infoTitle: {
-    color: "#fff",
+  refreshButtonText: {
+    color: "#07111f",
     fontWeight: "900",
-    fontSize: 17,
-    marginBottom: 6,
-  },
-  infoText: {
-    color: "#cbd5e1",
-    lineHeight: 21,
-    fontSize: 14,
+    textAlign: "center",
   },
   statsRow: {
     marginBottom: 20,
