@@ -1268,6 +1268,102 @@
       }
     }
 
+    /* ===== FINAL MOBILE FIX: LOGO SUBTITLE + MOBILE SUPPORT DOCK ===== */
+    .logo-text{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      min-width:0;
+    }
+
+    .mobile-support-dock{
+      display:none;
+    }
+
+    @media (max-width: 640px){
+      .logo span,
+      .logo-text span{
+        display:block !important;
+        font-size:8px !important;
+        letter-spacing:2px !important;
+        color:rgba(255,255,255,.75) !important;
+        margin-top:3px !important;
+        line-height:1.1 !important;
+        white-space:nowrap !important;
+      }
+
+      .logo h1{
+        font-size:15px !important;
+        letter-spacing:1.8px !important;
+      }
+
+      .navbar{
+        overflow:visible !important;
+      }
+
+      .chat-toggle,
+      .whatsapp-float{
+        display:none !important;
+      }
+
+      .mobile-support-dock{
+        position:fixed !important;
+        left:12px !important;
+        right:12px !important;
+        bottom:calc(env(safe-area-inset-bottom) + 14px) !important;
+        z-index:2147483647 !important;
+        display:grid !important;
+        grid-template-columns:1fr 1fr !important;
+        gap:10px !important;
+        pointer-events:auto !important;
+      }
+
+      .mobile-support-btn{
+        min-height:48px !important;
+        border-radius:999px !important;
+        border:none !important;
+        font-weight:900 !important;
+        font-size:13px !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        text-decoration:none !important;
+        box-shadow:0 14px 35px rgba(0,0,0,.45) !important;
+        color:#050b16 !important;
+        padding:0 12px !important;
+        white-space:nowrap !important;
+      }
+
+      .mobile-support-btn.ai{
+        background:#D4AF37 !important;
+      }
+
+      .mobile-support-btn.whatsapp{
+        background:#25D366 !important;
+      }
+
+      body{
+        padding-bottom:86px !important;
+      }
+
+      .chatbot-box{
+        z-index:2147483646 !important;
+        bottom:82px !important;
+        right:12px !important;
+        width:calc(100vw - 24px) !important;
+        max-width:calc(100vw - 24px) !important;
+      }
+    }
+
+    @media (max-width: 390px){
+      .logo span,
+      .logo-text span{
+        display:block !important;
+        font-size:7.5px !important;
+        letter-spacing:1.5px !important;
+      }
+    }
+
   </style>
 </head>
 
@@ -1786,6 +1882,16 @@
       if (bg && window.innerWidth > 768) {
         bg.style.transform = `translateY(${scrollY * 0.12}px)`;
       }
+    });
+  </script>
+
+
+  <script>
+    const mobileChatBtn = document.getElementById("mobileChatBtn");
+    const chatbotBoxMobile = document.getElementById("chatbotBox");
+
+    mobileChatBtn?.addEventListener("click", () => {
+      chatbotBoxMobile?.classList.toggle("open");
     });
   </script>
 
