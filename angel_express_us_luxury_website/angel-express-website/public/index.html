@@ -994,46 +994,46 @@
     <div class="loader-mark">A</div>
   </div>
 
-  <header class="navbar">
-    <a href="index.html" class="logo">
-      <div class="logo-mark">A</div>
-      <div>
-        <h1>ANGEL EXPRESS</h1>
-        <span>Mobility Ecosystem</span>
-      </div>
-    </a>
-
-    <nav class="nav-links">
-      <a href="index.html">Home</a>
-      <a href="book-ride.html">Book Ride</a>
-      <a href="passenger.html">Passengers</a>
-      <a href="driver.html">Drivers</a>
-      <a href="terms.html">Terms</a>
-      <a href="blog.html">Blog</a>
-      <a href="contact.html">Contact</a>
-    </nav>
-
-    <div class="nav-actions">
-      <a href="book-ride.html" class="nav-cta">Book a Ride</a>
-      <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Become a Chauffeur</a>
+ <header class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">A</div>
+    <div>
+      <h1>ANGEL EXPRESS</h1>
+      <span>Mobility Ecosystem</span>
     </div>
+  </a>
 
-    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">
-      <i class="fa-solid fa-bars"></i>
-    </button>
-  </header>
-
-  <div class="mobile-menu" id="mobileMenu">
+  <nav class="desktop-nav">
     <a href="index.html">Home</a>
     <a href="book-ride.html">Book Ride</a>
-    <a href="fare-estimate.html">Fare Estimate</a>
     <a href="passenger.html">Passengers</a>
     <a href="driver.html">Drivers</a>
     <a href="terms.html">Terms</a>
     <a href="blog.html">Blog</a>
     <a href="contact.html">Contact</a>
-    <a href="driver.html#apply">Become a Chauffeur</a>
+  </nav>
+
+  <div class="desktop-actions">
+    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
   </div>
+
+  <button class="mobile-menu-btn" id="mobileMenuBtn">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="fare-estimate.html">Fare Estimate</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
+</div>
 
   <main>
     <section class="hero-v4">
@@ -1492,6 +1492,13 @@
       }
     });
   </script>
+  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+  const mobileMenu = document.getElementById("mobileMenu");
+
+  mobileMenuBtn?.addEventListener("click", () => {
+    mobileMenu.classList.toggle("open");
+  });
+</script>
 
   <script src="script.js"></script>
 </body>

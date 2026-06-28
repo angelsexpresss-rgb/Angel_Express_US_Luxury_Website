@@ -1329,4 +1329,168 @@ right:15px;
   .nav-actions .nav-cta {
     text-align: center;
   }
+}.navbar {
+  height: 88px;
+  padding: 14px 4%;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  overflow: hidden;
+}
+
+.logo {
+  flex-shrink: 0;
+}
+
+.logo-mark {
+  width: 58px;
+  height: 58px;
+}
+
+.logo h1 {
+  font-size: clamp(18px, 2vw, 28px);
+  letter-spacing: 4px;
+  white-space: nowrap;
+}
+
+.logo span {
+  font-size: 12px;
+  letter-spacing: 5px;
+  white-space: nowrap;
+}
+
+.desktop-nav {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  gap: clamp(14px, 1.5vw, 28px);
+  min-width: 0;
+}
+
+.desktop-nav a {
+  font-size: clamp(13px, 1vw, 16px);
+  white-space: nowrap;
+}
+
+.desktop-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.nav-cta {
+  padding: 13px 22px;
+  white-space: nowrap;
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+.mobile-menu {
+  display: none;
+}
+
+@media (max-width: 1200px) {
+  .desktop-actions .nav-cta-secondary {
+    display: none;
+  }
+
+  .logo h1 {
+    font-size: 22px;
+  }
+
+  .desktop-nav {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 980px) {
+  .navbar {
+    height: auto;
+    min-height: 86px;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 5%;
+  }
+
+  .desktop-nav,
+  .desktop-actions {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    border: 1px solid rgba(212,175,55,.4);
+    background: rgba(255,255,255,.06);
+    color: white;
+    font-size: 24px;
+  }
+
+  .mobile-menu {
+    display: none;
+    position: fixed;
+    top: 138px;
+    left: 0;
+    right: 0;
+    z-index: 9998;
+    padding: 18px 5%;
+    background: rgba(5,11,22,.96);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(212,175,55,.25);
+  }
+
+  .mobile-menu.open {
+    display: grid;
+    gap: 12px;
+  }
+
+  .mobile-menu a {
+    padding: 15px 18px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.07);
+    color: white;
+    text-decoration: none;
+    font-weight: 800;
+  }
+
+  .hero-v4 {
+    padding-top: 190px;
+  }
+}
+
+@media (max-width: 600px) {
+  .logo-mark {
+    width: 54px;
+    height: 54px;
+  }
+
+  .logo h1 {
+    font-size: 19px;
+    letter-spacing: 3px;
+  }
+
+  .logo span {
+    display: none;
+  }
+
+  .mobile-menu {
+    top: 126px;
+  }
+
+  .hero-v4 {
+    padding-top: 175px;
+  }
+}
+
+@media (max-width: 380px) {
+  .logo h1 {
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
 }
