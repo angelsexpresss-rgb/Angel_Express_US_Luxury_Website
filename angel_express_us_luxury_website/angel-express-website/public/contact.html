@@ -8,168 +8,536 @@
 
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <style>
+    :root{
+      --ae-navy:#050b16;
+      --ae-gold:#D4AF37;
+      --ae-muted:#B8C1CC;
+      --ae-border:rgba(212,175,55,.28);
+    }
+
+    *{box-sizing:border-box;}
+
+    body{
+      margin:0;
+      background:#050b16;
+      color:white;
+      overflow-x:hidden;
+    }
+
+    .contact-bg{
+      position:fixed;
+      inset:0;
+      z-index:-3;
+      background:
+        linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.72)),
+        url("images/hero/10-dallas-night.jpg");
+      background-size:cover;
+      background-position:center;
+    }
+
+    .contact-bg::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at 76% 24%,rgba(212,175,55,.22),transparent 32%),
+        linear-gradient(180deg,rgba(5,11,22,.1),#050b16 94%);
+    }
+
+    .contact-shell{
+      min-height:100vh;
+      padding:125px 5.5% 90px;
+    }
+
+    .contact-wrap{
+      max-width:1180px;
+      margin:0 auto;
+    }
+
+    .contact-hero{
+      max-width:850px;
+      margin-bottom:44px;
+    }
+
+    .contact-kicker{
+      display:inline-flex;
+      gap:10px;
+      align-items:center;
+      color:var(--ae-gold);
+      border:1px solid rgba(212,175,55,.35);
+      border-radius:999px;
+      padding:9px 14px;
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:1.5px;
+      text-transform:uppercase;
+      background:rgba(255,255,255,.07);
+      backdrop-filter:blur(14px);
+    }
+
+    .contact-hero h1{
+      font-size:clamp(44px,7vw,82px);
+      line-height:.95;
+      margin:22px 0 16px;
+      letter-spacing:-2px;
+    }
+
+    .contact-hero h1 span{
+      color:var(--ae-gold);
+    }
+
+    .contact-hero p{
+      color:#dce5ee;
+      font-size:18px;
+      line-height:1.7;
+      max-width:760px;
+    }
+
+    .contact-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:22px;
+      margin-top:30px;
+    }
+
+    .contact-card{
+      background:rgba(13,20,34,.78);
+      border:1px solid var(--ae-border);
+      border-radius:30px;
+      padding:30px;
+      backdrop-filter:blur(20px);
+      box-shadow:0 26px 75px rgba(0,0,0,.35);
+      transition:.25s ease;
+    }
+
+    .contact-card:hover{
+      transform:translateY(-7px);
+      border-color:var(--ae-gold);
+    }
+
+    .contact-card i{
+      width:56px;
+      height:56px;
+      display:grid;
+      place-items:center;
+      border-radius:18px;
+      background:rgba(212,175,55,.12);
+      border:1px solid var(--ae-border);
+      color:var(--ae-gold);
+      font-size:25px;
+      margin-bottom:20px;
+    }
+
+    .contact-card h4{
+      font-size:24px;
+      margin:0 0 12px;
+    }
+
+    .contact-card p{
+      color:var(--ae-muted);
+      line-height:1.7;
+      margin-bottom:22px;
+    }
+
+    .contact-info-section{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:24px;
+      margin-top:42px;
+    }
+
+    .info-panel{
+      background:rgba(13,20,34,.78);
+      border:1px solid var(--ae-border);
+      border-radius:30px;
+      padding:32px;
+      backdrop-filter:blur(20px);
+      box-shadow:0 26px 75px rgba(0,0,0,.32);
+    }
+
+    .info-panel h3{
+      font-size:30px;
+      margin:0 0 18px;
+      color:white;
+    }
+
+    .info-panel p{
+      color:var(--ae-muted);
+      line-height:1.8;
+    }
+
+    .info-list{
+      display:grid;
+      gap:14px;
+      margin-top:20px;
+    }
+
+    .info-list div{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      color:#dce5ee;
+    }
+
+    .info-list i{
+      color:var(--ae-gold);
+      margin-top:4px;
+      min-width:22px;
+    }
+
+    .cta-section-v4{
+      margin-top:60px;
+      padding:60px 30px;
+      border-radius:34px;
+      text-align:center;
+      background:
+        radial-gradient(circle at 50% 0%,rgba(212,175,55,.22),rgba(255,255,255,.06)),
+        rgba(13,20,34,.76);
+      border:1px solid var(--ae-border);
+      box-shadow:0 30px 90px rgba(0,0,0,.35);
+      backdrop-filter:blur(18px);
+    }
+
+    .cta-section-v4 h2{
+      font-size:clamp(34px,5vw,62px);
+      max-width:850px;
+      margin:16px auto 24px;
+      line-height:1;
+    }
+
+    .mobile-support-dock{
+      display:none;
+    }
+
+    @media(max-width:980px){
+      .contact-shell{
+        padding-top:112px;
+      }
+
+      .contact-grid,
+      .contact-info-section{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media(max-width:640px){
+      .contact-shell{
+        padding:100px 4.5% 110px;
+      }
+
+      .contact-hero h1{
+        font-size:42px;
+      }
+
+      .contact-hero p{
+        font-size:16px;
+      }
+
+      .contact-card,
+      .info-panel{
+        border-radius:24px;
+        padding:24px;
+      }
+
+      .chat-toggle,
+      .whatsapp-float{
+        display:none!important;
+      }
+
+      .mobile-support-dock{
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:calc(env(safe-area-inset-bottom) + 14px);
+        z-index:999999;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+      }
+
+      .mobile-support-btn{
+        min-height:48px;
+        border-radius:999px;
+        border:none;
+        font-weight:900;
+        font-size:13px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-decoration:none;
+        box-shadow:0 14px 35px rgba(0,0,0,.35);
+      }
+
+      .mobile-support-btn.ai{
+        background:#D4AF37;
+        color:#050A14;
+      }
+
+      .mobile-support-btn.whatsapp{
+        background:#25D366;
+        color:#050A14;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <div class="bg-orb orb-one"></div>
-  <div class="bg-orb orb-two"></div>
 
-  <header class="navbar">
-    <a href="index.html" class="logo">
-      <div class="logo-mark">A</div>
-      <div>
-        <h1>ANGEL EXPRESS</h1>
-        <span>Contact Support</span>
-      </div>
-    </a>
+<header class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">A</div>
+    <div class="logo-text">
+      <h1>ANGEL EXPRESS</h1>
+      <span>MOBILITY ECOSYSTEM</span>
+    </div>
+  </a>
 
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="book-ride.html">Book Ride</a>
-      <a href="passenger.html">Passengers</a>
-      <a href="driver.html">Drivers</a>
-      <a href="terms.html">Terms</a>
-      <a href="blog.html">Blog</a>
-    </nav>
+  <nav class="desktop-nav">
+    <a href="index.html">Home</a>
+    <a href="book-ride.html">Book Ride</a>
+    <a href="passenger.html">Passengers</a>
+    <a href="driver.html">Drivers</a>
+    <a href="terms.html">Terms</a>
+    <a href="blog.html">Blog</a>
+    <a href="contact.html">Contact</a>
+  </nav>
 
+  <div class="desktop-actions">
     <a href="book-ride.html" class="nav-cta">Book a Ride</a>
-  </header>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
+  </div>
 
-  <main>
-    <section class="page-hero">
-      <p class="kicker">Contact Angel Express</p>
-      <h2>Support for passengers, chauffeurs, and trip operations.</h2>
+  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="fare-estimate.html">Fare Estimate</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
+</div>
+
+<div class="contact-bg"></div>
+
+<main class="contact-shell">
+  <div class="contact-wrap">
+
+    <section class="contact-hero reveal">
+      <p class="contact-kicker">
+        <i class="fa-solid fa-headset"></i>
+        Contact Angel Express
+      </p>
+
+      <h1>Support for <span>Every Trip.</span></h1>
+
       <p>
-        Reach Angel Express for ride questions, booking support, chauffeur applications,
-        airport transfers, student travel, World Cup transportation, and business inquiries.
+        Reach Angel Express for booking support, airport transfers, student travel,
+        chauffeur applications, World Cup transportation, trip coordination, and business inquiries.
       </p>
     </section>
 
-    <section class="section">
-      <div class="contact-grid">
-        <article class="contact-card">
-          <i class="fa-brands fa-whatsapp"></i>
-          <h4>WhatsApp Support</h4>
-          <p>Fastest way to reach Angel Express for bookings and trip updates.</p>
-          <a class="btn btn-primary full" href="https://wa.me/19728367910" target="_blank">Message on WhatsApp</a>
-        </article>
+    <section class="contact-grid">
+      <article class="contact-card reveal">
+        <i class="fa-brands fa-whatsapp"></i>
+        <h4>WhatsApp Support</h4>
+        <p>Fastest way to reach Angel Express for bookings, trip updates, and ride coordination.</p>
+        <a class="btn btn-primary full" href="https://wa.me/19728367910" target="_blank">
+          Message on WhatsApp
+        </a>
+      </article>
 
-        <article class="contact-card">
-          <i class="fa-solid fa-phone"></i>
-          <h4>Phone</h4>
-          <p>Call Angel Express for urgent ride coordination or reservation support.</p>
-          <a class="btn btn-secondary full" href="tel:+19728367910">+1 (972) 836-7910</a>
-        </article>
+      <article class="contact-card reveal">
+        <i class="fa-solid fa-phone"></i>
+        <h4>Phone Support</h4>
+        <p>Call Angel Express for urgent ride coordination or reservation assistance.</p>
+        <a class="btn btn-secondary full" href="tel:+19728367910">
+          +1 (972) 836-7910
+        </a>
+      </article>
 
-        <article class="contact-card">
-          <i class="fa-solid fa-envelope"></i>
-          <h4>Email</h4>
-          <p>Send booking questions, partnership requests, or passenger support inquiries.</p>
-          <a class="btn btn-secondary full" href="mailto:angelsexpresss@gmail.com">Email Angel Express</a>
-        </article>
-      </div>
+      <article class="contact-card reveal">
+        <i class="fa-solid fa-envelope"></i>
+        <h4>Email Support</h4>
+        <p>Send booking questions, partnership requests, or passenger support inquiries.</p>
+        <a class="btn btn-secondary full" href="mailto:angelsexpresss@gmail.com">
+          Email Angel Express
+        </a>
+      </article>
     </section>
 
-    <section class="cta-section">
-      <p class="kicker">Need a ride?</p>
-      <h2>Start your booking and get your fare estimate.</h2>
-      <a href="book-ride.html" class="btn btn-primary">Book Your Ride</a>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <div class="footer-bottom">
-      © 2026 Angel Express Mobility. All rights reserved.
-    </div>
-  </footer>
-</body>
-</html>
-
-  <footer class="footer">
-    <div class="footer-grid">
-      <div>
-        <h3>Angel Express Mobility (AEM)</h3>
+    <section class="contact-info-section">
+      <div class="info-panel reveal">
+        <h3>Operations Support</h3>
         <p>
-          Private long-distance transportation across Texas for students,
-          travelers, airport passengers, tourists, and World Cup 2026 visitors.
+          Angel Express manages private rides across Texas for airport passengers,
+          students, business travelers, event guests, and long-distance riders.
         </p>
-        <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
+
+        <div class="info-list">
+          <div>
+            <i class="fa-solid fa-location-dot"></i>
+            <span>Dallas, Texas, USA</span>
+          </div>
+
+          <div>
+            <i class="fa-solid fa-clock"></i>
+            <span>Available 24/7 by reservation</span>
+          </div>
+
+          <div>
+            <i class="fa-solid fa-route"></i>
+            <span>Dallas, Austin, Houston, San Antonio, Oklahoma City, College Station, airports, and custom routes</span>
+          </div>
+        </div>
       </div>
 
-      <div>
-        <h4>Contact Information</h4>
-        <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
-        <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
-        <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
-        <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
-      </div>
+      <div class="info-panel reveal">
+        <h3>What We Can Help With</h3>
+        <p>
+          Contact Angel Express for trip planning, route questions, fare estimates,
+          airport pickup details, group rides, student rides, and chauffeur opportunities.
+        </p>
 
-      <div>
-        <h4>Quick Links</h4>
-        <p><a href="index.html">Home</a></p>
-        <p><a href="book-ride.html">Book a Ride</a></p>
-        <p><a href="passenger.html">Passenger Services</a></p>
-        <p><a href="driver.html">Drive With Us</a></p>
-        <p><a href="terms.html">Terms & Privacy</a></p>
-      </div>
+        <div class="info-list">
+          <div>
+            <i class="fa-solid fa-plane-arrival"></i>
+            <span>Airport pickups and drop-offs</span>
+          </div>
 
-      <div>
-        <h4>Follow Us</h4>
-        <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
-        <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
-        <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> WhatsApp Us</a></p>
-        <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+          <div>
+            <i class="fa-solid fa-graduation-cap"></i>
+            <span>Student travel and campus routes</span>
+          </div>
+
+          <div>
+            <i class="fa-solid fa-futbol"></i>
+            <span>World Cup 2026 transportation support</span>
+          </div>
+        </div>
       </div>
+    </section>
+
+    <section class="cta-section-v4 reveal">
+      <p class="contact-kicker">
+        <i class="fa-solid fa-car-side"></i>
+        Need a Ride?
+      </p>
+
+      <h2>Start your booking and get your fare estimate.</h2>
+
+      <div class="hero-actions" style="justify-content:center;">
+        <a href="book-ride.html" class="btn btn-primary">
+          <i class="fa-solid fa-route"></i>
+          Book Your Ride
+        </a>
+
+        <a href="fare-estimate.html" class="btn btn-secondary">
+          <i class="fa-solid fa-calculator"></i>
+          Fare Estimate
+        </a>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <h3>Angel Express Mobility (AEM)</h3>
+      <p>
+        Private long-distance transportation across Texas for students,
+        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
+      </p>
+      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
     </div>
 
-    <div class="footer-bottom">
-      © 2026 Angel Express Mobility. All rights reserved.
+    <div>
+      <h4>Contact Information</h4>
+      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
     </div>
-  </footer>
-  <!-- AI Assistant -->
 
-<button id="chatToggle" class="chat-toggle">
-  💬 AI Assistant
-</button>
+    <div>
+      <h4>Quick Links</h4>
+      <p><a href="index.html">Home</a></p>
+      <p><a href="book-ride.html">Book a Ride</a></p>
+      <p><a href="passenger.html">Passenger Services</a></p>
+      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
+      <p><a href="terms.html">Terms & Privacy</a></p>
+    </div>
 
-<div class="chatbot-box" id="chatbotBox">
-
-  <div class="chatbot-header">
-    Angel Express Assistant
+    <div>
+      <h4>Follow Us</h4>
+      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
+      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
+      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+    </div>
   </div>
 
+  <div class="footer-bottom">
+    © 2026 Angel Express Mobility. All rights reserved.
+  </div>
+</footer>
+
+<button id="chatToggle" class="chat-toggle">💬 AI Assistant</button>
+
+<div class="chatbot-box" id="chatbotBox">
+  <div class="chatbot-header">Angel Express Assistant</div>
+
   <div class="chatbot-messages" id="chatbotMessages">
-    <p>
-      <strong>Angel Assistant:</strong>
-      Hi! How can I help you today?
-    </p>
+    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
   </div>
 
   <div class="chatbot-input">
-
-    <input
-      type="text"
-      id="chatInput"
-      placeholder="Ask about booking, pricing, routes..."
-    >
-
-    <button onclick="sendChat()">
-      Send
-    </button>
-
+    <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
+    <button type="button" onclick="sendChat()">Send</button>
   </div>
-
 </div>
 
-<!-- Chat With Us -->
-
-<a
-href="https://wa.me/19728367910"
-target="_blank"
-class="whatsapp-float"
->
-💬 Chat With Us
+<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
+  💬 Chat With Us
 </a>
+
+<div class="mobile-support-dock">
+  <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">💬 AI Assistant</button>
+  <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">💬 Chat With Us</a>
+</div>
+
+<script>
+  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+  const mobileMenu = document.getElementById("mobileMenu");
+
+  mobileMenuBtn?.addEventListener("click", () => {
+    mobileMenu?.classList.toggle("open");
+  });
+
+  mobileMenu?.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => {
+      mobileMenu.classList.remove("open");
+    });
+  });
+
+  const mobileChatBtn = document.getElementById("mobileChatBtn");
+  const chatbotBox = document.getElementById("chatbotBox");
+
+  mobileChatBtn?.addEventListener("click", () => {
+    chatbotBox?.classList.toggle("open");
+  });
+</script>
+
 <script src="script.js"></script>
 </body>
 </html>
