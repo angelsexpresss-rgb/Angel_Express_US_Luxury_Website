@@ -1705,4 +1705,38 @@ small {
     font-size: 14px;
     letter-spacing: 1.5px;
   }
+}/* FORCE MOBILE FLOATING BUTTONS TO SHOW */
+#chatToggle.chat-toggle,
+a.whatsapp-float {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: fixed !important;
+  right: 14px !important;
+  z-index: 999999 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  font-weight: 900 !important;
+}
+
+#chatToggle.chat-toggle {
+  bottom: 92px !important;
+  background: #D4AF37 !important;
+  color: #050A14 !important;
+}
+
+a.whatsapp-float {
+  bottom: 24px !important;
+  background: #25D366 !important;
+  color: #050A14 !important;
+}
+
+@media (max-width: 768px) {
+  #chatToggle.chat-toggle,
+  a.whatsapp-float {
+    min-height: 46px !important;
+    padding: 11px 15px !important;
+    font-size: 13px !important;
+  }
 }
