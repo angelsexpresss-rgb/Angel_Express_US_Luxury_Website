@@ -1786,4 +1786,84 @@ a.whatsapp-float {
     filter: none !important;
     visibility: visible !important;
   }
+}/* ANGEL EXPRESS FLOATING SUPPORT SYSTEM */
+.mobile-support-dock,
+.mobile-support-btn,
+#mobileChatBtn {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.chat-toggle,
+.whatsapp-float {
+  position: fixed !important;
+  right: 22px !important;
+  z-index: 999999 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 14px 20px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  box-shadow: 0 16px 42px rgba(0,0,0,.28) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-decoration: none !important;
+}
+
+.chat-toggle {
+  bottom: 88px !important;
+  background: #D4AF37 !important;
+  color: #050b16 !important;
+}
+
+.whatsapp-float {
+  bottom: 24px !important;
+  background: #25d366 !important;
+  color: #06111f !important;
+}
+
+.chatbot-box {
+  position: fixed !important;
+  right: 22px !important;
+  bottom: 145px !important;
+  width: 340px !important;
+  max-width: calc(100vw - 44px) !important;
+  background: rgba(5,11,22,.94) !important;
+  border: 1px solid rgba(212,175,55,.35) !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  z-index: 1000000 !important;
+  display: none;
+  box-shadow: 0 30px 90px rgba(0,0,0,.45) !important;
+}
+
+.chatbot-box.open {
+  display: block !important;
+}
+
+@media (max-width: 640px) {
+  .chat-toggle,
+  .whatsapp-float {
+    right: 12px !important;
+    padding: 12px 15px !important;
+    font-size: 13px !important;
+  }
+
+  .chat-toggle {
+    bottom: 86px !important;
+  }
+
+  .whatsapp-float {
+    bottom: 22px !important;
+  }
+
+  .chatbot-box {
+    right: 12px !important;
+    bottom: 145px !important;
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
 }
