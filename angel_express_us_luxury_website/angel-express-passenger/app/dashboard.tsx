@@ -13,12 +13,44 @@ import { registerForPushNotifications } from "../lib/notifications";
 import { supabase } from "../lib/supabase";
 
 export default function DashboardScreen() {
-  const firstName = "Jude";
-  const [openSection, setOpenSection] = useState("ride");
+  const [firstName, setFirstName] = useState("Passenger");
+  const [openSection, setOpenSection] = useState<string | null>("safety");
 
   useEffect(() => {
     registerForPushNotifications();
+    loadPassengerName();
   }, []);
+
+  async function loadPassengerName() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      const { data: passenger } = await supabase
+        .from("passengers")
+        .select("first_name")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (passenger?.first_name) {
+        setFirstName(passenger.first_name);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("passenger_profiles")
+        .select("first_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (profile?.first_name) setFirstName(profile.first_name);
+    } catch (error) {
+      console.log("Name load error:", error);
+    }
+  }
 
   async function handleLogout() {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -41,25 +73,39 @@ export default function DashboardScreen() {
       resizeMode="cover"
     >
       <View style={styles.overlay}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <Text style={styles.brand}>Angel Express Mobility</Text>
-          <Text style={styles.pageTitle}>AEM Dashboard</Text>
-          <Text style={styles.welcome}>Welcome, {firstName} 👋</Text>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.smallText}>Welcome back,</Text>
+              <Text style={styles.name}>{firstName}</Text>
+              <Text style={styles.tagline}>Safe. Reliable. Professional.</Text>
+            </View>
 
-          <Text style={styles.subtitle}>
-            Premium travel, safety, comfort, and smart ride tools in one place.
-          </Text>
+            <View style={styles.logoMark}>
+              <Text style={styles.logoMarkText}>A</Text>
+            </View>
+          </View>
 
-          <DashboardSection
-            title="Ride Management"
-            icon="🚗"
-            isOpen={openSection === "ride"}
-            onPress={() => setOpenSection(openSection === "ride" ? "" : "ride")}
+          <TouchableOpacity
+            style={styles.bookCard}
+            onPress={() => router.push("/book-ride" as any)}
+            activeOpacity={0.85}
           >
-            <DashboardButton icon="🚗" title="Book a Ride" onPress={() => router.push("/book-ride" as any)} />
-            <DashboardButton icon="📍" title="My Trips" onPress={() => router.push("/my-trips" as any)} />
-            <DashboardButton
-              icon="🛰️"
+            <View>
+              <Text style={styles.bookTitle}>Book a Ride</Text>
+              <Text style={styles.bookSub}>Reserve your next private trip</Text>
+            </View>
+            <Text style={styles.arrowDark}>›</Text>
+          </TouchableOpacity>
+
+          <HorizontalSection title="Ride Management">
+            <QuickCard title="Book a Ride" onPress={() => router.push("/book-ride" as any)} />
+            <QuickCard title="My Trips" onPress={() => router.push("/my-trips" as any)} />
+            <QuickCard
               title="Track Live Trip"
               onPress={() =>
                 router.push({
@@ -68,126 +114,117 @@ export default function DashboardScreen() {
                 })
               }
             />
-            <DashboardButton icon="🧳" title="Luxury Ride Prep+" onPress={() => router.push("/luxury-ride-prep" as any)} />
-          </DashboardSection>
+            <QuickCard title="Luxury Ride Prep+" onPress={() => router.push("/luxury-ride-prep" as any)} />
+          </HorizontalSection>
 
-          <DashboardSection
+          <HorizontalSection title="Travel Concierge">
+            <QuickCard title="Angel Travel Concierge" onPress={() => router.push("/travel-concierge" as any)} />
+            <QuickCard title="Student Travel Mode+" onPress={() => router.push("/student-travel" as any)} />
+            <QuickCard title="Multi-Language Assistant" onPress={() => router.push("/language-assistant" as any)} />
+            <QuickCard title="AI Ride Assistant" onPress={() => router.push("/ai-assistant" as any)} />
+          </HorizontalSection>
+
+          <DropdownSection
             title="Safety & Support"
-            icon="🛡️"
             isOpen={openSection === "safety"}
-            onPress={() => setOpenSection(openSection === "safety" ? "" : "safety")}
+            onPress={() => setOpenSection(openSection === "safety" ? null : "safety")}
           >
-            <DashboardButton icon="🛡️" title="Angel Safety Share" onPress={() => router.push("/safety-share" as any)} />
-            <DashboardButton icon="👨‍👩‍👧" title="Family Check-In+" onPress={() => router.push("/family-checkin" as any)} />
-            <DashboardButton icon="🛟" title="Support Center" onPress={() => router.push("/support" as any)} />
-          </DashboardSection>
+            <ListItem title="Angel Safety Share" onPress={() => router.push("/safety-share" as any)} />
+            <ListItem title="Family Check-In+" onPress={() => router.push("/family-checkin" as any)} />
+            <ListItem title="Support Center" onPress={() => router.push("/support" as any)} />
+          </DropdownSection>
 
-          <DashboardSection
+          <DropdownSection
             title="Passenger Account"
-            icon="👤"
             isOpen={openSection === "passenger"}
-            onPress={() => setOpenSection(openSection === "passenger" ? "" : "passenger")}
+            onPress={() => setOpenSection(openSection === "passenger" ? null : "passenger")}
           >
-            <DashboardButton icon="👤" title="Profile" onPress={() => router.push("/profile" as any)} />
-            <DashboardButton icon="🪪" title="Passenger Card" onPress={() => router.push("/passenger-card" as any)} />
-            <DashboardButton icon="🎁" title="Rewards" onPress={() => router.push("/rewards" as any)} />
-          </DashboardSection>
+            <ListItem title="Profile" onPress={() => router.push("/profile" as any)} />
+            <ListItem title="Passenger Card" onPress={() => router.push("/passenger-card" as any)} />
+            <ListItem title="Rewards" onPress={() => router.push("/rewards" as any)} />
+          </DropdownSection>
 
-          <DashboardSection
-            title="Travel Concierge"
-            icon="🛎️"
-            isOpen={openSection === "travel"}
-            onPress={() => setOpenSection(openSection === "travel" ? "" : "travel")}
-          >
-            <DashboardButton icon="🛎️" title="Angel Travel Concierge" onPress={() => router.push("/travel-concierge" as any)} />
-            <DashboardButton icon="🎓" title="Student Travel Mode+" onPress={() => router.push("/student-travel" as any)} />
-            <DashboardButton icon="🌐" title="Multi-Language Assistant" onPress={() => router.push("/language-assistant" as any)} />
-            <DashboardButton icon="💬" title="AI Ride Assistant" onPress={() => router.push("/ai-assistant" as any)} />
-          </DashboardSection>
-
-          <DashboardSection
+          <DropdownSection
             title="Account & Settings"
-            icon="⚙️"
             isOpen={openSection === "settings"}
-            onPress={() => setOpenSection(openSection === "settings" ? "" : "settings")}
+            onPress={() => setOpenSection(openSection === "settings" ? null : "settings")}
           >
-            <DashboardButton icon="🔔" title="Notification Preferences" onPress={() => router.push("/notification-preferences" as any)} />
-            <DashboardButton icon="🔒" title="Privacy & Account" onPress={() => router.push("/privacy-account" as any)} />
-            <DashboardButton icon="ℹ️" title="About Angel Express" onPress={() => router.push("/about" as any)} />
-          </DashboardSection>
+            <ListItem title="Notification Preferences" onPress={() => router.push("/notification-preferences" as any)} />
+            <ListItem title="Privacy & Account" onPress={() => router.push("/privacy-account" as any)} />
+            <ListItem title="About Angel Express" onPress={() => router.push("/about" as any)} />
+            <ListItem title="Log Out" onPress={handleLogout} danger />
+          </DropdownSection>
 
-          <DashboardSection
+          <DropdownSection
             title="Unique Angel Features"
-            icon="⭐"
             isOpen={openSection === "features"}
-            onPress={() => setOpenSection(openSection === "features" ? "" : "features")}
+            onPress={() => setOpenSection(openSection === "features" ? null : "features")}
           >
-            <View style={styles.featureGrid}>
-              <SmallFeatureCard title="Push Ride Updates" text="Get alerts for driver assigned, ride confirmed, driver arriving, trip started, arrived safely, and rewards earned." />
-              <SmallFeatureCard title="Live GPS Tracking" text="Track your active ride, driver location, ETA, vehicle, and plate number." />
-              <SmallFeatureCard title="Student Travel Mode" text="Discounted student routes, campus pickup points, and group rides." />
-              <SmallFeatureCard title="World Cup/Event Mode" text="Hotel pickup, stadium routes, airport transfers, and event support." />
-              <SmallFeatureCard title="Luxury Ride Prep" text="Get ready before pickup with luggage, ID, timing, and driver details." />
-              <SmallFeatureCard title="Family Check-In" text="Send pickup, halfway, and arrival updates to loved ones." />
-            </View>
-          </DashboardSection>
-
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Log Out</Text>
-          </TouchableOpacity>
+            <FeatureItem title="Push Ride Updates" text="Driver assigned, ride confirmed, driver arriving, trip started, arrived safely, and rewards earned." />
+            <FeatureItem title="Live GPS Tracking" text="Track your active ride, driver location, ETA, vehicle, and plate number." />
+            <FeatureItem title="Student Travel Mode" text="Discounted student routes, campus pickup points, and group rides." />
+            <FeatureItem title="World Cup/Event Mode" text="Hotel pickup, stadium routes, airport transfers, and event support." />
+            <FeatureItem title="Luxury Ride Prep" text="Luggage, ID, timing, and driver details before pickup." />
+            <FeatureItem title="Family Check-In" text="Send pickup, halfway, and arrival updates to loved ones." />
+          </DropdownSection>
         </ScrollView>
       </View>
     </ImageBackground>
   );
 }
 
-function DashboardSection({
-  title,
-  icon,
-  isOpen,
-  onPress,
-  children,
-}: {
-  title: string;
-  icon: string;
-  isOpen: boolean;
-  onPress: () => void;
-  children: React.ReactNode;
-}) {
+function HorizontalSection({ title, children }: any) {
   return (
-    <View style={styles.sectionBox}>
-      <TouchableOpacity style={styles.sectionHeader} onPress={onPress}>
-        <Text style={styles.sectionHeaderText}>
-          {icon} {title}
-        </Text>
-        <Text style={styles.chevron}>{isOpen ? "▲" : "▼"}</Text>
-      </TouchableOpacity>
-
-      {isOpen && <View style={styles.buttonGrid}>{children}</View>}
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+        {children}
+      </ScrollView>
     </View>
   );
 }
 
-function DashboardButton({
-  icon,
-  title,
-  onPress,
-}: {
-  icon: string;
-  title: string;
-  onPress: () => void;
-}) {
+function QuickCard({ title, onPress }: any) {
   return (
-    <TouchableOpacity style={styles.dashboardButton} onPress={onPress}>
-      <Text style={styles.buttonIcon}>{icon}</Text>
-      <Text style={styles.dashboardButtonText}>{title}</Text>
+    <TouchableOpacity style={styles.quickCard} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.iconBox}>
+        <Text style={styles.iconText}>A</Text>
+      </View>
+      <Text style={styles.quickTitle}>{title}</Text>
+      <Text style={styles.goldArrow}>›</Text>
     </TouchableOpacity>
   );
 }
 
-function SmallFeatureCard({ title, text }: { title: string; text: string }) {
+function DropdownSection({ title, isOpen, onPress, children }: any) {
   return (
-    <View style={styles.featureCard}>
+    <View style={styles.dropdown}>
+      <TouchableOpacity style={styles.dropdownHeader} onPress={onPress} activeOpacity={0.85}>
+        <Text style={styles.dropdownTitle}>{title}</Text>
+        <Text style={styles.dropdownArrow}>{isOpen ? "−" : "+"}</Text>
+      </TouchableOpacity>
+
+      {isOpen && <View style={styles.dropdownBody}>{children}</View>}
+    </View>
+  );
+}
+
+function ListItem({ title, onPress, danger }: any) {
+  return (
+    <TouchableOpacity style={styles.listItem} onPress={onPress} activeOpacity={0.85}>
+      <View style={[styles.smallIcon, danger && styles.dangerIcon]}>
+        <Text style={[styles.smallIconText, danger && styles.dangerText]}>A</Text>
+      </View>
+
+      <Text style={[styles.listText, danger && styles.dangerText]}>{title}</Text>
+      <Text style={[styles.listArrow, danger && styles.dangerText]}>›</Text>
+    </TouchableOpacity>
+  );
+}
+
+function FeatureItem({ title, text }: any) {
+  return (
+    <View style={styles.featureItem}>
       <Text style={styles.featureTitle}>{title}</Text>
       <Text style={styles.featureText}>{text}</Text>
     </View>
@@ -195,159 +232,127 @@ function SmallFeatureCard({ title, text }: { title: string; text: string }) {
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    backgroundColor: "#040C18",
-  },
+  background: { flex: 1, backgroundColor: "#050b16" },
+  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.90)" },
+  container: { flex: 1 },
+  content: { paddingTop: 64, paddingHorizontal: 22, paddingBottom: 42 },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(4,12,24,0.78)",
-  },
-
-  container: {
-    flex: 1,
-  },
-
-  content: {
-    padding: 22,
-    paddingTop: 70,
-    paddingBottom: 50,
-  },
-
-  brand: {
-    color: "#D4AF37",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-
-  pageTitle: {
-    color: "#FFFFFF",
-    fontSize: 32,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-
-  welcome: {
-    color: "#D4AF37",
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-
-  subtitle: {
-    color: "#C9D0D8",
-    fontSize: 16,
-    lineHeight: 24,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 24,
   },
 
-  sectionBox: {
-    backgroundColor: "rgba(7,20,38,0.9)",
+  smallText: { color: "#DDE3EA", fontSize: 18 },
+  name: { color: "#D4AF37", fontSize: 38, fontWeight: "900", marginTop: 4 },
+  tagline: { color: "#B8C1CC", fontSize: 15, marginTop: 8 },
+
+  logoMark: {
+    width: 54,
+    height: 54,
     borderRadius: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.22)",
-    overflow: "hidden",
-  },
-
-  sectionHeader: {
-    paddingVertical: 18,
-    paddingHorizontal: 18,
-    flexDirection: "row",
-    justifyContent: "space-between",
+    backgroundColor: "#D4AF37",
     alignItems: "center",
-  },
-
-  sectionHeaderText: {
-    color: "#D4AF37",
-    fontSize: 19,
-    fontWeight: "900",
-  },
-
-  chevron: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-
-  buttonGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-  },
-
-  dashboardButton: {
-    width: "48%",
-    backgroundColor: "rgba(11,27,49,0.94)",
-    borderRadius: 16,
-    paddingVertical: 22,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.18)",
-    minHeight: 118,
     justifyContent: "center",
   },
 
-  buttonIcon: {
-    fontSize: 30,
-    marginBottom: 12,
-  },
-
-  dashboardButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
+  logoMarkText: {
+    color: "#06111f",
+    fontSize: 32,
     fontWeight: "900",
-    lineHeight: 22,
+    fontStyle: "italic",
   },
 
-  featureGrid: {
-    gap: 14,
-    paddingHorizontal: 6,
-    paddingBottom: 10,
-    width: "100%",
-  },
-
-  featureCard: {
-    backgroundColor: "rgba(7, 20, 38, 0.9)",
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.18)",
-    width: "100%",
-  },
-
-  featureTitle: {
-    color: "#D4AF37",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-
-  featureText: {
-    color: "#DDE3EA",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-
-  logoutButton: {
-    borderWidth: 1,
-    borderColor: "#FF6B6B",
-    borderRadius: 15,
-    paddingVertical: 16,
+  bookCard: {
+    backgroundColor: "#D4AF37",
+    borderRadius: 24,
+    padding: 22,
+    minHeight: 104,
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 18,
+    marginBottom: 28,
   },
 
-  logoutText: {
-    color: "#FF6B6B",
-    fontSize: 17,
-    fontWeight: "900",
+  bookTitle: { color: "#06111f", fontSize: 28, fontWeight: "900" },
+  bookSub: { color: "rgba(6,17,31,0.75)", fontSize: 16, marginTop: 5 },
+  arrowDark: { color: "#06111f", fontSize: 46, fontWeight: "300" },
+
+  section: { marginBottom: 28 },
+  sectionTitle: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", marginBottom: 14 },
+  row: { gap: 14, paddingRight: 20 },
+
+  quickCard: {
+    width: 152,
+    height: 148,
+    backgroundColor: "rgba(13,20,34,0.9)",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.22)",
+    padding: 16,
+    justifyContent: "space-between",
   },
+
+  iconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  iconText: { color: "#D4AF37", fontSize: 24, fontWeight: "900", fontStyle: "italic" },
+  quickTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "900", lineHeight: 22 },
+  goldArrow: { color: "#D4AF37", fontSize: 30, alignSelf: "flex-end" },
+
+  dropdown: { marginBottom: 10 },
+
+  dropdownHeader: {
+    minHeight: 62,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+  },
+
+  dropdownTitle: { color: "#FFFFFF", fontSize: 22, fontWeight: "900" },
+  dropdownArrow: { color: "#D4AF37", fontSize: 30, fontWeight: "300" },
+  dropdownBody: { paddingTop: 8, paddingBottom: 10 },
+
+  listItem: {
+    minHeight: 58,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  smallIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 16,
+  },
+
+  smallIconText: { color: "#D4AF37", fontSize: 19, fontWeight: "900", fontStyle: "italic" },
+  listText: { color: "#E8EDF3", fontSize: 18, flex: 1 },
+  listArrow: { color: "#D4AF37", fontSize: 28 },
+
+  featureItem: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+  },
+
+  featureTitle: { color: "#D4AF37", fontSize: 17, fontWeight: "900", marginBottom: 5 },
+  featureText: { color: "#B8C1CC", fontSize: 14.5, lineHeight: 22 },
+
+  dangerIcon: { borderColor: "rgba(255,107,107,0.45)" },
+  dangerText: { color: "#FF6B6B" },
 });
