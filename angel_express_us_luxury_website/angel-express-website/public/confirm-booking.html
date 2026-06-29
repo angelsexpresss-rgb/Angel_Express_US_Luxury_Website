@@ -160,6 +160,16 @@ body{
   margin-top:0;
 }
 
+.success-text{
+  color:#22c55e!important;
+  font-weight:900;
+}
+
+.warning-text{
+  color:#FF6B6B!important;
+  font-weight:900;
+}
+
 .fare-divider{
   border:none;
   border-top:1px solid rgba(212,175,55,.35);
@@ -441,6 +451,9 @@ body{
         <p class="fare-label">Student Discount</p>
         <p id="studentDiscountText"></p>
 
+        <p class="fare-label">Referral Discount</p>
+        <p id="referralDiscountText"></p>
+
         <hr class="fare-divider" />
 
         <div class="final-row">
@@ -450,7 +463,7 @@ body{
       </div>
 
       <p class="estimate-disclaimer">
-        Payment is collected after your ride is completed.
+        Payment is collected after your ride is completed. Referral credits are awarded to the referrer only after the referred ride is completed.
       </p>
 
       <button id="confirmBtn" class="continue-btn" type="button" onclick="confirmBooking()">
@@ -516,17 +529,21 @@ body{
 </div>
 
 <script>
-const SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
+const AE_CONFIRM_SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
+const AE_CONFIRM_SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
 
-const GOOGLE_SCRIPT_URL =
+const AE_CONFIRM_GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzfjXYUphz8-nyETcdMYOpHCPoBY33V17OkAZMODpBRVT2V6m8H9DTG5iBM63QqbHtR/exec";
 
-const OWNER_WHATSAPP = "19728367910";
+const AE_CONFIRM_OWNER_WHATSAPP = "19728367910";
+const AE_REFERRAL_CREDIT_AMOUNT = 10;
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const aeConfirmSupabaseClient = supabase.createClient(
+  AE_CONFIRM_SUPABASE_URL,
+  AE_CONFIRM_SUPABASE_ANON_KEY
+);
 
-const booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
+let aeConfirmBooking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
 
 function money(value) {
   return "$" + Number(value || 0).toFixed(2);
@@ -542,10 +559,92 @@ function generateInvoiceNumber() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const uniqueCode = Date.now().toString().slice(-6);
+
   return `AE-${year}${month}${day}-${uniqueCode}`;
 }
 
-async function generateInvoicePDF(booking) {
+async function revalidateReferral() {
+  const code = String(
+    aeConfirmBooking.referralCode ||
+    aeConfirmBooking.referral_code ||
+    aeConfirmBooking.referral ||
+    ""
+  ).trim().toUpperCase();
+
+  const passengerEmail = String(aeConfirmBooking.email || "")
+    .trim()
+    .toLowerCase();
+
+  if (!code || !passengerEmail) {
+    return {
+      applied: false,
+      code: "",
+      referrerUserId: "",
+      discount: 0,
+      message: "None",
+    };
+  }
+
+  const { data: referrer, error } = await aeConfirmSupabaseClient
+    .from("passenger_profiles")
+    .select("user_id,email,referral_code")
+    .ilike("referral_code", code)
+    .maybeSingle();
+
+  if (error || !referrer?.user_id) {
+    return {
+      applied: false,
+      code,
+      referrerUserId: "",
+      discount: 0,
+      message: "Invalid referral code",
+    };
+  }
+
+  if (
+    referrer.email &&
+    String(referrer.email).trim().toLowerCase() === passengerEmail
+  ) {
+    return {
+      applied: false,
+      code,
+      referrerUserId: "",
+      discount: 0,
+      message: "Cannot use your own referral code",
+    };
+  }
+
+  const { data: previousUse } = await aeConfirmSupabaseClient
+    .from("bookings")
+    .select("id")
+    .ilike("email", passengerEmail)
+    .eq("referral_applied", true)
+    .limit(1);
+
+  if (previousUse && previousUse.length > 0) {
+    return {
+      applied: false,
+      code,
+      referrerUserId: "",
+      discount: 0,
+      message: "Referral already used by this email",
+    };
+  }
+
+  return {
+    applied: true,
+    code,
+    referrerUserId: referrer.user_id,
+    discount: Number(
+      aeConfirmBooking.referralDiscount ||
+      aeConfirmBooking.referral_discount ||
+      10
+    ),
+    message: "Referral applied",
+  };
+}
+
+async function generateInvoicePDF(bookingData) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "pt", "letter");
 
@@ -553,11 +652,13 @@ async function generateInvoicePDF(booking) {
   const invoiceDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
-    day: "numeric"
+    day: "numeric",
   });
 
-  const miles = Number(booking.miles || 0);
-  const total = Number(booking.total || 0);
+  const miles = Number(bookingData.miles || 0);
+  const total = Number(bookingData.total || 0);
+  const studentDiscount = Number(bookingData.studentDiscount || bookingData.student_discount || 0);
+  const referralDiscount = Number(bookingData.referralDiscount || bookingData.referral_discount || 0);
   const amountPaid = 0;
   const balanceDue = total;
 
@@ -612,9 +713,9 @@ async function generateInvoicePDF(booking) {
   doc.text("Date/Time", 60, 309);
 
   doc.setTextColor("#000000");
-  doc.text(booking.pickup || "", 170, 245, { maxWidth: 360 });
-  doc.text(booking.dropoff || "", 170, 277, { maxWidth: 360 });
-  doc.text(`${booking.date || ""} at ${booking.time || ""}`, 170, 309);
+  doc.text(bookingData.pickup || "", 170, 245, { maxWidth: 360 });
+  doc.text(bookingData.dropoff || "", 170, 277, { maxWidth: 360 });
+  doc.text(`${bookingData.date || ""} at ${bookingData.time || ""}`, 170, 309);
 
   doc.setTextColor(navy);
   doc.setFontSize(13);
@@ -656,37 +757,49 @@ async function generateInvoicePDF(booking) {
   doc.setFillColor("#fff9e6");
   doc.rect(50, 528, 512, 30, "F");
   doc.text("Angel Express Transportation Service", 60, 548);
-  doc.text(`$${total.toFixed(2)}`, 500, 548);
+  doc.text(money(Number(bookingData.baseTotal || bookingData.total || 0)), 500, 548);
 
   doc.setFillColor("#ffffff");
   doc.rect(50, 558, 512, 30, "F");
   doc.setTextColor(green);
-  doc.text("Amount Paid", 60, 578);
-  doc.text(`$${amountPaid.toFixed(2)}`, 500, 578);
+  doc.text("Student Discount", 60, 578);
+  doc.text(`-${money(studentDiscount)}`, 500, 578);
+
+  doc.setFillColor("#ffffff");
+  doc.rect(50, 588, 512, 30, "F");
+  doc.setTextColor(green);
+  doc.text("Referral Discount", 60, 608);
+  doc.text(`-${money(referralDiscount)}`, 500, 608);
+
+  doc.setFillColor("#ffffff");
+  doc.rect(50, 618, 512, 30, "F");
+  doc.setTextColor(green);
+  doc.text("Amount Paid", 60, 638);
+  doc.text(money(amountPaid), 500, 638);
 
   doc.setFillColor("#fdecea");
-  doc.rect(50, 588, 512, 30, "F");
+  doc.rect(50, 648, 512, 30, "F");
   doc.setTextColor(red);
-  doc.text("Balance Due", 60, 608);
-  doc.text(`$${balanceDue.toFixed(2)}`, 500, 608);
+  doc.text("Balance Due", 60, 668);
+  doc.text(money(balanceDue), 500, 668);
 
   doc.setTextColor(navy);
   doc.setFontSize(13);
   doc.setFont(undefined, "bold");
-  doc.text("TERMS & CONDITIONS", 50, 665);
+  doc.text("TERMS & CONDITIONS", 50, 705);
 
   doc.setFontSize(8);
   doc.setFont(undefined, "normal");
   doc.setTextColor("#333333");
 
   const terms =
-    "1. Payment is collected after ride completion unless otherwise agreed. 2. Reservations are reviewed and confirmed by Angel Express. 3. Cancellations must be made at least 24 hours before pickup. 4. Angel Express is not liable for delays caused by traffic, weather, road closures, or events beyond our control. 5. By booking, the passenger confirms that all pickup and drop-off details are accurate.";
+    "Payment is collected after ride completion unless otherwise agreed. Reservations are reviewed and confirmed by Angel Express. Referral credits are awarded to the referrer after the referred ride is completed.";
 
-  doc.text(terms, 50, 685, { maxWidth: 512 });
+  doc.text(terms, 50, 725, { maxWidth: 512 });
 
   return {
     invoiceNo,
-    pdfBase64: doc.output("datauristring").split(",")[1]
+    pdfBase64: doc.output("datauristring").split(",")[1],
   };
 }
 
@@ -705,41 +818,90 @@ Time: ${b.time}
 Trip Type: ${b.trip_type}
 Ride Category: ${b.ride_category}
 Passengers: ${b.passengers}
-Luggage: ${b.luggage}
+Luggage: ${b.luggage_count}
 
 Miles: ${b.miles}
-Total: $${Number(b.total).toFixed(2)}
+Subtotal: $${Number(b.base || 0).toFixed(2)}
+Student Discount: -$${Number(b.student_discount || 0).toFixed(2)}
+Referral Discount: -$${Number(b.referral_discount || 0).toFixed(2)}
+Total: $${Number(b.total || 0).toFixed(2)}
+
+Referral Code: ${b.referral_code || "None"}
+Referral Applied: ${b.referral_applied ? "Yes" : "No"}
 
 Notes: ${b.notes || "None"}
-Referral Code: ${b.referral_code || "None"}
 
 Please confirm availability.`;
 }
 
 function renderConfirmPage() {
-  if (!booking.pickup || !booking.dropoff) {
+  if (!aeConfirmBooking.pickup || !aeConfirmBooking.dropoff) {
     window.location.href = "book-ride.html";
     return;
   }
 
-  document.getElementById("pickupText").textContent = booking.pickup || "Not provided";
-  document.getElementById("dropoffText").textContent = booking.dropoff || "Not provided";
-  document.getElementById("dateText").textContent = booking.date || "Not provided";
-  document.getElementById("timeText").textContent = booking.time || "Not provided";
-  document.getElementById("tripTypeText").textContent = booking.tripType || "One Way";
-  document.getElementById("rideCategoryText").textContent = booking.rideCategory || "Standard Ride";
-  document.getElementById("passengersText").textContent = booking.passengers || "1";
-  document.getElementById("luggageText").textContent = booking.luggage || "0";
-  document.getElementById("notesText").textContent = booking.notes || "None";
-  document.getElementById("referralText").textContent = booking.referral || "None";
+  document.getElementById("pickupText").textContent = aeConfirmBooking.pickup || "Not provided";
+  document.getElementById("dropoffText").textContent = aeConfirmBooking.dropoff || "Not provided";
+  document.getElementById("dateText").textContent = aeConfirmBooking.date || "Not provided";
+  document.getElementById("timeText").textContent = aeConfirmBooking.time || "Not provided";
+  document.getElementById("tripTypeText").textContent = aeConfirmBooking.tripType || "One Way";
+  document.getElementById("rideCategoryText").textContent = aeConfirmBooking.rideCategory || "Standard Ride";
+  document.getElementById("passengersText").textContent = aeConfirmBooking.passengers || "1";
+  document.getElementById("luggageText").textContent = aeConfirmBooking.luggage || "0";
+  document.getElementById("notesText").textContent = aeConfirmBooking.notes || "None";
 
-  document.getElementById("pricingTierText").textContent = booking.pricingTier || "Long Distance Trip";
-  document.getElementById("distanceText").textContent = `${booking.miles || 0} miles`;
-  document.getElementById("driveTimeText").textContent = booking.estimatedDriveTime || "Not calculated";
-  document.getElementById("mileageFareText").textContent = money(booking.mileageFare || 0);
+  const referralLabel =
+    aeConfirmBooking.referralApplied || aeConfirmBooking.referral_applied
+      ? `${aeConfirmBooking.referralCode || aeConfirmBooking.referral_code} — Applied`
+      : aeConfirmBooking.referral || "None";
+
+  document.getElementById("referralText").textContent = referralLabel;
+
+  document.getElementById("pricingTierText").textContent =
+    aeConfirmBooking.pricingTier || "Long Distance Trip";
+
+  document.getElementById("distanceText").textContent =
+    `${aeConfirmBooking.miles || 0} miles`;
+
+  document.getElementById("driveTimeText").textContent =
+    aeConfirmBooking.estimatedDriveTime || "Not calculated";
+
+  document.getElementById("mileageFareText").textContent =
+    money(aeConfirmBooking.mileageFare || 0);
+
   document.getElementById("studentDiscountText").textContent =
-    "-$" + Number(booking.studentDiscount || 0).toFixed(2);
-  document.getElementById("finalPriceText").textContent = money(booking.total || 0);
+    "-$" + Number(aeConfirmBooking.studentDiscount || aeConfirmBooking.student_discount || 0).toFixed(2);
+
+  const referralDiscountEl = document.getElementById("referralDiscountText");
+  if (referralDiscountEl) {
+    referralDiscountEl.textContent =
+      "-$" + Number(aeConfirmBooking.referralDiscount || aeConfirmBooking.referral_discount || 0).toFixed(2);
+
+    if (Number(aeConfirmBooking.referralDiscount || aeConfirmBooking.referral_discount || 0) > 0) {
+      referralDiscountEl.classList.add("success-text");
+    }
+  }
+
+  document.getElementById("finalPriceText").textContent =
+    money(aeConfirmBooking.total || 0);
+}
+
+async function createPendingReferralReward(insertedBooking, referralResult) {
+  if (!referralResult.applied || !referralResult.referrerUserId) return;
+
+  try {
+    await aeConfirmSupabaseClient.from("referral_rewards").insert({
+      referrer_user_id: referralResult.referrerUserId,
+      referred_booking_id: insertedBooking.id,
+      referred_passenger_email: insertedBooking.email,
+      referral_code: referralResult.code,
+      discount_given: referralResult.discount,
+      credit_earned: AE_REFERRAL_CREDIT_AMOUNT,
+      status: "pending",
+    });
+  } catch (error) {
+    console.log("Pending referral reward skipped:", error);
+  }
 }
 
 async function confirmBooking() {
@@ -753,34 +915,100 @@ async function confirmBooking() {
   loader.classList.add("show");
 
   try {
-    const invoice = await generateInvoicePDF(booking);
+    const referralResult = await revalidateReferral();
+
+    const originalTotal = Number(aeConfirmBooking.total || 0);
+    const oldReferralDiscount = Number(
+      aeConfirmBooking.referralDiscount ||
+      aeConfirmBooking.referral_discount ||
+      0
+    );
+
+    let finalTotal = originalTotal;
+
+    if (!referralResult.applied && oldReferralDiscount > 0) {
+      finalTotal = originalTotal + oldReferralDiscount;
+    }
+
+    const secureBooking = {
+      ...aeConfirmBooking,
+      referralCode: referralResult.applied ? referralResult.code : "",
+      referral_code: referralResult.applied ? referralResult.code : "",
+      referralApplied: referralResult.applied,
+      referral_applied: referralResult.applied,
+      referrerUserId: referralResult.referrerUserId,
+      referrer_user_id: referralResult.referrerUserId,
+      referralDiscount: referralResult.applied ? referralResult.discount : 0,
+      referral_discount: referralResult.applied ? referralResult.discount : 0,
+      total: finalTotal.toFixed(2),
+    };
+
+    const invoice = await generateInvoicePDF(secureBooking);
 
     const finalBooking = {
-      name: booking.name || "Website Passenger",
-      phone: cleanPhone(booking.phone || ""),
-      email: booking.email || "",
-      route: `${booking.pickup} → ${booking.dropoff}`,
-      trip_type: booking.tripType || "One Way",
-      ride_category: booking.rideCategory || "Standard Ride",
-      date: booking.date,
-      time: booking.time,
-      pickup: booking.pickup,
-      dropoff: booking.dropoff,
-      passengers: Number(booking.passengers || 1),
-      luggage_count: Number(booking.luggage || 0),
-      notes: booking.notes || "",
-      referral_code_used: booking.referral || "",
-      miles: Number(booking.miles || 0),
-      base: 35,
-      total: Number(booking.total || 0),
+      name: secureBooking.name || "Website Passenger",
+      passenger_name: secureBooking.name || "Website Passenger",
+      phone: cleanPhone(secureBooking.phone || ""),
+      email: secureBooking.email || "",
+
+      route: `${secureBooking.pickup} → ${secureBooking.dropoff}`,
+      trip_type: secureBooking.tripType || "One Way",
+      ride_category: secureBooking.rideCategory || "Standard Ride",
+
+      date: secureBooking.date,
+      time: secureBooking.time,
+      ride_date: secureBooking.date,
+      ride_time: secureBooking.time,
+
+      pickup: secureBooking.pickup,
+      dropoff: secureBooking.dropoff,
+      pickup_address: secureBooking.pickup,
+      dropoff_address: secureBooking.dropoff,
+
+      pickup_lat: secureBooking.pickupLatitude || null,
+      pickup_lng: secureBooking.pickupLongitude || null,
+      dropoff_lat: secureBooking.dropoffLatitude || null,
+      dropoff_lng: secureBooking.dropoffLongitude || null,
+
+      passengers: Number(secureBooking.passengers || 1),
+      luggage_count: Number(secureBooking.luggage || 0),
+      notes: secureBooking.notes || "",
+
+      promo_code: secureBooking.referral || "",
+      referral_code: referralResult.applied ? referralResult.code : null,
+      referral_code_used: referralResult.applied ? referralResult.code : null,
+      referrer_user_id: referralResult.applied ? referralResult.referrerUserId : null,
+      referral_discount: referralResult.applied ? referralResult.discount : 0,
+      referral_applied: referralResult.applied,
+      referral_credit_awarded: false,
+
+      miles: Number(secureBooking.miles || 0),
+      estimated_miles: Number(secureBooking.miles || 0),
+
+      base: Number(secureBooking.base || 35),
+      base_fare: Number(secureBooking.baseMileage || secureBooking.base || 35),
+      mileage_fare: Number(secureBooking.mileageFare || 0),
+
+      student_discount: Number(secureBooking.studentDiscount || secureBooking.student_discount || 0),
+      total_discount:
+        Number(secureBooking.studentDiscount || secureBooking.student_discount || 0) +
+        Number(referralResult.applied ? referralResult.discount : 0),
+
+      total: Number(secureBooking.total || 0),
+      total_fare: Number(secureBooking.total || 0),
+      balance_due: Number(secureBooking.total || 0),
+
+      reward_points_earned: Math.round(Number(secureBooking.miles || 0)),
+
       status: "pending",
       source: "website",
       payment_status: "unpaid",
+
       invoice_no: invoice.invoiceNo,
-      invoice_status: "Pending"
+      invoice_status: "Pending",
     };
 
-    const { data, error } = await supabaseClient
+    const { data, error } = await aeConfirmSupabaseClient
       .from("bookings")
       .insert([finalBooking])
       .select("*")
@@ -788,29 +1016,35 @@ async function confirmBooking() {
 
     if (error) throw error;
 
+    await createPendingReferralReward(data, referralResult);
+
     const emailBooking = {
       ...finalBooking,
       invoice_pdf: invoice.pdfBase64,
       amount_paid: 0,
-      balance_due: finalBooking.total
+      balance_due: finalBooking.total,
     };
 
-    await fetch(GOOGLE_SCRIPT_URL, {
+    await fetch(AE_CONFIRM_GOOGLE_SCRIPT_URL, {
       method: "POST",
       mode: "no-cors",
-      body: JSON.stringify(emailBooking)
+      body: JSON.stringify(emailBooking),
     });
 
-    const whatsappText = encodeURIComponent(ownerMessage({
-      ...finalBooking,
-      id: data?.id
-    }));
+    const whatsappText = encodeURIComponent(
+      ownerMessage({
+        ...finalBooking,
+        id: data?.id,
+      })
+    );
 
-    window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${whatsappText}`, "_blank");
-
+    window.open(
+      `https://wa.me/${AE_CONFIRM_OWNER_WHATSAPP}?text=${whatsappText}`,
+      "_blank"
+    );
+localStorage.setItem("angelLastBooking", JSON.stringify(secureBooking));
     localStorage.removeItem("angelBooking");
     window.location.href = "success.html";
-
   } catch (err) {
     console.error(err);
     loader.classList.remove("show");
@@ -820,23 +1054,22 @@ async function confirmBooking() {
   }
 }
 
-const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-const mobileMenu = document.getElementById("mobileMenu");
+const aeConfirmMobileMenuBtn = document.getElementById("mobileMenuBtn");
+const aeConfirmMobileMenu = document.getElementById("mobileMenu");
 
-mobileMenuBtn?.addEventListener("click", () => {
-  mobileMenu?.classList.toggle("open");
+aeConfirmMobileMenuBtn?.addEventListener("click", () => {
+  aeConfirmMobileMenu?.classList.toggle("open");
 });
 
-mobileMenu?.querySelectorAll("a").forEach(link => {
+aeConfirmMobileMenu?.querySelectorAll("a").forEach(link => {
   link.addEventListener("click", () => {
-    mobileMenu.classList.remove("open");
+    aeConfirmMobileMenu.classList.remove("open");
   });
 });
 
 renderConfirmPage();
 </script>
 
-<script src="script.js"></script>
 <script src="floating-support.js"></script>
 
 </body>

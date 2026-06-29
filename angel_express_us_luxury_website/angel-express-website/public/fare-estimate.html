@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 :root{
   --ae-navy:#050b16;
@@ -191,6 +193,14 @@ body{
   text-align:right;
 }
 
+.discount-good{
+  color:#22c55e!important;
+}
+
+.discount-bad{
+  color:#FF6B6B!important;
+}
+
 .fare-divider{
   border:none;
   border-top:1px solid rgba(212,175,55,.35);
@@ -232,6 +242,12 @@ body{
 
 .continue-btn:hover{
   transform:translateY(-4px);
+}
+
+.continue-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+  transform:none;
 }
 
 .back-link{
@@ -348,7 +364,7 @@ body{
       <h1 class="fare-title">Fare <span>Estimate.</span></h1>
 
       <p class="fare-subtitle">
-        Review your estimated trip distance, price, and ride details before confirming your Angel Express booking.
+        Review your estimated trip distance, rewards discounts, and ride details before confirming your Angel Express booking.
       </p>
 
       <div class="fare-box">
@@ -422,6 +438,16 @@ body{
           <strong id="studentDiscountText">-$0.00</strong>
         </div>
 
+        <div class="summary-row">
+          <span>Referral Discount</span>
+          <strong id="referralDiscountText">-$0.00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Total Savings</span>
+          <strong id="totalSavingsText">-$0.00</strong>
+        </div>
+
         <hr class="fare-divider" />
 
         <div class="final-row">
@@ -432,10 +458,10 @@ body{
 
       <p class="estimate-disclaimer">
         This is an estimate. Angel Express may review and confirm the final fare based on route,
-        wait time, airport pickup, event traffic, and special requests.
+        wait time, airport pickup, event traffic, and special requests. Referral credits are awarded only after the referred ride is completed.
       </p>
 
-      <button class="continue-btn" type="button" onclick="continueToConfirm()">
+      <button id="continueBtn" class="continue-btn" type="button" onclick="continueToConfirm()">
         Continue to Confirm Booking
       </button>
 
@@ -490,10 +516,19 @@ body{
 </footer>
 
 <script>
-const booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
+const AE_FARE_SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
+const AE_FARE_SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
+
+const aeFareSupabaseClient = supabase.createClient(
+  AE_FARE_SUPABASE_URL,
+  AE_FARE_SUPABASE_ANON_KEY
+);
+
+let booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
 
 const BASE_FARE = 35;
 const RATE_PER_MILE = 1.10;
+const REFERRAL_DISCOUNT = 10;
 
 function money(value) {
   return "$" + Number(value || 0).toFixed(2);
@@ -522,61 +557,223 @@ function estimateDriveTime(miles) {
   return `${h}h ${m}m`;
 }
 
-function calculateFare() {
+async function checkStudentVerified(email) {
+  if (!email) return false;
+
+  const { data } = await aeFareSupabaseClient
+    .from("passenger_profiles")
+    .select("student_verified, student_status")
+    .ilike("email", String(email).trim().toLowerCase())
+    .maybeSingle();
+
+  return Boolean(data?.student_verified || data?.student_status);
+}
+
+async function validateReferralCode(code, passengerEmail) {
+  const cleanCode = String(code || "").trim().toUpperCase();
+  const cleanEmail = String(passengerEmail || "").trim().toLowerCase();
+
+  if (!cleanCode) {
+    return {
+      applied: false,
+      code: "",
+      referrerUserId: "",
+      discount: 0,
+      message: "No referral code entered",
+    };
+  }
+
+  if (!cleanEmail) {
+    return {
+      applied: false,
+      code: cleanCode,
+      referrerUserId: "",
+      discount: 0,
+      message: "Email required to use referral",
+    };
+  }
+
+  const { data: referrer, error } = await aeFareSupabaseClient
+    .from("passenger_profiles")
+    .select("user_id, email, referral_code")
+    .ilike("referral_code", cleanCode)
+    .maybeSingle();
+
+  if (error || !referrer?.user_id) {
+    return {
+      applied: false,
+      code: cleanCode,
+      referrerUserId: "",
+      discount: 0,
+      message: "Invalid referral code",
+    };
+  }
+
+  if (
+    referrer.email &&
+    String(referrer.email).trim().toLowerCase() === cleanEmail
+  ) {
+    return {
+      applied: false,
+      code: cleanCode,
+      referrerUserId: "",
+      discount: 0,
+      message: "Cannot use your own referral code",
+    };
+  }
+
+  const { data: previousUse } = await aeFareSupabaseClient
+    .from("bookings")
+    .select("id")
+    .ilike("email", cleanEmail)
+    .eq("referral_applied", true)
+    .limit(1);
+
+  if (previousUse && previousUse.length > 0) {
+    return {
+      applied: false,
+      code: cleanCode,
+      referrerUserId: "",
+      discount: 0,
+      message: "Referral already used by this email",
+    };
+  }
+
+  return {
+    applied: true,
+    code: cleanCode,
+    referrerUserId: referrer.user_id,
+    discount: REFERRAL_DISCOUNT,
+    message: "Referral applied",
+  };
+}
+
+async function calculateFare() {
   if (!booking.pickup || !booking.dropoff) {
     window.location.href = "book-ride.html";
     return;
   }
 
-  const miles = estimateMiles(booking.pickup, booking.dropoff);
-  const mileageFare = miles * RATE_PER_MILE;
-  const baseMileage = BASE_FARE + mileageFare;
+  const continueBtn = document.getElementById("continueBtn");
+  continueBtn.disabled = true;
+  continueBtn.textContent = "Calculating Rewards...";
 
-  const isRoundTrip = booking.tripType === "Round Trip";
-  const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
+  try {
+    const miles = estimateMiles(booking.pickup, booking.dropoff);
+    const mileageFare = miles * RATE_PER_MILE;
+    const baseMileage = BASE_FARE + mileageFare;
 
-  const isStudentRide =
-    booking.rideCategory === "Student Group Ride" ||
-    String(booking.referral || "").toLowerCase().includes("student");
+    const isRoundTrip = booking.tripType === "Round Trip";
+    const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
 
-  const studentDiscount = isStudentRide ? beforeDiscount * 0.20 : 0;
-  const finalPrice = beforeDiscount - studentDiscount;
+    const studentVerified = await checkStudentVerified(booking.email || "");
+    const studentDiscount = studentVerified ? beforeDiscount * 0.20 : 0;
 
-  const updatedBooking = {
-    ...booking,
-    miles: miles.toFixed(1),
-    base: BASE_FARE,
-    mileageFare: mileageFare.toFixed(2),
-    total: finalPrice.toFixed(2),
-    estimatedDriveTime: estimateDriveTime(miles),
-    pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
-    fareMethod: "$35.00 base + $1.10/mile",
-    studentDiscount: studentDiscount.toFixed(2)
-  };
+    const referralResult = await validateReferralCode(
+      booking.referral || booking.referralCode || booking.referral_code || "",
+      booking.email || ""
+    );
 
-  localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
+    const referralDiscount = referralResult.applied
+      ? Math.min(referralResult.discount, Math.max(beforeDiscount - studentDiscount, 0))
+      : 0;
 
-  document.getElementById("pickupText").textContent = booking.pickup;
-  document.getElementById("dropoffText").textContent = booking.dropoff;
-  document.getElementById("dateTimeText").textContent =
-    `${booking.date || "No date selected"} at ${booking.time || "No time selected"}`;
+    const totalSavings = studentDiscount + referralDiscount;
+    const finalPrice = Math.max(beforeDiscount - totalSavings, 0);
 
-  document.getElementById("pricingTier").textContent = updatedBooking.pricingTier;
-  document.getElementById("distanceText").textContent = `${updatedBooking.miles} miles`;
-  document.getElementById("driveTimeText").textContent = updatedBooking.estimatedDriveTime;
-  document.getElementById("tripTypeText").textContent = booking.tripType || "One Way";
-  document.getElementById("rideCategoryText").textContent = booking.rideCategory || "Standard Ride";
-  document.getElementById("mileageFareText").textContent = money(mileageFare);
-  document.getElementById("baseMileageText").textContent = money(baseMileage);
+    const updatedBooking = {
+      ...booking,
 
-  document.getElementById("roundTripText").textContent = isRoundTrip
-    ? money(beforeDiscount)
-    : money(baseMileage);
+      miles: miles.toFixed(1),
+      estimated_miles: miles.toFixed(1),
 
-  document.getElementById("studentDiscountText").textContent =
-    "-$" + studentDiscount.toFixed(2);
+      base: BASE_FARE,
+      mileageFare: mileageFare.toFixed(2),
+      mileage_fare: mileageFare.toFixed(2),
+      baseMileage: baseMileage.toFixed(2),
 
-  document.getElementById("finalPriceText").textContent = money(finalPrice);
+      subtotal: beforeDiscount.toFixed(2),
+      baseTotal: beforeDiscount.toFixed(2),
+      total: finalPrice.toFixed(2),
+      total_fare: finalPrice.toFixed(2),
+
+      estimatedDriveTime: estimateDriveTime(miles),
+      pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
+      fareMethod: "$35.00 base + $1.10/mile",
+
+      studentVerified,
+      student_verified: studentVerified,
+      studentDiscount: studentDiscount.toFixed(2),
+      student_discount: studentDiscount.toFixed(2),
+
+      referralCode: referralResult.applied ? referralResult.code : "",
+      referral_code: referralResult.applied ? referralResult.code : "",
+      referralApplied: referralResult.applied,
+      referral_applied: referralResult.applied,
+      referrerUserId: referralResult.referrerUserId,
+      referrer_user_id: referralResult.referrerUserId,
+      referralDiscount: referralDiscount.toFixed(2),
+      referral_discount: referralDiscount.toFixed(2),
+      referralMessage: referralResult.message,
+
+      totalSavings: totalSavings.toFixed(2),
+      total_discount: totalSavings.toFixed(2),
+      reward_points_earned: Math.round(miles),
+    };
+
+    localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
+    booking = updatedBooking;
+
+    document.getElementById("pickupText").textContent = booking.pickup;
+    document.getElementById("dropoffText").textContent = booking.dropoff;
+    document.getElementById("dateTimeText").textContent =
+      `${booking.date || "No date selected"} at ${booking.time || "No time selected"}`;
+
+    document.getElementById("pricingTier").textContent = updatedBooking.pricingTier;
+    document.getElementById("distanceText").textContent = `${updatedBooking.miles} miles`;
+    document.getElementById("driveTimeText").textContent = updatedBooking.estimatedDriveTime;
+    document.getElementById("tripTypeText").textContent = booking.tripType || "One Way";
+    document.getElementById("rideCategoryText").textContent = booking.rideCategory || "Standard Ride";
+    document.getElementById("mileageFareText").textContent = money(mileageFare);
+    document.getElementById("baseMileageText").textContent = money(baseMileage);
+
+    document.getElementById("roundTripText").textContent = isRoundTrip
+      ? money(beforeDiscount)
+      : money(baseMileage);
+
+    const studentDiscountText = document.getElementById("studentDiscountText");
+    studentDiscountText.textContent = "-$" + studentDiscount.toFixed(2);
+    if (studentDiscount > 0) studentDiscountText.classList.add("discount-good");
+
+    const referralDiscountText = document.getElementById("referralDiscountText");
+
+    if (referralResult.applied) {
+      referralDiscountText.textContent = "-$" + referralDiscount.toFixed(2) + ` (${referralResult.code})`;
+      referralDiscountText.classList.remove("discount-bad");
+      referralDiscountText.classList.add("discount-good");
+    } else if (referralResult.code) {
+      referralDiscountText.textContent = referralResult.message;
+      referralDiscountText.classList.remove("discount-good");
+      referralDiscountText.classList.add("discount-bad");
+    } else {
+      referralDiscountText.textContent = "-$0.00";
+    }
+
+    document.getElementById("totalSavingsText").textContent =
+      "-$" + totalSavings.toFixed(2);
+
+    if (totalSavings > 0) {
+      document.getElementById("totalSavingsText").classList.add("discount-good");
+    }
+
+    document.getElementById("finalPriceText").textContent = money(finalPrice);
+  } catch (error) {
+    console.error(error);
+    alert("Fare estimate could not be calculated. " + error.message);
+  } finally {
+    continueBtn.disabled = false;
+    continueBtn.textContent = "Continue to Confirm Booking";
+  }
 }
 
 function continueToConfirm() {
@@ -599,7 +796,6 @@ mobileMenu?.querySelectorAll("a").forEach(link => {
 calculateFare();
 </script>
 
-<script src="script.js"></script>
 <script src="floating-support.js"></script>
 
 </body>
