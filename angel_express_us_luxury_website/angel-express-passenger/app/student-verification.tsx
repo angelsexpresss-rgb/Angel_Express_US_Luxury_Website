@@ -75,27 +75,33 @@ export default function StudentVerificationScreen() {
     }
   }
 
-  async function uploadStudentId(userId: string) {
-    if (!idImage?.uri) return null;
+ async function uploadStudentId(userId: string) {
+  if (!idImage?.uri) return { path: null, publicUrl: null };
 
-    const fileExt = idImage.uri.split(".").pop() || "jpg";
-    const filePath = `${userId}/student-id-${Date.now()}.${fileExt}`;
+  const fileExt = "jpg";
+  const filePath = `${userId}/student-id-${Date.now()}.${fileExt}`;
 
-    const response = await fetch(idImage.uri);
-    const blob = await response.blob();
+  const response = await fetch(idImage.uri);
+  const arrayBuffer = await response.arrayBuffer();
 
-    const { error: uploadError } = await supabase.storage
-      .from("student-ids")
-      .upload(filePath, blob, {
-        contentType: idImage.mimeType || "image/jpeg",
-        upsert: true,
-      });
+  const { error: uploadError } = await supabase.storage
+    .from("student-ids")
+    .upload(filePath, arrayBuffer, {
+      contentType: "image/jpeg",
+      upsert: true,
+    });
 
-    if (uploadError) throw uploadError;
+  if (uploadError) throw uploadError;
 
-    return filePath;
-  }
+  const { data } = supabase.storage
+    .from("student-ids")
+    .getPublicUrl(filePath);
 
+  return {
+    path: filePath,
+    publicUrl: data?.publicUrl || null,
+  };
+}
   async function submitVerification() {
     if (
       !university.trim() ||
@@ -130,9 +136,21 @@ export default function StudentVerificationScreen() {
       if (userError) throw userError;
       if (!user) throw new Error("Please sign in again.");
 
-      const studentIdPath = await uploadStudentId(user.id);
+      const { data: passengerProfile, error: profileFetchError } =
+        await supabase
+          .from("passenger_profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
 
-      const { error } = await supabase
+      if (profileFetchError) throw profileFetchError;
+      if (!passengerProfile) throw new Error("Passenger profile not found.");
+
+      const uploadedId = await uploadStudentId(user.id);
+
+      const submittedAt = new Date().toISOString();
+
+      const { error: profileUpdateError } = await supabase
         .from("passenger_profiles")
         .update({
           student_university: university.trim(),
@@ -143,16 +161,37 @@ export default function StudentVerificationScreen() {
           student_id_number: studentIdNumber.trim(),
           student_verification_notes: notes.trim(),
 
-          student_id_path: studentIdPath,
+          student_id_path: uploadedId.path,
+          student_id_url: uploadedId.publicUrl,
           student_id_uploaded: true,
 
-          student_verification_status: "Pending Review",
+          student_status: true,
           student_verified: false,
-          student_verification_submitted_at: new Date().toISOString(),
+          student_discount_eligible: false,
+          student_verification_status: "Pending Review",
+          student_verification_submitted_at: submittedAt,
         })
         .eq("user_id", user.id);
 
-      if (error) throw error;
+      if (profileUpdateError) throw profileUpdateError;
+
+      const { error: queueInsertError } = await supabase
+        .from("student_verifications")
+        .insert({
+          passenger_id: passengerProfile.id,
+          user_id: user.id,
+          email: passengerProfile.email || user.email || "",
+          student_email: studentEmail.trim().toLowerCase(),
+          student_id_last4: studentIdNumber.trim(),
+          school_name: university.trim(),
+          student_id_photo_url: uploadedId.publicUrl || uploadedId.path,
+          notes: notes.trim(),
+          status: "Pending Review",
+          student_verified: false,
+          submitted_at: submittedAt,
+        });
+
+      if (queueInsertError) throw queueInsertError;
 
       Alert.alert(
         "Verification Submitted",
