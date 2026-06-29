@@ -13,6 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { supabase } from "../lib/supabase";
+
 import {
   AE_COLORS,
   AngelCard,
@@ -20,6 +23,8 @@ import {
   fadeUp,
   slowBackgroundZoom,
 } from "../components/angel";
+
+const REFERRAL_DISCOUNT = 10;
 
 export default function BookRideScreen() {
   const [pickupAddress, setPickupAddress] = useState("");
@@ -44,9 +49,13 @@ export default function BookRideScreen() {
 
   const [passengers, setPassengers] = useState("1");
   const [luggageCount, setLuggageCount] = useState("0");
-
   const [notes, setNotes] = useState("");
-  const [promoCode, setPromoCode] = useState("");
+
+  const [referralCode, setReferralCode] = useState("");
+  const [referralApplied, setReferralApplied] = useState(false);
+  const [referralChecking, setReferralChecking] = useState(false);
+  const [referrerUserId, setReferrerUserId] = useState("");
+  const [referralMessage, setReferralMessage] = useState("");
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -117,6 +126,67 @@ export default function BookRideScreen() {
     });
   }
 
+  function resetReferral() {
+    setReferralApplied(false);
+    setReferrerUserId("");
+    setReferralMessage("");
+  }
+
+  async function applyReferralCode() {
+    const cleanCode = referralCode.trim().toUpperCase();
+
+    if (!cleanCode) {
+      Alert.alert("Referral Code", "Please enter a referral code first.");
+      return;
+    }
+
+    try {
+      setReferralChecking(true);
+      resetReferral();
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+
+      const { data: referrer, error } = await supabase
+        .from("passenger_profiles")
+        .select("user_id, first_name, last_name, email, referral_code")
+        .eq("referral_code", cleanCode)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!referrer) {
+        setReferralMessage("Referral code not found.");
+        Alert.alert("Invalid Code", "This referral code was not found.");
+        return;
+      }
+
+      if (user?.id && referrer.user_id === user.id) {
+        setReferralMessage("You cannot use your own referral code.");
+        Alert.alert("Invalid Code", "You cannot use your own referral code.");
+        return;
+      }
+
+      setReferralApplied(true);
+      setReferrerUserId(referrer.user_id);
+      setReferralCode(cleanCode);
+      setReferralMessage(`Referral applied: $${REFERRAL_DISCOUNT} off this ride.`);
+
+      Alert.alert(
+        "Referral Applied",
+        `$${REFERRAL_DISCOUNT} referral discount will be applied to your fare estimate.`
+      );
+    } catch (error: any) {
+      Alert.alert("Referral Error", error.message || "Could not verify referral code.");
+    } finally {
+      setReferralChecking(false);
+    }
+  }
+
   function continueToFareEstimate() {
     if (!pickupAddress || !dropoffAddress) {
       Alert.alert(
@@ -150,7 +220,13 @@ export default function BookRideScreen() {
         passengers,
         luggageCount,
         notes: notes.trim(),
-        promoCode: promoCode.trim(),
+
+        referralCode: referralApplied ? referralCode.trim().toUpperCase() : "",
+        referrerUserId: referralApplied ? referrerUserId : "",
+        referralDiscount: referralApplied ? String(REFERRAL_DISCOUNT) : "0",
+        referralApplied: referralApplied ? "true" : "false",
+
+        promoCode: referralApplied ? referralCode.trim().toUpperCase() : "",
       },
     });
   }
@@ -354,13 +430,51 @@ export default function BookRideScreen() {
                 multiline
               />
 
+              <Section title="Referral Code" />
+
               <TextInput
                 style={styles.input}
-                placeholder="Promo / Referral Code"
+                placeholder="Enter referral code"
                 placeholderTextColor="rgba(255,255,255,0.45)"
-                value={promoCode}
-                onChangeText={setPromoCode}
+                value={referralCode}
+                onChangeText={(text) => {
+                  setReferralCode(text.toUpperCase());
+                  resetReferral();
+                }}
+                autoCapitalize="characters"
               />
+
+              {referralMessage ? (
+                <Text
+                  style={[
+                    styles.referralText,
+                    referralApplied ? styles.referralSuccess : styles.referralError,
+                  ]}
+                >
+                  {referralMessage}
+                </Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={[
+                  styles.referralButton,
+                  referralChecking && styles.referralButtonDisabled,
+                ]}
+                onPress={applyReferralCode}
+                disabled={referralChecking}
+              >
+                <Text style={styles.referralButtonText}>
+                  {referralChecking ? "Checking Code..." : "Apply Referral Code"}
+                </Text>
+              </TouchableOpacity>
+
+              {referralApplied ? (
+                <View style={styles.referralAppliedBox}>
+                  <Text style={styles.referralAppliedText}>
+                    $10 referral discount will be passed to your fare estimate.
+                  </Text>
+                </View>
+              ) : null}
 
               <AngelHeroButton
                 title="Continue to Fare Estimate"
@@ -414,59 +528,48 @@ const styles = StyleSheet.create({
     backgroundColor: AE_COLORS.navy,
     overflow: "hidden",
   },
-
   bgWrap: {
     ...StyleSheet.absoluteFillObject,
   },
-
   background: {
     flex: 1,
   },
-
   overlay: {
     flex: 1,
     backgroundColor: "rgba(5,11,22,0.91)",
   },
-
   container: {
     flex: 1,
   },
-
   content: {
     padding: 22,
     paddingTop: 56,
     paddingBottom: 50,
   },
-
   backButton: {
     alignSelf: "flex-start",
     marginBottom: 18,
   },
-
   backText: {
     color: AE_COLORS.gold,
     fontSize: 18,
     fontWeight: "900",
   },
-
   title: {
     color: AE_COLORS.gold,
     fontSize: 38,
     fontWeight: "900",
     marginBottom: 10,
   },
-
   subtitle: {
     color: AE_COLORS.textSoft,
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 24,
   },
-
   card: {
     padding: 22,
   },
-
   sectionTitle: {
     color: AE_COLORS.gold,
     fontSize: 19,
@@ -474,7 +577,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 14,
   },
-
   input: {
     backgroundColor: "rgba(255,255,255,0.07)",
     color: AE_COLORS.white,
@@ -485,12 +587,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.12)",
   },
-
   inputText: {
     color: AE_COLORS.white,
     fontSize: 16,
   },
-
   gpsText: {
     color: "#22c55e",
     fontSize: 13,
@@ -498,7 +598,6 @@ const styles = StyleSheet.create({
     marginTop: -6,
     marginBottom: 8,
   },
-
   suggestion: {
     backgroundColor: "rgba(255,255,255,0.07)",
     padding: 13,
@@ -507,18 +606,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(212,175,55,0.18)",
   },
-
   suggestionText: {
     color: AE_COLORS.white,
     fontSize: 14,
     lineHeight: 20,
   },
-
   optionRow: {
     flexDirection: "row",
     gap: 12,
   },
-
   optionButton: {
     backgroundColor: "rgba(255,255,255,0.07)",
     borderWidth: 1,
@@ -529,35 +625,71 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     alignItems: "center",
   },
-
   halfOption: {
     flex: 1,
   },
-
   fullOption: {
     width: "100%",
   },
-
   optionButtonActive: {
     backgroundColor: AE_COLORS.gold,
     borderColor: AE_COLORS.goldLight,
   },
-
   optionText: {
     color: AE_COLORS.white,
     fontWeight: "900",
     textAlign: "center",
   },
-
   optionTextActive: {
     color: AE_COLORS.navy2,
   },
-
   notesInput: {
     height: 105,
     textAlignVertical: "top",
   },
-
+  referralText: {
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: -6,
+    marginBottom: 10,
+  },
+  referralSuccess: {
+    color: "#22c55e",
+  },
+  referralError: {
+    color: "#FF6B6B",
+  },
+  referralButton: {
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.45)",
+    backgroundColor: "rgba(212,175,55,0.08)",
+    borderRadius: 15,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  referralButtonDisabled: {
+    opacity: 0.65,
+  },
+  referralButtonText: {
+    color: AE_COLORS.gold,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  referralAppliedBox: {
+    backgroundColor: "rgba(34,197,94,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.35)",
+    borderRadius: 14,
+    padding: 13,
+    marginBottom: 8,
+  },
+  referralAppliedText: {
+    color: "#22c55e",
+    fontSize: 13,
+    fontWeight: "900",
+    lineHeight: 19,
+  },
   submitButton: {
     marginTop: 24,
   },

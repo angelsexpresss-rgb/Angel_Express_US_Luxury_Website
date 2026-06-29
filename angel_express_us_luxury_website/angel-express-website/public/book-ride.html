@@ -14,6 +14,8 @@
   --ae-gold:#D4AF37;
   --ae-muted:#B8C1CC;
   --ae-border:rgba(212,175,55,.28);
+  --ae-green:#38d46f;
+  --ae-red:#ff6b6b;
 }
 
 *{box-sizing:border-box;}
@@ -79,6 +81,7 @@ body{
   font-weight:900;
   margin-bottom:24px;
   backdrop-filter:blur(14px);
+  text-decoration:none;
 }
 
 .booking-card{
@@ -212,18 +215,13 @@ textarea{
 .location-status{
   display:none;
   font-size:13px;
-  color:#38d46f;
+  color:var(--ae-green);
   margin-top:8px;
 }
 
-.location-status.error{color:#ff6b6b;}
+.location-status.error{color:var(--ae-red);}
 
-.option-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:14px;
-}
-
+.option-grid,
 .category-grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
@@ -251,6 +249,100 @@ textarea{
   color:#050b16;
 }
 
+.reward-card{
+  margin-top:10px;
+  padding:22px;
+  border-radius:24px;
+  border:1px solid rgba(212,175,55,.32);
+  background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(255,255,255,.05));
+}
+
+.reward-head{
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:16px;
+}
+
+.reward-icon{
+  width:46px;
+  height:46px;
+  border-radius:16px;
+  background:var(--ae-gold);
+  color:#050b16;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:20px;
+  flex:0 0 46px;
+}
+
+.reward-head h3{
+  margin:0 0 4px;
+  font-size:20px;
+}
+
+.reward-head p{
+  margin:0;
+  color:#dce5ee;
+  line-height:1.5;
+  font-size:14px;
+}
+
+.reward-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  align-items:end;
+}
+
+.apply-referral-btn{
+  min-height:56px;
+  padding:0 22px;
+  border:none;
+  border-radius:18px;
+  background:var(--ae-gold);
+  color:#050b16;
+  font-weight:950;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.apply-referral-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+}
+
+.reward-status{
+  display:none;
+  margin-top:14px;
+  padding:14px 16px;
+  border-radius:18px;
+  font-weight:800;
+  line-height:1.45;
+  font-size:14px;
+}
+
+.reward-status.success{
+  display:block;
+  color:#092613;
+  background:rgba(56,212,111,.95);
+}
+
+.reward-status.error{
+  display:block;
+  color:white;
+  background:rgba(255,107,107,.18);
+  border:1px solid rgba(255,107,107,.45);
+}
+
+.reward-status.info{
+  display:block;
+  color:white;
+  background:rgba(212,175,55,.13);
+  border:1px solid rgba(212,175,55,.32);
+}
+
 .continue-btn{
   width:100%;
   min-height:64px;
@@ -270,7 +362,6 @@ textarea{
   transform:translateY(-4px);
 }
 
-/* Match homepage floating buttons */
 .chat-toggle,
 .whatsapp-float{
   display:inline-flex !important;
@@ -308,11 +399,15 @@ textarea{
     font-size:16px;
   }
 
-  .option-grid{
+  .option-grid,
+  .reward-row{
     grid-template-columns:1fr;
   }
 
-  /* Hide desktop floating buttons on mobile to avoid duplicates */
+  .apply-referral-btn{
+    width:100%;
+  }
+
   .chat-toggle,
   .whatsapp-float{
     display:none !important;
@@ -525,13 +620,43 @@ textarea{
       </div>
 
       <div class="form-section">
+        <div class="section-title">Angel Rewards</div>
+
+        <div class="reward-card">
+          <div class="reward-head">
+            <div class="reward-icon">
+              <i class="fa-solid fa-gift"></i>
+            </div>
+            <div>
+              <h3>Have a referral code?</h3>
+              <p>
+                Enter your Angel Express referral code to receive a ride discount. Your referrer may also earn ride credit after your trip is completed.
+              </p>
+            </div>
+          </div>
+
+          <label>Promo / Referral Code</label>
+
+          <div class="reward-row">
+            <input type="text" id="referral" placeholder="Example: AEJOHN25" autocomplete="off">
+            <button type="button" id="applyReferralBtn" class="apply-referral-btn" onclick="applyReferralCode()">
+              Apply Code
+            </button>
+          </div>
+
+          <div id="rewardStatus" class="reward-status"></div>
+
+          <p class="helper-note">
+            Referral rewards are confirmed after the ride is completed and verified by Angel Express.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-section">
         <div class="section-title">Extra Details</div>
 
         <label>Notes</label>
         <textarea id="notes" placeholder="Notes e.g. flight number, pickup instructions, luggage details"></textarea>
-
-        <label>Promo / Referral Code</label>
-        <input type="text" id="referral" placeholder="Promo / Referral Code">
       </div>
 
       <button type="button" class="continue-btn" onclick="continueToEstimate()">
@@ -570,6 +695,8 @@ textarea{
   </a>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
 localStorage.removeItem("angelBooking");
 sessionStorage.removeItem("angelBookingCompleted");
@@ -580,6 +707,38 @@ let pickupLocation = null;
 let dropoffLocation = null;
 let pickupTimer = null;
 let dropoffTimer = null;
+
+let appliedReferral = {
+  referral_code: "",
+  referral_code_used: "",
+  referral_applied: false,
+  referral_status: "none",
+  referrer_user_id: null,
+  referral_discount: 0,
+  referral_discount_type: "fixed",
+  referral_credit_awarded: false,
+  referral_message: ""
+};
+
+/*
+  IMPORTANT:
+  Replace these two values with the same Supabase URL and anon key
+  used in your confirm-booking.html.
+*/
+const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+
+let supabaseClient = null;
+
+if(
+  SUPABASE_URL &&
+  SUPABASE_ANON_KEY &&
+  !SUPABASE_URL.includes("PASTE_YOUR") &&
+  !SUPABASE_ANON_KEY.includes("PASTE_YOUR") &&
+  window.supabase
+){
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 document.querySelectorAll(".option-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -602,6 +761,30 @@ function showStatus(type, message, isError = false){
   status.textContent = message;
   status.style.display = "block";
   status.classList.toggle("error", isError);
+}
+
+function showRewardStatus(message, statusType = "info"){
+  const box = document.getElementById("rewardStatus");
+  box.className = "reward-status " + statusType;
+  box.innerHTML = message;
+}
+
+function clearAppliedReferral(){
+  appliedReferral = {
+    referral_code: "",
+    referral_code_used: "",
+    referral_applied: false,
+    referral_status: "none",
+    referrer_user_id: null,
+    referral_discount: 0,
+    referral_discount_type: "fixed",
+    referral_credit_awarded: false,
+    referral_message: ""
+  };
+}
+
+function normalizeReferralCode(code){
+  return String(code || "").trim().toUpperCase().replace(/\s+/g, "");
 }
 
 function hideSuggestions(type){
@@ -686,6 +869,13 @@ document.getElementById("dropoff").addEventListener("input", (e) => {
   dropoffTimer = setTimeout(() => searchAddress(e.target.value, "dropoff"), 450);
 });
 
+document.getElementById("referral").addEventListener("input", () => {
+  clearAppliedReferral();
+  const box = document.getElementById("rewardStatus");
+  box.className = "reward-status";
+  box.style.display = "none";
+});
+
 document.addEventListener("click", (e) => {
   if(!e.target.closest(".address-wrapper")){
     hideSuggestions("pickup");
@@ -693,12 +883,175 @@ document.addEventListener("click", (e) => {
   }
 });
 
+async function applyReferralCode(){
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const rawCode = document.getElementById("referral").value;
+  const code = normalizeReferralCode(rawCode);
+  const btn = document.getElementById("applyReferralBtn");
+
+  clearAppliedReferral();
+
+  if(!code){
+    showRewardStatus("Please enter a referral code first.", "error");
+    return;
+  }
+
+  if(!email){
+    showRewardStatus("Please enter your email address before applying a referral code.", "error");
+    return;
+  }
+
+  document.getElementById("referral").value = code;
+  btn.disabled = true;
+  btn.textContent = "Checking...";
+  showRewardStatus("Checking referral code...", "info");
+
+  try{
+    if(!supabaseClient){
+      appliedReferral = {
+        referral_code: code,
+        referral_code_used: code,
+        referral_applied: false,
+        referral_status: "pending_validation",
+        referrer_user_id: null,
+        referral_discount: 0,
+        referral_discount_type: "fixed",
+        referral_credit_awarded: false,
+        referral_message: "Referral code saved. It will be validated on the confirmation page."
+      };
+
+      showRewardStatus(
+        `Referral code <strong>${code}</strong> saved. Final validation will happen before booking confirmation.`,
+        "info"
+      );
+      return;
+    }
+
+    let rewardRecord = null;
+    let lookupSource = "";
+
+    const referralCodesLookup = await supabaseClient
+      .from("referral_codes")
+      .select("*")
+      .eq("code", code)
+      .maybeSingle();
+
+    if(referralCodesLookup.data){
+      rewardRecord = referralCodesLookup.data;
+      lookupSource = "referral_codes";
+    }
+
+    if(!rewardRecord){
+      const passengerLookup = await supabaseClient
+        .from("passengers")
+        .select("id, first_name, last_name, email, referral_code")
+        .eq("referral_code", code)
+        .maybeSingle();
+
+      if(passengerLookup.data){
+        rewardRecord = passengerLookup.data;
+        lookupSource = "passengers";
+      }
+    }
+
+    if(!rewardRecord){
+      showRewardStatus("Invalid referral code. Please check the code and try again.", "error");
+      clearAppliedReferral();
+      return;
+    }
+
+    const referrerEmail = String(rewardRecord.email || "").trim().toLowerCase();
+
+    if(referrerEmail && referrerEmail === email){
+      showRewardStatus("You cannot use your own referral code for this booking.", "error");
+      clearAppliedReferral();
+      return;
+    }
+
+    if(lookupSource === "referral_codes" && rewardRecord.is_active === false){
+      showRewardStatus("This referral code is no longer active.", "error");
+      clearAppliedReferral();
+      return;
+    }
+
+    const referrerUserId =
+      rewardRecord.referrer_user_id ||
+      rewardRecord.user_id ||
+      rewardRecord.passenger_id ||
+      rewardRecord.id ||
+      null;
+
+    const referrerName = [rewardRecord.first_name, rewardRecord.last_name]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const discountAmount = Number(
+      rewardRecord.discount_amount ||
+      rewardRecord.referral_discount ||
+      10
+    );
+
+    const discountType =
+      rewardRecord.discount_percent || rewardRecord.discount_percentage
+        ? "percent"
+        : "fixed";
+
+    appliedReferral = {
+      referral_code: code,
+      referral_code_used: code,
+      referral_applied: true,
+      referral_status: "validated",
+      referrer_user_id: referrerUserId,
+      referral_discount: discountAmount,
+      referral_discount_type: discountType,
+      referral_credit_awarded: false,
+      referral_message: "Referral code applied successfully."
+    };
+
+    const discountText = discountType === "percent"
+      ? `${discountAmount}%`
+      : `$${discountAmount.toFixed(2)}`;
+
+    showRewardStatus(
+      `✅ Referral code <strong>${code}</strong> applied successfully.<br>
+       ${referrerName ? `Referrer: <strong>${referrerName}</strong><br>` : ""}
+       Estimated referral discount: <strong>${discountText}</strong>`,
+      "success"
+    );
+
+  }catch(error){
+    console.error("Referral validation error:", error);
+
+    appliedReferral = {
+      referral_code: code,
+      referral_code_used: code,
+      referral_applied: false,
+      referral_status: "pending_validation",
+      referrer_user_id: null,
+      referral_discount: 0,
+      referral_discount_type: "fixed",
+      referral_credit_awarded: false,
+      referral_message: "Referral code saved. Validation will continue on confirmation page."
+    };
+
+    showRewardStatus(
+      `Referral code <strong>${code}</strong> saved, but instant validation is unavailable right now. It will be checked before confirmation.`,
+      "info"
+    );
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Apply Code";
+  }
+}
+
 function continueToEstimate(){
   const email = document.getElementById("email").value.trim().toLowerCase();
   const pickupValue = document.getElementById("pickup").value.trim();
   const dropoffValue = document.getElementById("dropoff").value.trim();
   const tripDate = document.getElementById("tripDate").value;
   const tripTime = document.getElementById("tripTime").value;
+  const rawReferralCode = normalizeReferralCode(document.getElementById("referral").value);
 
   if(!email){ alert("Please enter your email address."); return; }
   if(!pickupValue || !dropoffValue){ alert("Please enter pickup and drop-off addresses."); return; }
@@ -706,6 +1059,20 @@ function continueToEstimate(){
   if(!dropoffLocation){ alert("Please select a drop-off address from the suggestions so GPS can be saved."); return; }
   if(!tripDate){ alert("Please select a pickup date."); return; }
   if(!tripTime){ alert("Please select a pickup time."); return; }
+
+  if(rawReferralCode && appliedReferral.referral_code_used !== rawReferralCode){
+    appliedReferral = {
+      referral_code: rawReferralCode,
+      referral_code_used: rawReferralCode,
+      referral_applied: false,
+      referral_status: "pending_validation",
+      referrer_user_id: null,
+      referral_discount: 0,
+      referral_discount_type: "fixed",
+      referral_credit_awarded: false,
+      referral_message: "Referral code entered but not applied yet."
+    };
+  }
 
   const bookingData = {
     email,
@@ -724,7 +1091,19 @@ function continueToEstimate(){
     passengers: document.getElementById("passengers").value,
     luggage: document.getElementById("luggage").value,
     notes: document.getElementById("notes").value,
-    referral: document.getElementById("referral").value
+
+    referral: rawReferralCode,
+    referral_code: rawReferralCode,
+    referral_code_used: appliedReferral.referral_code_used || rawReferralCode,
+    referral_applied: appliedReferral.referral_applied,
+    referral_status: appliedReferral.referral_status,
+    referrer_user_id: appliedReferral.referrer_user_id,
+    referral_discount: appliedReferral.referral_discount,
+    referral_discount_type: appliedReferral.referral_discount_type,
+    referral_credit_awarded: false,
+    referral_message: appliedReferral.referral_message,
+
+    source: "website"
   };
 
   localStorage.setItem("angelBooking", JSON.stringify(bookingData));

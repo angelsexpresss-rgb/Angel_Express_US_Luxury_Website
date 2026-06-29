@@ -1,14 +1,40 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  BadgeCheck,
+  CarFront,
+  Clock,
+  CreditCard,
+  MapPinned,
+  Route,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+} from "lucide-react-native";
+
+import { supabase } from "../lib/supabase";
+
+import {
+  AE_COLORS,
+  AngelCard,
+  AngelHeroButton,
+  fadeUp,
+  slowBackgroundZoom,
+} from "../components/angel";
+
+const GOLD = AE_COLORS.gold;
+const REFERRAL_DISCOUNT_AMOUNT = 10;
 
 function calculateTieredFare(distanceMiles: number) {
   if (distanceMiles <= 20) {
@@ -55,30 +81,171 @@ export default function FareEstimateScreen() {
   const passengers = String(params.passengers || "1");
   const luggageCount = String(params.luggageCount || "0");
   const notes = String(params.notes || "");
-  const promoCode = String(params.promoCode || "");
+
+  const incomingReferralCode = String(
+    params.referralCode || params.promoCode || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  const incomingReferrerUserId = String(params.referrerUserId || "");
+  const incomingReferralApplied =
+    String(params.referralApplied || "false") === "true";
 
   const [loading, setLoading] = useState(true);
   const [distanceMiles, setDistanceMiles] = useState(0);
   const [durationText, setDurationText] = useState("");
 
+  const [studentVerified, setStudentVerified] = useState(false);
+
+  const [referralCode, setReferralCode] = useState(incomingReferralCode);
+  const [referrerUserId, setReferrerUserId] = useState(incomingReferrerUserId);
+  const [referralApplied, setReferralApplied] = useState(false);
+  const [referralMessage, setReferralMessage] = useState(
+    incomingReferralCode ? "Checking referral..." : ""
+  );
+
+  const bgScale = useRef(new Animated.Value(1)).current;
+  const pageFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    slowBackgroundZoom(bgScale).start();
+    fadeUp(pageFade, 80).start();
+    loadEstimate();
+  }, []);
+
   const tier = calculateTieredFare(distanceMiles);
   const mileageFare = distanceMiles * tier.mileageRate;
-
   const oneWayFare = tier.baseFareAmount + mileageFare;
   const roundTripAdjustment = tripType === "Round Trip" ? oneWayFare : 0;
   const subtotal = oneWayFare + roundTripAdjustment;
 
-  const studentDiscount =
-    rideCategory === "Student Group Ride" ? subtotal * 0.2 : 0;
+  const studentDiscount = studentVerified ? subtotal * 0.2 : 0;
 
-  const finalPrice = Math.max(subtotal - studentDiscount, 0);
+  const referralDiscount =
+    referralApplied && referralCode
+      ? Math.min(REFERRAL_DISCOUNT_AMOUNT, Math.max(subtotal - studentDiscount, 0))
+      : 0;
+
+  const totalDiscount = studentDiscount + referralDiscount;
+  const finalPrice = Math.max(subtotal - totalDiscount, 0);
 
   const driverPayout = finalPrice * 0.7;
   const companyShare = finalPrice * 0.3;
 
-  useEffect(() => {
-    calculateRoute();
-  }, []);
+  async function loadEstimate() {
+    try {
+      setLoading(true);
+
+      await calculateRoute();
+      await loadStudentStatus();
+      await validateReferralCode();
+    } catch (error: any) {
+      Alert.alert(
+        "Fare Estimate Error",
+        error.message || "Could not calculate fare estimate."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadStudentStatus() {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) throw userError;
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("passenger_profiles")
+      .select("student_verified, student_status")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    setStudentVerified(Boolean(data?.student_verified || data?.student_status));
+  }
+
+  async function validateReferralCode() {
+    if (!incomingReferralCode) {
+      setReferralApplied(false);
+      setReferrerUserId("");
+      setReferralMessage("");
+      return;
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) throw userError;
+
+    if (!user) {
+      setReferralApplied(false);
+      setReferrerUserId("");
+      setReferralMessage("Please sign in to use a referral code.");
+      return;
+    }
+
+    if (
+      incomingReferralApplied &&
+      incomingReferrerUserId &&
+      incomingReferrerUserId !== user.id
+    ) {
+      setReferralApplied(true);
+      setReferrerUserId(incomingReferrerUserId);
+      setReferralMessage(`Referral applied: $${REFERRAL_DISCOUNT_AMOUNT} off`);
+      return;
+    }
+
+    const { data: referrer, error } = await supabase
+      .from("passenger_profiles")
+      .select("user_id, email, referral_code")
+      .ilike("referral_code", incomingReferralCode)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!referrer?.user_id) {
+      setReferralApplied(false);
+      setReferrerUserId("");
+      setReferralMessage("Invalid referral code");
+      return;
+    }
+
+    if (referrer.user_id === user.id) {
+      setReferralApplied(false);
+      setReferrerUserId("");
+      setReferralMessage("You cannot use your own referral code");
+      return;
+    }
+
+    const userEmail = user.email?.trim().toLowerCase() || "";
+
+    const { data: previousUse } = await supabase
+      .from("bookings")
+      .select("id")
+      .ilike("email", userEmail)
+      .eq("referral_applied", true)
+      .limit(1);
+
+    if (previousUse && previousUse.length > 0) {
+      setReferralApplied(false);
+      setReferrerUserId("");
+      setReferralMessage("Referral already used by this account");
+      return;
+    }
+
+    setReferralCode(incomingReferralCode);
+    setReferralApplied(true);
+    setReferrerUserId(referrer.user_id);
+    setReferralMessage(`Referral applied: $${REFERRAL_DISCOUNT_AMOUNT} off`);
+  }
 
   async function getCoordinates(address: string) {
     const response = await fetch(
@@ -97,56 +264,45 @@ export default function FareEstimateScreen() {
   }
 
   async function calculateRoute() {
-    try {
-      setLoading(true);
+    let pickup;
+    let dropoff;
 
-      let pickup;
-      let dropoff;
+    if (pickupLat && pickupLng && dropoffLat && dropoffLng) {
+      pickup = {
+        latitude: Number(pickupLat),
+        longitude: Number(pickupLng),
+      };
 
-      if (pickupLat && pickupLng && dropoffLat && dropoffLng) {
-        pickup = {
-          latitude: Number(pickupLat),
-          longitude: Number(pickupLng),
-        };
-
-        dropoff = {
-          latitude: Number(dropoffLat),
-          longitude: Number(dropoffLng),
-        };
-      } else {
-        pickup = await getCoordinates(pickupAddress);
-        dropoff = await getCoordinates(dropoffAddress);
-      }
-
-      const routeUrl = `https://router.project-osrm.org/route/v1/driving/${pickup.longitude},${pickup.latitude};${dropoff.longitude},${dropoff.latitude}?overview=false`;
-
-      const response = await fetch(routeUrl);
-      const data = await response.json();
-
-      if (!data.routes || data.routes.length === 0) {
-        throw new Error("Could not calculate route distance.");
-      }
-
-      const meters = data.routes[0].distance;
-      const seconds = data.routes[0].duration;
-
-      const miles = meters / 1609.344;
-      const minutes = Math.round(seconds / 60);
-
-      setDistanceMiles(Number(miles.toFixed(1)));
-
-      const hours = Math.floor(minutes / 60);
-      const mins = minutes % 60;
-
-      setDurationText(hours > 0 ? `${hours}h ${mins}m` : `${mins}m`);
-    } catch (error: any) {
-      Alert.alert(
-        "Route Error",
-        error.message || "Could not calculate fare estimate."
-      );
-    } finally {
-      setLoading(false);
+      dropoff = {
+        latitude: Number(dropoffLat),
+        longitude: Number(dropoffLng),
+      };
+    } else {
+      pickup = await getCoordinates(pickupAddress);
+      dropoff = await getCoordinates(dropoffAddress);
     }
+
+    const routeUrl = `https://router.project-osrm.org/route/v1/driving/${pickup.longitude},${pickup.latitude};${dropoff.longitude},${dropoff.latitude}?overview=false`;
+
+    const response = await fetch(routeUrl);
+    const data = await response.json();
+
+    if (!data.routes || data.routes.length === 0) {
+      throw new Error("Could not calculate route distance.");
+    }
+
+    const meters = data.routes[0].distance;
+    const seconds = data.routes[0].duration;
+
+    const miles = meters / 1609.344;
+    const minutes = Math.round(seconds / 60);
+
+    setDistanceMiles(Number(miles.toFixed(1)));
+
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    setDurationText(hours > 0 ? `${hours}h ${mins}m` : `${mins}m`);
   }
 
   function confirmBooking() {
@@ -168,7 +324,12 @@ export default function FareEstimateScreen() {
         passengers,
         luggageCount,
         notes,
-        promoCode,
+
+        referralCode: referralApplied ? referralCode : "",
+        referrerUserId: referralApplied ? referrerUserId : "",
+        referralDiscount: referralApplied ? referralDiscount.toFixed(2) : "0",
+        referralApplied: referralApplied ? "true" : "false",
+        promoCode: referralApplied ? referralCode : "",
 
         distanceMiles: distanceMiles.toString(),
         durationText,
@@ -182,6 +343,7 @@ export default function FareEstimateScreen() {
 
         baseFare: subtotal.toFixed(2),
         studentDiscount: studentDiscount.toFixed(2),
+        totalDiscount: totalDiscount.toFixed(2),
         roundTripAdjustment: roundTripAdjustment.toFixed(2),
         finalPrice: finalPrice.toFixed(2),
 
@@ -191,257 +353,508 @@ export default function FareEstimateScreen() {
     });
   }
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Fare Estimate</Text>
+  const pageTranslate = pageFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
 
-      <Text style={styles.subtitle}>
-        Review your estimated trip distance, price, and ride details.
-      </Text>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Trip Route</Text>
-
-        <Text style={styles.label}>Pickup</Text>
-        <Text style={styles.value}>{pickupAddress}</Text>
-
-        <Text style={styles.label}>Drop-off</Text>
-        <Text style={styles.value}>{dropoffAddress}</Text>
-
-        <Text style={styles.label}>Date & Time</Text>
-        <Text style={styles.value}>
-          {rideDate} at {rideTime}
-        </Text>
-
-        <Text style={styles.gpsText}>
-          GPS coordinates saved for chauffeur navigation ✓
-        </Text>
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={GOLD} size="large" />
+        <Text style={styles.loadingText}>Calculating fare estimate...</Text>
       </View>
+    );
+  }
 
-      {loading ? (
-        <View style={styles.loadingCard}>
-          <ActivityIndicator size="large" color="#D4AF37" />
-          <Text style={styles.loadingText}>Calculating route...</Text>
-        </View>
-      ) : (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Estimate Summary</Text>
+  return (
+    <View style={styles.root}>
+      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+        <ImageBackground
+          source={require("../assets/images/dashboard-bg.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
 
-          <Row label="Pricing Tier" value={tier.pricingTierLabel} />
-          <Row label="Distance" value={`${distanceMiles} miles`} />
-          <Row label="Estimated Drive Time" value={durationText || "N/A"} />
-          <Row
-            label="Fare Method"
-            value={`$${tier.baseFareAmount.toFixed(2)} base + $${tier.mileageRate.toFixed(2)}/mile`}
-          />
-          <Row label="Trip Type" value={tripType} />
-          <Row label="Ride Category" value={rideCategory} />
-          <Row label="Mileage Fare" value={`$${mileageFare.toFixed(2)}`} />
-          <Row label="Base + Mileage" value={`$${oneWayFare.toFixed(2)}`} />
+      <View style={styles.overlay}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity style={styles.backTopButton} onPress={() => router.back()}>
+            <Text style={styles.backTopText}>‹ Back</Text>
+          </TouchableOpacity>
 
-          {tripType === "Round Trip" && (
-            <Row
-              label="Round-trip Adjustment"
-              value={`$${roundTripAdjustment.toFixed(2)}`}
+          <Animated.View
+            style={{
+              opacity: pageFade,
+              transform: [{ translateY: pageTranslate }],
+            }}
+          >
+            <View style={styles.kicker}>
+              <Text style={styles.kickerText}>A  RIDE PRICE REVIEW</Text>
+            </View>
+
+            <Text style={styles.title}>Fare Estimate</Text>
+
+            <Text style={styles.subtitle}>
+              Review your distance, estimated drive time, verified discounts, and final trip estimate.
+            </Text>
+
+            <AngelCard variant="gold" style={styles.heroCard}>
+              <View style={styles.heroIcon}>
+                <CreditCard size={30} color={AE_COLORS.navy2} />
+              </View>
+
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroTitle}>Estimated Fare</Text>
+                <Text style={styles.heroPrice}>${finalPrice.toFixed(2)}</Text>
+                <Text style={styles.heroText}>
+                  {distanceMiles} miles • {durationText || "Drive time unavailable"}
+                </Text>
+              </View>
+            </AngelCard>
+
+            <View style={styles.summaryGrid}>
+              <MiniStat icon={<Route size={18} color={GOLD} />} title="Distance" value={`${distanceMiles} mi`} />
+              <MiniStat icon={<Clock size={18} color={GOLD} />} title="Drive Time" value={durationText || "N/A"} />
+              <MiniStat icon={<CarFront size={18} color={GOLD} />} title="Trip Type" value={tripType} />
+            </View>
+
+            <AngelCard style={styles.card}>
+              <View style={styles.cardHeader}>
+                <MapPinned size={22} color={GOLD} />
+                <Text style={styles.cardTitle}>Trip Route</Text>
+              </View>
+
+              <Info label="Pickup" value={pickupAddress} />
+              <Info label="Drop-off" value={dropoffAddress} />
+              <Info label="Date & Time" value={`${rideDate} at ${rideTime}`} />
+              <Info label="Ride Category" value={rideCategory} />
+
+              <View style={styles.gpsBox}>
+                <ShieldCheck size={18} color="#22c55e" />
+                <Text style={styles.gpsText}>
+                  GPS coordinates saved for chauffeur navigation.
+                </Text>
+              </View>
+            </AngelCard>
+
+            <AngelCard style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Sparkles size={22} color={GOLD} />
+                <Text style={styles.cardTitle}>Fare Breakdown</Text>
+              </View>
+
+              <BreakdownRow label="Pricing Tier" value={tier.pricingTierLabel} />
+              <BreakdownRow
+                label="Fare Method"
+                value={`$${tier.baseFareAmount.toFixed(2)} base + $${tier.mileageRate.toFixed(2)}/mile`}
+              />
+              <BreakdownRow label="Mileage Fare" value={`$${mileageFare.toFixed(2)}`} />
+              <BreakdownRow label="Base + Mileage" value={`$${oneWayFare.toFixed(2)}`} />
+
+              {tripType === "Round Trip" ? (
+                <BreakdownRow
+                  label="Round-trip Adjustment"
+                  value={`$${roundTripAdjustment.toFixed(2)}`}
+                />
+              ) : null}
+
+              <View style={styles.divider} />
+
+              <BreakdownRow label="Subtotal" value={`$${subtotal.toFixed(2)}`} />
+
+              {studentDiscount > 0 ? (
+                <DiscountRow
+                  icon={<BadgeCheck size={17} color="#22c55e" />}
+                  label="Verified Student Discount"
+                  value={`-$${studentDiscount.toFixed(2)}`}
+                />
+              ) : (
+                <BreakdownRow label="Student Discount" value="$0.00" />
+              )}
+
+              {referralCode ? (
+                referralApplied ? (
+                  <DiscountRow
+                    icon={<Tag size={17} color="#22c55e" />}
+                    label={`Referral Discount (${referralCode})`}
+                    value={`-$${referralDiscount.toFixed(2)}`}
+                  />
+                ) : (
+                  <WarningRow
+                    label={`Referral Code (${referralCode})`}
+                    value={referralMessage || "Not applied"}
+                  />
+                )
+              ) : (
+                <BreakdownRow label="Referral Discount" value="$0.00" />
+              )}
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Final Price</Text>
+                <Text style={styles.totalValue}>${finalPrice.toFixed(2)}</Text>
+              </View>
+            </AngelCard>
+
+            <AngelCard style={styles.noticeCard}>
+              <View style={styles.cardHeader}>
+                <ShieldCheck size={22} color={GOLD} />
+                <Text style={styles.cardTitle}>Estimate Notice</Text>
+              </View>
+
+              <Text style={styles.notice}>
+                This is an estimate. Angel Express may review and confirm the final fare
+                based on route, wait time, airport pickup, event traffic, tolls, and special
+                requests. Referral credits are awarded to the referrer only after the ride is completed.
+              </Text>
+            </AngelCard>
+
+            <AngelHeroButton
+              title="Continue to Confirm Booking"
+              onPress={confirmBooking}
+              variant="gold"
+              style={styles.actionButton}
             />
-          )}
 
-          <Row
-            label="Student Discount"
-            value={`-$${studentDiscount.toFixed(2)}`}
-          />
-
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Final Price</Text>
-            <Text style={styles.totalValue}>${finalPrice.toFixed(2)}</Text>
-          </View>
-        </View>
-      )}
-
-      <Text style={styles.notice}>
-        This is an estimate. Angel Express may review and confirm the final fare
-        based on route, wait time, airport pickup, event traffic, and special
-        requests.
-      </Text>
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={confirmBooking}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>Continue to Confirm Booking</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backText}>Back to Booking Form</Text>
-      </TouchableOpacity>
-    </ScrollView>
+            <AngelHeroButton
+              title="Back to Booking Form"
+              onPress={() => router.back()}
+              variant="outline"
+              style={styles.backButton}
+            />
+          </Animated.View>
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function MiniStat({
+  icon,
+  title,
+  value,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+}) {
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+    <View style={styles.miniStat}>
+      {icon}
+      <Text style={styles.miniTitle}>{title}</Text>
+      <Text style={styles.miniValue}>{value}</Text>
+    </View>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value || "N/A"}</Text>
+    </View>
+  );
+}
+
+function BreakdownRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.breakdownRow}>
+      <Text style={styles.breakdownLabel}>{label}</Text>
+      <Text style={styles.breakdownValue}>{value}</Text>
+    </View>
+  );
+}
+
+function DiscountRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.discountRow}>
+      <View style={styles.discountLeft}>
+        {icon}
+        <Text style={styles.discountLabel}>{label}</Text>
+      </View>
+      <Text style={styles.discountValue}>{value}</Text>
+    </View>
+  );
+}
+
+function WarningRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.warningRow}>
+      <Text style={styles.warningLabel}>{label}</Text>
+      <Text style={styles.warningValue}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#040C18",
-  },
+  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
+  bgWrap: { ...StyleSheet.absoluteFillObject },
+  background: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
+  container: { flex: 1 },
+  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
 
-  content: {
-    padding: 22,
-    paddingTop: 70,
-    paddingBottom: 50,
+  center: {
+    flex: 1,
+    backgroundColor: AE_COLORS.navy,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: { color: AE_COLORS.white, marginTop: 12 },
+
+  backTopButton: { alignSelf: "flex-start", marginBottom: 18 },
+  backTopText: { color: GOLD, fontSize: 18, fontWeight: "900" },
+
+  kicker: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+  },
+  kickerText: {
+    color: GOLD,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.3,
   },
 
   title: {
-    color: "#D4AF37",
-    fontSize: 34,
+    color: GOLD,
+    fontSize: 38,
     fontWeight: "900",
     marginBottom: 10,
   },
-
   subtitle: {
-    color: "#C9D0D8",
+    color: AE_COLORS.textSoft,
     fontSize: 16,
     lineHeight: 24,
     marginBottom: 24,
   },
 
-  card: {
-    backgroundColor: "#071426",
-    borderRadius: 18,
-    padding: 18,
+  heroCard: {
+    minHeight: 132,
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 18,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
   },
-
-  cardTitle: {
-    color: "#D4AF37",
-    fontSize: 22,
+  heroIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 19,
+    backgroundColor: "rgba(6,17,31,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  heroCopy: { flex: 1 },
+  heroTitle: {
+    color: AE_COLORS.navy2,
+    fontSize: 20,
     fontWeight: "900",
-    marginBottom: 16,
-  },
-
-  label: {
-    color: "#D4AF37",
-    fontSize: 14,
-    fontWeight: "800",
-    marginTop: 10,
     marginBottom: 4,
   },
-
-  value: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    lineHeight: 22,
+  heroPrice: {
+    color: AE_COLORS.navy2,
+    fontSize: 42,
+    fontWeight: "900",
+    letterSpacing: -1,
+  },
+  heroText: {
+    color: "rgba(6,17,31,0.78)",
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "800",
   },
 
+  summaryGrid: {
+    flexDirection: "row",
+    gap: 9,
+    marginBottom: 18,
+  },
+  miniStat: {
+    flex: 1,
+    minHeight: 88,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.22)",
+    backgroundColor: "rgba(13,20,34,0.84)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 8,
+    gap: 5,
+  },
+  miniTitle: {
+    color: AE_COLORS.textSoft,
+    fontSize: 11,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  miniValue: {
+    color: AE_COLORS.white,
+    fontSize: 13,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+
+  card: { padding: 20, marginBottom: 18 },
+  noticeCard: { padding: 20, marginBottom: 18 },
+
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 16,
+  },
+  cardTitle: { color: GOLD, fontSize: 22, fontWeight: "900", flex: 1 },
+
+  infoRow: { marginBottom: 14 },
+  infoLabel: {
+    color: GOLD,
+    fontSize: 12,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  infoValue: {
+    color: AE_COLORS.white,
+    fontSize: 15.5,
+    lineHeight: 23,
+  },
+
+  gpsBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(34,197,94,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.35)",
+    borderRadius: 15,
+    padding: 13,
+    marginTop: 6,
+  },
   gpsText: {
     color: "#22c55e",
     fontSize: 13,
-    fontWeight: "800",
-    marginTop: 14,
+    fontWeight: "900",
+    flex: 1,
   },
 
-  loadingCard: {
-    backgroundColor: "#071426",
-    borderRadius: 18,
-    padding: 30,
-    marginBottom: 18,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-  },
-
-  loadingText: {
-    color: "#FFFFFF",
-    marginTop: 14,
-    fontSize: 16,
-  },
-
-  row: {
+  breakdownRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 13,
   },
-
-  rowLabel: {
-    color: "#C9D0D8",
+  breakdownLabel: {
+    color: AE_COLORS.textSoft,
     fontSize: 15,
     flex: 1,
   },
-
-  rowValue: {
-    color: "#FFFFFF",
+  breakdownValue: {
+    color: AE_COLORS.white,
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "900",
     textAlign: "right",
     flex: 1,
+  },
+
+  warningRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 13,
+  },
+  warningLabel: {
+    color: "#FF6B6B",
+    fontSize: 15,
+    fontWeight: "900",
+    flex: 1,
+  },
+  warningValue: {
+    color: "#FF6B6B",
+    fontSize: 15,
+    fontWeight: "900",
+    textAlign: "right",
+    flex: 1,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(212,175,55,0.22)",
+    marginVertical: 10,
+  },
+
+  discountRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 13,
+  },
+  discountLeft: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+  },
+  discountLabel: {
+    color: "#22c55e",
+    fontSize: 15,
+    fontWeight: "900",
+    flex: 1,
+  },
+  discountValue: {
+    color: "#22c55e",
+    fontSize: 15,
+    fontWeight: "900",
+    textAlign: "right",
   },
 
   totalRow: {
     borderTopWidth: 1,
     borderTopColor: "rgba(212,175,55,0.25)",
     paddingTop: 16,
-    marginTop: 10,
+    marginTop: 12,
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: 12,
   },
-
   totalLabel: {
-    color: "#D4AF37",
+    color: GOLD,
     fontSize: 22,
     fontWeight: "900",
   },
-
   totalValue: {
-    color: "#D4AF37",
-    fontSize: 24,
+    color: GOLD,
+    fontSize: 25,
     fontWeight: "900",
   },
 
   notice: {
-    color: "#C9D0D8",
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 20,
+    color: AE_COLORS.textSoft,
+    fontSize: 15,
+    lineHeight: 23,
   },
 
-  button: {
-    backgroundColor: "#D4AF37",
-    paddingVertical: 18,
-    borderRadius: 15,
-    alignItems: "center",
-    marginBottom: 16,
+  actionButton: {
+    marginTop: 2,
   },
-
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-
-  buttonText: {
-    color: "#071426",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
   backButton: {
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-
-  backText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    textDecorationLine: "underline",
+    marginTop: 14,
   },
 });
