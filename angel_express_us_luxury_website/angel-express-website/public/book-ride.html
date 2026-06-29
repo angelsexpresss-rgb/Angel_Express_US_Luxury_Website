@@ -7,6 +7,7 @@
 
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 :root{
@@ -17,436 +18,126 @@
   --ae-green:#38d46f;
   --ae-red:#ff6b6b;
 }
-
 *{box-sizing:border-box;}
-
-body{
-  margin:0;
-  background:#050b16;
-  color:white;
-  overflow-x:hidden;
-}
-
-.mobile-menu{
-  display:none !important;
-}
-
-.mobile-menu.open{
-  display:grid !important;
-  grid-template-columns:1fr;
-  gap:9px;
-}
-
-.page-shell{
-  min-height:100vh;
-  padding:125px 5.5% 90px;
-  position:relative;
-  overflow:hidden;
-}
-
+body{margin:0;background:#050b16;color:white;overflow-x:hidden;}
+.mobile-menu{display:none!important;}
+.mobile-menu.open{display:grid!important;grid-template-columns:1fr;gap:9px;}
+.page-shell{min-height:100vh;padding:125px 5.5% 90px;position:relative;overflow:hidden;}
 .page-bg{
-  position:fixed;
-  inset:0;
-  z-index:-3;
-  background:
-    linear-gradient(90deg,rgba(5,11,22,.96),rgba(5,11,22,.74)),
-    url("images/hero/01-dfw-airport.jpg");
-  background-size:cover;
-  background-position:center;
+  position:fixed;inset:0;z-index:-3;
+  background:linear-gradient(90deg,rgba(5,11,22,.96),rgba(5,11,22,.74)),url("images/hero/01-dfw-airport.jpg");
+  background-size:cover;background-position:center;
 }
-
 .page-bg::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(circle at 75% 20%,rgba(212,175,55,.22),transparent 30%),
-    linear-gradient(180deg,rgba(5,11,22,.1),#050b16 95%);
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 75% 20%,rgba(212,175,55,.22),transparent 30%),linear-gradient(180deg,rgba(5,11,22,.1),#050b16 95%);
 }
-
-.booking-wrap{
-  max-width:980px;
-  margin:0 auto;
-}
-
+.booking-wrap{max-width:980px;margin:0 auto;}
 .back-btn{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  padding:13px 20px;
-  border-radius:999px;
-  background:rgba(255,255,255,.08);
-  border:1px solid var(--ae-border);
-  color:white;
-  font-weight:900;
-  margin-bottom:24px;
-  backdrop-filter:blur(14px);
-  text-decoration:none;
+  display:inline-flex;align-items:center;gap:10px;padding:13px 20px;border-radius:999px;
+  background:rgba(255,255,255,.08);border:1px solid var(--ae-border);color:white;
+  font-weight:900;margin-bottom:24px;backdrop-filter:blur(14px);text-decoration:none;
 }
-
 .booking-card{
-  background:rgba(13,20,34,.78);
-  border:1px solid var(--ae-border);
-  border-radius:34px;
-  padding:clamp(24px,5vw,46px);
-  backdrop-filter:blur(20px);
+  background:rgba(13,20,34,.78);border:1px solid var(--ae-border);border-radius:34px;
+  padding:clamp(24px,5vw,46px);backdrop-filter:blur(20px);
   box-shadow:0 30px 90px rgba(0,0,0,.38);
 }
-
 .booking-kicker{
-  display:inline-flex;
-  gap:10px;
-  align-items:center;
-  color:var(--ae-gold);
-  border:1px solid rgba(212,175,55,.35);
-  border-radius:999px;
-  padding:9px 14px;
-  font-size:12px;
-  font-weight:900;
-  letter-spacing:1.5px;
-  text-transform:uppercase;
+  display:inline-flex;gap:10px;align-items:center;color:var(--ae-gold);
+  border:1px solid rgba(212,175,55,.35);border-radius:999px;padding:9px 14px;
+  font-size:12px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;
   background:rgba(255,255,255,.07);
 }
-
-.booking-title{
-  font-size:clamp(44px,7vw,82px);
-  line-height:.95;
-  margin:22px 0 14px;
-  letter-spacing:-2px;
-}
-
+.booking-title{font-size:clamp(44px,7vw,82px);line-height:.95;margin:22px 0 14px;letter-spacing:-2px;}
 .booking-title span{color:var(--ae-gold);}
-
-.booking-subtitle{
-  color:#dce5ee;
-  font-size:18px;
-  line-height:1.7;
-  max-width:720px;
-  margin-bottom:36px;
-}
-
-.form-section{
-  margin-top:34px;
-  padding-top:28px;
-  border-top:1px solid rgba(255,255,255,.1);
-}
-
-.section-title{
-  font-size:24px;
-  font-weight:900;
-  color:var(--ae-gold);
-  margin:0 0 18px;
-}
-
-.field-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:18px;
-}
-
-label{
-  display:block;
-  margin:16px 0 8px;
-  color:white;
-  font-weight:900;
-  font-size:13px;
-  letter-spacing:.7px;
-  text-transform:uppercase;
-}
-
+.booking-subtitle{color:#dce5ee;font-size:18px;line-height:1.7;max-width:720px;margin-bottom:36px;}
+.form-section{margin-top:34px;padding-top:28px;border-top:1px solid rgba(255,255,255,.1);}
+.section-title{font-size:24px;font-weight:900;color:var(--ae-gold);margin:0 0 18px;}
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+label{display:block;margin:16px 0 8px;color:white;font-weight:900;font-size:13px;letter-spacing:.7px;text-transform:uppercase;}
 input,textarea,select{
-  width:100%;
-  min-height:56px;
-  padding:16px;
-  border-radius:18px;
-  border:1px solid rgba(212,175,55,.28);
-  background:rgba(5,11,22,.82);
-  color:white;
-  font-size:16px;
-  outline:none;
+  width:100%;min-height:56px;padding:16px;border-radius:18px;
+  border:1px solid rgba(212,175,55,.28);background:rgba(5,11,22,.82);
+  color:white;font-size:16px;outline:none;
 }
-
-input:focus,textarea:focus,select:focus{
-  border-color:var(--ae-gold);
-  box-shadow:0 0 0 4px rgba(212,175,55,.12);
-}
-
-textarea{
-  min-height:130px;
-  resize:vertical;
-}
-
-.helper-note{
-  font-size:13px;
-  color:var(--ae-muted);
-  margin:8px 0 12px;
-  line-height:1.5;
-}
-
+input:focus,textarea:focus,select:focus{border-color:var(--ae-gold);box-shadow:0 0 0 4px rgba(212,175,55,.12);}
+textarea{min-height:130px;resize:vertical;}
+.helper-note{font-size:13px;color:var(--ae-muted);margin:8px 0 12px;line-height:1.5;}
 .address-wrapper{position:relative;}
-
 .suggestions-box{
-  position:absolute;
-  top:calc(100% + 8px);
-  left:0;
-  right:0;
-  z-index:50;
-  display:none;
-  background:#081426;
-  border:1px solid rgba(212,175,55,.4);
-  border-radius:18px;
-  overflow:hidden;
-  box-shadow:0 18px 45px rgba(0,0,0,.45);
+  position:absolute;top:calc(100% + 8px);left:0;right:0;z-index:50;display:none;
+  background:#081426;border:1px solid rgba(212,175,55,.4);border-radius:18px;
+  overflow:hidden;box-shadow:0 18px 45px rgba(0,0,0,.45);
 }
-
-.suggestion-item{
-  padding:14px 16px;
-  cursor:pointer;
-  border-bottom:1px solid rgba(255,255,255,.08);
-  color:white;
-  font-size:14px;
-  line-height:1.4;
-}
-
-.suggestion-item:hover{
-  background:rgba(212,175,55,.14);
-}
-
-.location-status{
-  display:none;
-  font-size:13px;
-  color:var(--ae-green);
-  margin-top:8px;
-}
-
+.suggestion-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08);color:white;font-size:14px;line-height:1.4;}
+.suggestion-item:hover{background:rgba(212,175,55,.14);}
+.location-status{display:none;font-size:13px;color:var(--ae-green);margin-top:8px;}
 .location-status.error{color:var(--ae-red);}
-
-.option-grid,
-.category-grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:14px;
-}
-
+.option-grid,.category-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
 .option-btn,.category-btn{
-  min-height:62px;
-  border-radius:18px;
-  border:1px solid rgba(212,175,55,.28);
-  background:rgba(5,11,22,.82);
-  color:white;
-  font-weight:900;
-  cursor:pointer;
-  transition:.25s ease;
+  min-height:62px;border-radius:18px;border:1px solid rgba(212,175,55,.28);
+  background:rgba(5,11,22,.82);color:white;font-weight:900;cursor:pointer;transition:.25s ease;
 }
-
-.option-btn:hover,.category-btn:hover{
-  transform:translateY(-3px);
-  border-color:var(--ae-gold);
-}
-
-.option-btn.active,.category-btn.active{
-  background:var(--ae-gold);
-  color:#050b16;
-}
-
-.reward-card{
-  margin-top:10px;
-  padding:22px;
-  border-radius:24px;
-  border:1px solid rgba(212,175,55,.32);
+.option-btn:hover,.category-btn:hover{transform:translateY(-3px);border-color:var(--ae-gold);}
+.option-btn.active,.category-btn.active{background:var(--ae-gold);color:#050b16;}
+.student-card,.reward-card{
+  margin-top:10px;padding:22px;border-radius:24px;border:1px solid rgba(212,175,55,.32);
   background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(255,255,255,.05));
 }
-
-.reward-head{
-  display:flex;
-  align-items:flex-start;
-  gap:14px;
-  margin-bottom:16px;
+.student-card.success{border-color:rgba(56,212,111,.35);background:linear-gradient(135deg,rgba(56,212,111,.12),rgba(255,255,255,.05));}
+.student-head,.reward-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;}
+.student-icon,.reward-icon{
+  width:46px;height:46px;border-radius:16px;background:var(--ae-gold);color:#050b16;
+  display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 46px;
 }
-
-.reward-icon{
-  width:46px;
-  height:46px;
-  border-radius:16px;
-  background:var(--ae-gold);
-  color:#050b16;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:20px;
-  flex:0 0 46px;
+.student-card.success .student-icon{background:var(--ae-green);}
+.student-head h3,.reward-head h3{margin:0 0 4px;font-size:20px;}
+.student-head p,.reward-head p{margin:0;color:#dce5ee;line-height:1.5;font-size:14px;}
+.reward-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;}
+.apply-referral-btn,.check-student-btn{
+  min-height:56px;padding:0 22px;border:none;border-radius:18px;background:var(--ae-gold);
+  color:#050b16;font-weight:950;cursor:pointer;white-space:nowrap;
 }
-
-.reward-head h3{
-  margin:0 0 4px;
-  font-size:20px;
+.apply-referral-btn:disabled,.check-student-btn:disabled{opacity:.65;cursor:not-allowed;}
+.reward-status,.student-status{
+  display:none;margin-top:14px;padding:14px 16px;border-radius:18px;
+  font-weight:800;line-height:1.45;font-size:14px;
 }
-
-.reward-head p{
-  margin:0;
-  color:#dce5ee;
-  line-height:1.5;
-  font-size:14px;
-}
-
-.reward-row{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:12px;
-  align-items:end;
-}
-
-.apply-referral-btn{
-  min-height:56px;
-  padding:0 22px;
-  border:none;
-  border-radius:18px;
-  background:var(--ae-gold);
-  color:#050b16;
-  font-weight:950;
-  cursor:pointer;
-  white-space:nowrap;
-}
-
-.apply-referral-btn:disabled{
-  opacity:.65;
-  cursor:not-allowed;
-}
-
-.reward-status{
-  display:none;
-  margin-top:14px;
-  padding:14px 16px;
-  border-radius:18px;
-  font-weight:800;
-  line-height:1.45;
-  font-size:14px;
-}
-
-.reward-status.success{
-  display:block;
-  color:#092613;
-  background:rgba(56,212,111,.95);
-}
-
-.reward-status.error{
-  display:block;
-  color:white;
-  background:rgba(255,107,107,.18);
-  border:1px solid rgba(255,107,107,.45);
-}
-
-.reward-status.info{
-  display:block;
-  color:white;
-  background:rgba(212,175,55,.13);
-  border:1px solid rgba(212,175,55,.32);
-}
-
+.reward-status.success,.student-status.success{display:block;color:#092613;background:rgba(56,212,111,.95);}
+.reward-status.error,.student-status.error{display:block;color:white;background:rgba(255,107,107,.18);border:1px solid rgba(255,107,107,.45);}
+.reward-status.info,.student-status.info{display:block;color:white;background:rgba(212,175,55,.13);border:1px solid rgba(212,175,55,.32);}
 .continue-btn{
-  width:100%;
-  min-height:64px;
-  margin-top:36px;
-  border:none;
-  border-radius:999px;
-  background:var(--ae-gold);
-  color:#050b16;
-  font-size:19px;
-  font-weight:950;
-  cursor:pointer;
-  box-shadow:0 20px 55px rgba(212,175,55,.28);
-  transition:.25s ease;
+  width:100%;min-height:64px;margin-top:36px;border:none;border-radius:999px;background:var(--ae-gold);
+  color:#050b16;font-size:19px;font-weight:950;cursor:pointer;box-shadow:0 20px 55px rgba(212,175,55,.28);transition:.25s ease;
 }
-
-.continue-btn:hover{
-  transform:translateY(-4px);
-}
-
-.chat-toggle,
-.whatsapp-float{
-  display:inline-flex !important;
-  visibility:visible !important;
-  opacity:1 !important;
-}
-
-.mobile-support-dock{
-  display:none;
-}
+.continue-btn:hover{transform:translateY(-4px);}
+.chat-toggle,.whatsapp-float{display:inline-flex!important;visibility:visible!important;opacity:1!important;}
+.mobile-support-dock{display:none;}
 
 @media(max-width:980px){
   .page-shell{padding-top:112px;}
-
-  .field-grid,
-  .category-grid{
-    grid-template-columns:1fr;
-  }
+  .field-grid,.category-grid{grid-template-columns:1fr;}
 }
-
 @media(max-width:640px){
-  .page-shell{
-    padding:100px 4.5% 120px;
-  }
-
-  .booking-card{
-    border-radius:26px;
-  }
-
-  .booking-title{
-    font-size:42px;
-  }
-
-  .booking-subtitle{
-    font-size:16px;
-  }
-
-  .option-grid,
-  .reward-row{
-    grid-template-columns:1fr;
-  }
-
-  .apply-referral-btn{
-    width:100%;
-  }
-
-  .chat-toggle,
-  .whatsapp-float{
-    display:none !important;
-  }
-
+  .page-shell{padding:100px 4.5% 120px;}
+  .booking-card{border-radius:26px;}
+  .booking-title{font-size:42px;}
+  .booking-subtitle{font-size:16px;}
+  .option-grid,.reward-row{grid-template-columns:1fr;}
+  .apply-referral-btn,.check-student-btn{width:100%;}
+  .chat-toggle,.whatsapp-float{display:none!important;}
   .mobile-support-dock{
-    position:fixed;
-    left:12px;
-    right:12px;
-    bottom:calc(env(safe-area-inset-bottom) + 14px);
-    z-index:999999;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
+    position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);
+    z-index:999999;display:grid;grid-template-columns:1fr 1fr;gap:10px;
   }
-
   .mobile-support-btn{
-    min-height:48px;
-    border-radius:999px;
-    border:none;
-    font-weight:900;
-    font-size:13px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    text-decoration:none;
+    min-height:48px;border-radius:999px;border:none;font-weight:900;font-size:13px;
+    display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
     box-shadow:0 14px 35px rgba(0,0,0,.35);
   }
-
-  .mobile-support-btn.ai{
-    background:#D4AF37;
-    color:#050A14;
-  }
-
-  .mobile-support-btn.whatsapp{
-    background:#25D366;
-    color:#050A14;
-  }
+  .mobile-support-btn.ai{background:#D4AF37;color:#050A14;}
+  .mobile-support-btn.whatsapp{background:#25D366;color:#050A14;}
 }
 </style>
 </head>
@@ -512,17 +203,23 @@ textarea{
       <h1 class="booking-title">Book a <span>Ride.</span></h1>
 
       <p class="booking-subtitle">
-        Enter your trip details below. Angel Express will calculate your fare estimate next and prepare your ride request for confirmation.
+        Enter your trip details below. Angel Express will calculate your fare estimate next with referral rewards, student verification, and Student Shared Ride options.
       </p>
 
       <div class="form-section">
         <div class="section-title">Passenger Details</div>
 
         <label>Email Address</label>
-        <input type="email" id="email" placeholder="Enter the email you will use in the Angel Express app" required>
+        <input type="email" id="email" placeholder="Enter the email you use in the Angel Express app" required>
         <p class="helper-note">
-          Use the same email when registering in the Angel Express app so this ride appears in your trip history.
+          Use the same email from your Angel Express app profile so this ride appears in your trip history and student verification can be checked.
         </p>
+
+        <button type="button" id="checkStudentBtn" class="check-student-btn" onclick="checkStudentStatus()">
+          Check Student Status
+        </button>
+
+        <div id="studentStatus" class="student-status"></div>
       </div>
 
       <div class="form-section">
@@ -598,8 +295,22 @@ textarea{
         <div class="category-grid">
           <button type="button" class="category-btn active" data-category="Standard Ride">Standard Ride</button>
           <button type="button" class="category-btn" data-category="Airport Transfer">Airport Transfer</button>
-          <button type="button" class="category-btn" data-category="Student Group Ride">Student Group Ride</button>
+          <button type="button" class="category-btn" data-category="Student Shared Ride">Student Shared Ride</button>
           <button type="button" class="category-btn" data-category="Tourist/Event Ride">Tourist/Event Ride</button>
+        </div>
+
+        <div id="studentPanel" class="student-card">
+          <div class="student-head">
+            <div class="student-icon">
+              <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <div>
+              <h3 id="studentPanelTitle">Student Travel Mode</h3>
+              <p id="studentPanelText">
+                Enter your app email and click “Check Student Status.” Verified students may receive a 20% student discount and can use Student Shared Ride.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -630,7 +341,7 @@ textarea{
             <div>
               <h3>Have a referral code?</h3>
               <p>
-                Enter your Angel Express referral code to receive a ride discount. Your referrer may also earn ride credit after your trip is completed.
+                Enter your Angel Express referral code to receive a ride discount. Your referrer may earn ride credit after your trip is completed.
               </p>
             </div>
           </div>
@@ -666,9 +377,7 @@ textarea{
   </div>
 </main>
 
-<button id="chatToggle" class="chat-toggle" type="button">
-  💬 AI Assistant
-</button>
+<button id="chatToggle" class="chat-toggle" type="button">💬 AI Assistant</button>
 
 <div class="chatbot-box" id="chatbotBox">
   <div class="chatbot-header">Angel Express Assistant</div>
@@ -681,25 +390,22 @@ textarea{
   </div>
 </div>
 
-<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
-  💬 Chat With Us
-</a>
+<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">💬 Chat With Us</a>
 
 <div class="mobile-support-dock">
-  <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">
-    💬 AI Assistant
-  </button>
-
-  <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">
-    💬 Chat With Us
-  </a>
+  <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">💬 AI Assistant</button>
+  <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">💬 Chat With Us</a>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
 localStorage.removeItem("angelBooking");
 sessionStorage.removeItem("angelBookingCompleted");
+
+const SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const REFERRAL_DISCOUNT = 10;
 
 let tripType = "One Way";
 let rideCategory = "Standard Ride";
@@ -707,6 +413,16 @@ let pickupLocation = null;
 let dropoffLocation = null;
 let pickupTimer = null;
 let dropoffTimer = null;
+
+let studentProfile = {
+  checked: false,
+  student_verified: false,
+  student_discount_eligible: false,
+  student_verification_status: "Not Submitted",
+  student_campus: "",
+  student_university: "",
+  student_email: ""
+};
 
 let appliedReferral = {
   referral_code: "",
@@ -720,26 +436,6 @@ let appliedReferral = {
   referral_message: ""
 };
 
-/*
-  IMPORTANT:
-  Replace these two values with the same Supabase URL and anon key
-  used in your confirm-booking.html.
-*/
-const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
-const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
-
-let supabaseClient = null;
-
-if(
-  SUPABASE_URL &&
-  SUPABASE_ANON_KEY &&
-  !SUPABASE_URL.includes("PASTE_YOUR") &&
-  !SUPABASE_ANON_KEY.includes("PASTE_YOUR") &&
-  window.supabase
-){
-  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
-
 document.querySelectorAll(".option-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".option-btn").forEach(b => b.classList.remove("active"));
@@ -750,9 +446,16 @@ document.querySelectorAll(".option-btn").forEach(btn => {
 
 document.querySelectorAll(".category-btn").forEach(btn => {
   btn.addEventListener("click", () => {
+    const selectedCategory = btn.dataset.category;
+
+    if (selectedCategory === "Student Shared Ride" && !studentProfile.student_verified && !studentProfile.student_discount_eligible) {
+      alert("Student Shared Ride is available after your student status is approved. Enter your app email and click Check Student Status.");
+    }
+
     document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    rideCategory = btn.dataset.category;
+    rideCategory = selectedCategory;
+    updateStudentPanel();
   });
 });
 
@@ -766,6 +469,12 @@ function showStatus(type, message, isError = false){
 function showRewardStatus(message, statusType = "info"){
   const box = document.getElementById("rewardStatus");
   box.className = "reward-status " + statusType;
+  box.innerHTML = message;
+}
+
+function showStudentStatus(message, statusType = "info"){
+  const box = document.getElementById("studentStatus");
+  box.className = "student-status " + statusType;
   box.innerHTML = message;
 }
 
@@ -869,6 +578,11 @@ document.getElementById("dropoff").addEventListener("input", (e) => {
   dropoffTimer = setTimeout(() => searchAddress(e.target.value, "dropoff"), 450);
 });
 
+document.getElementById("email").addEventListener("blur", () => {
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  if(email) checkStudentStatus(false);
+});
+
 document.getElementById("referral").addEventListener("input", () => {
   clearAppliedReferral();
   const box = document.getElementById("rewardStatus");
@@ -883,10 +597,80 @@ document.addEventListener("click", (e) => {
   }
 });
 
+function updateStudentPanel(){
+  const panel = document.getElementById("studentPanel");
+  const title = document.getElementById("studentPanelTitle");
+  const text = document.getElementById("studentPanelText");
+
+  const approved = studentProfile.student_verified || studentProfile.student_discount_eligible;
+
+  panel.classList.toggle("success", approved);
+
+  if(approved){
+    title.textContent = "Student Travel Mode Active";
+    text.innerHTML = `Verified student discount is eligible. Student Shared Ride can be selected.${studentProfile.student_campus ? `<br>Campus: <strong>${studentProfile.student_campus}</strong>` : ""}`;
+  }else if(studentProfile.checked){
+    title.textContent = "Student Verification Not Approved Yet";
+    text.textContent = `Current status: ${studentProfile.student_verification_status || "Not Submitted"}. Student discount and Student Shared Ride unlock after owner approval.`;
+  }else{
+    title.textContent = "Student Travel Mode";
+    text.textContent = "Enter your app email and click “Check Student Status.” Verified students may receive a 20% student discount and can use Student Shared Ride.";
+  }
+}
+
+async function checkStudentStatus(showAlert = true){
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const btn = document.getElementById("checkStudentBtn");
+
+  if(!email){
+    if(showAlert) showStudentStatus("Please enter your email before checking student status.", "error");
+    return;
+  }
+
+  try{
+    btn.disabled = true;
+    btn.textContent = "Checking...";
+    showStudentStatus("Checking student verification status...", "info");
+
+    const { data, error } = await supabaseClient
+      .from("passenger_profiles")
+      .select("student_verified,student_discount_eligible,student_verification_status,student_campus,student_university,student_email,email")
+      .or(`email.ilike.${email},student_email.ilike.${email}`)
+      .maybeSingle();
+
+    if(error) throw error;
+
+    const approved = Boolean(data?.student_verified || data?.student_discount_eligible);
+
+    studentProfile = {
+      checked: true,
+      student_verified: approved,
+      student_discount_eligible: approved,
+      student_verification_status: data?.student_verification_status || "Not Submitted",
+      student_campus: data?.student_campus || data?.student_university || "",
+      student_university: data?.student_university || "",
+      student_email: data?.student_email || ""
+    };
+
+    updateStudentPanel();
+
+    if(approved){
+      showStudentStatus("✅ Verified Student. 20% student discount and Student Shared Ride are available.", "success");
+    }else{
+      showStudentStatus(`Student status: ${studentProfile.student_verification_status}. Student discounts unlock after owner approval.`, "info");
+    }
+  }catch(error){
+    console.error(error);
+    showStudentStatus("Could not check student status right now. It will be checked again on fare estimate.", "info");
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Check Student Status";
+  }
+}
+
 async function applyReferralCode(){
   const email = document.getElementById("email").value.trim().toLowerCase();
-  const rawCode = document.getElementById("referral").value;
-  const code = normalizeReferralCode(rawCode);
+  const code = normalizeReferralCode(document.getElementById("referral").value);
   const btn = document.getElementById("applyReferralBtn");
 
   clearAppliedReferral();
@@ -907,121 +691,58 @@ async function applyReferralCode(){
   showRewardStatus("Checking referral code...", "info");
 
   try{
-    if(!supabaseClient){
-      appliedReferral = {
-        referral_code: code,
-        referral_code_used: code,
-        referral_applied: false,
-        referral_status: "pending_validation",
-        referrer_user_id: null,
-        referral_discount: 0,
-        referral_discount_type: "fixed",
-        referral_credit_awarded: false,
-        referral_message: "Referral code saved. It will be validated on the confirmation page."
-      };
-
-      showRewardStatus(
-        `Referral code <strong>${code}</strong> saved. Final validation will happen before booking confirmation.`,
-        "info"
-      );
-      return;
-    }
-
-    let rewardRecord = null;
-    let lookupSource = "";
-
-    const referralCodesLookup = await supabaseClient
-      .from("referral_codes")
-      .select("*")
-      .eq("code", code)
+    const { data: referrer, error } = await supabaseClient
+      .from("passenger_profiles")
+      .select("user_id, first_name, last_name, email, referral_code")
+      .ilike("referral_code", code)
       .maybeSingle();
 
-    if(referralCodesLookup.data){
-      rewardRecord = referralCodesLookup.data;
-      lookupSource = "referral_codes";
-    }
+    if(error) throw error;
 
-    if(!rewardRecord){
-      const passengerLookup = await supabaseClient
-        .from("passengers")
-        .select("id, first_name, last_name, email, referral_code")
-        .eq("referral_code", code)
-        .maybeSingle();
-
-      if(passengerLookup.data){
-        rewardRecord = passengerLookup.data;
-        lookupSource = "passengers";
-      }
-    }
-
-    if(!rewardRecord){
+    if(!referrer?.user_id){
       showRewardStatus("Invalid referral code. Please check the code and try again.", "error");
-      clearAppliedReferral();
       return;
     }
 
-    const referrerEmail = String(rewardRecord.email || "").trim().toLowerCase();
-
-    if(referrerEmail && referrerEmail === email){
+    if(String(referrer.email || "").trim().toLowerCase() === email){
       showRewardStatus("You cannot use your own referral code for this booking.", "error");
-      clearAppliedReferral();
       return;
     }
 
-    if(lookupSource === "referral_codes" && rewardRecord.is_active === false){
-      showRewardStatus("This referral code is no longer active.", "error");
-      clearAppliedReferral();
+    const { data: previousUse } = await supabaseClient
+      .from("bookings")
+      .select("id")
+      .ilike("email", email)
+      .eq("referral_applied", true)
+      .limit(1);
+
+    if(previousUse && previousUse.length > 0){
+      showRewardStatus("This email has already used a referral discount.", "error");
       return;
     }
 
-    const referrerUserId =
-      rewardRecord.referrer_user_id ||
-      rewardRecord.user_id ||
-      rewardRecord.passenger_id ||
-      rewardRecord.id ||
-      null;
-
-    const referrerName = [rewardRecord.first_name, rewardRecord.last_name]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-
-    const discountAmount = Number(
-      rewardRecord.discount_amount ||
-      rewardRecord.referral_discount ||
-      10
-    );
-
-    const discountType =
-      rewardRecord.discount_percent || rewardRecord.discount_percentage
-        ? "percent"
-        : "fixed";
+    const referrerName = [referrer.first_name, referrer.last_name].filter(Boolean).join(" ").trim();
 
     appliedReferral = {
       referral_code: code,
       referral_code_used: code,
       referral_applied: true,
       referral_status: "validated",
-      referrer_user_id: referrerUserId,
-      referral_discount: discountAmount,
-      referral_discount_type: discountType,
+      referrer_user_id: referrer.user_id,
+      referral_discount: REFERRAL_DISCOUNT,
+      referral_discount_type: "fixed",
       referral_credit_awarded: false,
       referral_message: "Referral code applied successfully."
     };
 
-    const discountText = discountType === "percent"
-      ? `${discountAmount}%`
-      : `$${discountAmount.toFixed(2)}`;
-
     showRewardStatus(
       `✅ Referral code <strong>${code}</strong> applied successfully.<br>
        ${referrerName ? `Referrer: <strong>${referrerName}</strong><br>` : ""}
-       Estimated referral discount: <strong>${discountText}</strong>`,
+       Estimated referral discount: <strong>$${REFERRAL_DISCOUNT.toFixed(2)}</strong>`,
       "success"
     );
-
   }catch(error){
-    console.error("Referral validation error:", error);
+    console.error(error);
 
     appliedReferral = {
       referral_code: code,
@@ -1032,11 +753,11 @@ async function applyReferralCode(){
       referral_discount: 0,
       referral_discount_type: "fixed",
       referral_credit_awarded: false,
-      referral_message: "Referral code saved. Validation will continue on confirmation page."
+      referral_message: "Referral code saved. Validation will continue on fare estimate."
     };
 
     showRewardStatus(
-      `Referral code <strong>${code}</strong> saved, but instant validation is unavailable right now. It will be checked before confirmation.`,
+      `Referral code <strong>${code}</strong> saved, but instant validation is unavailable right now. It will be checked again before confirmation.`,
       "info"
     );
   }finally{
@@ -1045,7 +766,7 @@ async function applyReferralCode(){
   }
 }
 
-function continueToEstimate(){
+async function continueToEstimate(){
   const email = document.getElementById("email").value.trim().toLowerCase();
   const pickupValue = document.getElementById("pickup").value.trim();
   const dropoffValue = document.getElementById("dropoff").value.trim();
@@ -1059,6 +780,8 @@ function continueToEstimate(){
   if(!dropoffLocation){ alert("Please select a drop-off address from the suggestions so GPS can be saved."); return; }
   if(!tripDate){ alert("Please select a pickup date."); return; }
   if(!tripTime){ alert("Please select a pickup time."); return; }
+
+  await checkStudentStatus(false);
 
   if(rawReferralCode && appliedReferral.referral_code_used !== rawReferralCode){
     appliedReferral = {
@@ -1074,6 +797,13 @@ function continueToEstimate(){
     };
   }
 
+  const studentSharedRide = rideCategory === "Student Shared Ride";
+
+  if(studentSharedRide && !studentProfile.student_verified && !studentProfile.student_discount_eligible){
+    const proceed = confirm("Student Shared Ride is only confirmed for approved students. Continue anyway for review by Angel Express?");
+    if(!proceed) return;
+  }
+
   const bookingData = {
     email,
     pickup: pickupLocation.address,
@@ -1084,15 +814,18 @@ function continueToEstimate(){
     dropoffLongitude: dropoffLocation.longitude,
     pickupPlaceId: pickupLocation.placeId,
     dropoffPlaceId: dropoffLocation.placeId,
+
     date: tripDate,
     time: tripTime,
     tripType,
-    rideCategory,
+    rideCategory: studentSharedRide ? "Student Shared Ride" : rideCategory,
+
     passengers: document.getElementById("passengers").value,
     luggage: document.getElementById("luggage").value,
     notes: document.getElementById("notes").value,
 
     referral: rawReferralCode,
+    referralCode: rawReferralCode,
     referral_code: rawReferralCode,
     referral_code_used: appliedReferral.referral_code_used || rawReferralCode,
     referral_applied: appliedReferral.referral_applied,
@@ -1102,6 +835,21 @@ function continueToEstimate(){
     referral_discount_type: appliedReferral.referral_discount_type,
     referral_credit_awarded: false,
     referral_message: appliedReferral.referral_message,
+
+    studentVerified: studentProfile.student_verified,
+    student_verified: studentProfile.student_verified,
+    studentDiscountEligible: studentProfile.student_discount_eligible,
+    student_discount_eligible: studentProfile.student_discount_eligible,
+    studentVerificationStatus: studentProfile.student_verification_status,
+    student_verification_status: studentProfile.student_verification_status,
+    studentCampus: studentProfile.student_campus,
+    student_campus: studentProfile.student_campus,
+    studentUniversity: studentProfile.student_university,
+    student_university: studentProfile.student_university,
+    studentSharedRide: studentSharedRide,
+    student_shared_ride: studentSharedRide,
+    studentPoolRoute: `${pickupLocation.address} → ${dropoffLocation.address}`,
+    student_pool_route: `${pickupLocation.address} → ${dropoffLocation.address}`,
 
     source: "website"
   };

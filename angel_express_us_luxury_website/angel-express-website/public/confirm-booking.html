@@ -414,6 +414,9 @@ body{
         <p class="fare-label">Ride Category</p>
         <p id="rideCategoryText"></p>
 
+        <p class="fare-label">Shared Ride</p>
+        <p id="sharedRideText"></p>
+
         <p class="fare-label">Passengers</p>
         <p id="passengersText"></p>
 
@@ -447,6 +450,9 @@ body{
 
         <p class="fare-label">Mileage Fare</p>
         <p id="mileageFareText"></p>
+
+        <p class="fare-label">Shared Ride Discount</p>
+        <p id="sharedRideDiscountText"></p>
 
         <p class="fare-label">Student Discount</p>
         <p id="studentDiscountText"></p>
@@ -553,6 +559,32 @@ function cleanPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
 
+function booleanValue(value) {
+  if (value === true) return true;
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized === "true" || normalized === "yes" || normalized === "1";
+}
+
+function isSharedRideSelected(data) {
+  const rideCategory = String(data.rideCategory || data.ride_category || "").toLowerCase();
+  return (
+    booleanValue(data.sharedRide) ||
+    booleanValue(data.shared_ride) ||
+    booleanValue(data.studentSharedRide) ||
+    rideCategory.includes("shared") ||
+    rideCategory.includes("student group") ||
+    rideCategory.includes("student shared")
+  );
+}
+
+function getSharedRideDiscount(data) {
+  return Number(data.sharedRideDiscount || data.shared_ride_discount || data.sharedDiscount || 0);
+}
+
+function getSharedRideRate(data) {
+  return Number(data.shared_ride_rate || data.sharedRideRate || 0.15);
+}
+
 function generateInvoiceNumber() {
   const now = new Date();
   const year = now.getFullYear();
@@ -657,6 +689,7 @@ async function generateInvoicePDF(bookingData) {
 
   const miles = Number(bookingData.miles || 0);
   const total = Number(bookingData.total || 0);
+  const sharedRideDiscount = getSharedRideDiscount(bookingData);
   const studentDiscount = Number(bookingData.studentDiscount || bookingData.student_discount || 0);
   const referralDiscount = Number(bookingData.referralDiscount || bookingData.referral_discount || 0);
   const amountPaid = 0;
@@ -762,31 +795,37 @@ async function generateInvoicePDF(bookingData) {
   doc.setFillColor("#ffffff");
   doc.rect(50, 558, 512, 30, "F");
   doc.setTextColor(green);
-  doc.text("Student Discount", 60, 578);
-  doc.text(`-${money(studentDiscount)}`, 500, 578);
+  doc.text("Shared Ride Discount", 60, 578);
+  doc.text(`-${money(sharedRideDiscount)}`, 500, 578);
 
   doc.setFillColor("#ffffff");
   doc.rect(50, 588, 512, 30, "F");
   doc.setTextColor(green);
-  doc.text("Referral Discount", 60, 608);
-  doc.text(`-${money(referralDiscount)}`, 500, 608);
+  doc.text("Student Discount", 60, 608);
+  doc.text(`-${money(studentDiscount)}`, 500, 608);
 
   doc.setFillColor("#ffffff");
   doc.rect(50, 618, 512, 30, "F");
   doc.setTextColor(green);
-  doc.text("Amount Paid", 60, 638);
-  doc.text(money(amountPaid), 500, 638);
+  doc.text("Referral Discount", 60, 638);
+  doc.text(`-${money(referralDiscount)}`, 500, 638);
+
+  doc.setFillColor("#ffffff");
+  doc.rect(50, 648, 512, 30, "F");
+  doc.setTextColor(green);
+  doc.text("Amount Paid", 60, 668);
+  doc.text(money(amountPaid), 500, 668);
 
   doc.setFillColor("#fdecea");
-  doc.rect(50, 648, 512, 30, "F");
+  doc.rect(50, 678, 512, 30, "F");
   doc.setTextColor(red);
-  doc.text("Balance Due", 60, 668);
-  doc.text(money(balanceDue), 500, 668);
+  doc.text("Balance Due", 60, 698);
+  doc.text(money(balanceDue), 500, 698);
 
   doc.setTextColor(navy);
   doc.setFontSize(13);
   doc.setFont(undefined, "bold");
-  doc.text("TERMS & CONDITIONS", 50, 705);
+  doc.text("TERMS & CONDITIONS", 50, 735);
 
   doc.setFontSize(8);
   doc.setFont(undefined, "normal");
@@ -795,7 +834,7 @@ async function generateInvoicePDF(bookingData) {
   const terms =
     "Payment is collected after ride completion unless otherwise agreed. Reservations are reviewed and confirmed by Angel Express. Referral credits are awarded to the referrer after the referred ride is completed.";
 
-  doc.text(terms, 50, 725, { maxWidth: 512 });
+  doc.text(terms, 50, 755, { maxWidth: 512 });
 
   return {
     invoiceNo,
@@ -817,11 +856,13 @@ Time: ${b.time}
 
 Trip Type: ${b.trip_type}
 Ride Category: ${b.ride_category}
+Shared Ride: ${b.shared_ride ? "Yes" : "No"}
 Passengers: ${b.passengers}
 Luggage: ${b.luggage_count}
 
 Miles: ${b.miles}
 Subtotal: $${Number(b.base || 0).toFixed(2)}
+Shared Ride Discount: -$${Number(b.shared_ride_discount || 0).toFixed(2)}
 Student Discount: -$${Number(b.student_discount || 0).toFixed(2)}
 Referral Discount: -$${Number(b.referral_discount || 0).toFixed(2)}
 Total: $${Number(b.total || 0).toFixed(2)}
@@ -846,6 +887,16 @@ function renderConfirmPage() {
   document.getElementById("timeText").textContent = aeConfirmBooking.time || "Not provided";
   document.getElementById("tripTypeText").textContent = aeConfirmBooking.tripType || "One Way";
   document.getElementById("rideCategoryText").textContent = aeConfirmBooking.rideCategory || "Standard Ride";
+
+  const sharedRideSelected = isSharedRideSelected(aeConfirmBooking);
+  const sharedRideDiscount = getSharedRideDiscount(aeConfirmBooking);
+
+  const sharedRideTextEl = document.getElementById("sharedRideText");
+  sharedRideTextEl.textContent = sharedRideSelected
+    ? "Yes — shared ride pricing selected"
+    : "No — private ride";
+  sharedRideTextEl.className = sharedRideSelected ? "success-text" : "";
+
   document.getElementById("passengersText").textContent = aeConfirmBooking.passengers || "1";
   document.getElementById("luggageText").textContent = aeConfirmBooking.luggage || "0";
   document.getElementById("notesText").textContent = aeConfirmBooking.notes || "None";
@@ -868,6 +919,12 @@ function renderConfirmPage() {
 
   document.getElementById("mileageFareText").textContent =
     money(aeConfirmBooking.mileageFare || 0);
+
+  const sharedRideDiscountEl = document.getElementById("sharedRideDiscountText");
+  sharedRideDiscountEl.textContent = "-$" + sharedRideDiscount.toFixed(2);
+  if (sharedRideDiscount > 0) {
+    sharedRideDiscountEl.classList.add("success-text");
+  }
 
   document.getElementById("studentDiscountText").textContent =
     "-$" + Number(aeConfirmBooking.studentDiscount || aeConfirmBooking.student_discount || 0).toFixed(2);
@@ -943,7 +1000,18 @@ async function confirmBooking() {
       total: finalTotal.toFixed(2),
     };
 
-    const invoice = await generateInvoicePDF(secureBooking);
+    const sharedRideSelected = isSharedRideSelected(secureBooking);
+    const sharedRideDiscount = getSharedRideDiscount(secureBooking);
+    const sharedRideRate = getSharedRideRate(secureBooking);
+
+    const invoice = await generateInvoicePDF({
+      ...secureBooking,
+      sharedRide: sharedRideSelected,
+      shared_ride: sharedRideSelected,
+      sharedRideDiscount: sharedRideDiscount,
+      shared_ride_discount: sharedRideDiscount,
+      shared_ride_rate: sharedRideRate,
+    });
 
     const finalBooking = {
       name: secureBooking.name || "Website Passenger",
@@ -954,6 +1022,14 @@ async function confirmBooking() {
       route: `${secureBooking.pickup} → ${secureBooking.dropoff}`,
       trip_type: secureBooking.tripType || "One Way",
       ride_category: secureBooking.rideCategory || "Standard Ride",
+
+      shared_ride: sharedRideSelected,
+      is_shared_ride: sharedRideSelected,
+      student_shared_ride: sharedRideSelected && String(secureBooking.rideCategory || "").toLowerCase().includes("student"),
+      shared_ride_discount: sharedRideDiscount,
+      shared_ride_rate: sharedRideRate,
+      shared_ride_pricing_applied: sharedRideSelected,
+      shared_ride_status: sharedRideSelected ? "selected" : "not_selected",
 
       date: secureBooking.date,
       time: secureBooking.time,
@@ -989,8 +1065,10 @@ async function confirmBooking() {
       base_fare: Number(secureBooking.baseMileage || secureBooking.base || 35),
       mileage_fare: Number(secureBooking.mileageFare || 0),
 
+      shared_discount: sharedRideDiscount,
       student_discount: Number(secureBooking.studentDiscount || secureBooking.student_discount || 0),
       total_discount:
+        sharedRideDiscount +
         Number(secureBooking.studentDiscount || secureBooking.student_discount || 0) +
         Number(referralResult.applied ? referralResult.discount : 0),
 
@@ -1042,7 +1120,14 @@ async function confirmBooking() {
       `https://wa.me/${AE_CONFIRM_OWNER_WHATSAPP}?text=${whatsappText}`,
       "_blank"
     );
-localStorage.setItem("angelLastBooking", JSON.stringify(secureBooking));
+localStorage.setItem("angelLastBooking", JSON.stringify({
+      ...secureBooking,
+      sharedRide: sharedRideSelected,
+      shared_ride: sharedRideSelected,
+      sharedRideDiscount: sharedRideDiscount,
+      shared_ride_discount: sharedRideDiscount,
+      shared_ride_rate: sharedRideRate,
+    }));
     localStorage.removeItem("angelBooking");
     window.location.href = "success.html";
   } catch (err) {

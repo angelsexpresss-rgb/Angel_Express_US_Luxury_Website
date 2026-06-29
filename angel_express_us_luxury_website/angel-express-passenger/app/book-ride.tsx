@@ -13,6 +13,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  BadgeCheck,
+  Gift,
+  GraduationCap,
+  MapPinned,
+  Route,
+  ShieldCheck,
+  Users,
+} from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
 
@@ -24,6 +33,7 @@ import {
   slowBackgroundZoom,
 } from "../components/angel";
 
+const GOLD = AE_COLORS.gold;
 const REFERRAL_DISCOUNT = 10;
 
 export default function BookRideScreen() {
@@ -51,6 +61,12 @@ export default function BookRideScreen() {
   const [luggageCount, setLuggageCount] = useState("0");
   const [notes, setNotes] = useState("");
 
+  const [studentVerified, setStudentVerified] = useState(false);
+  const [studentStatus, setStudentStatus] = useState("Not Submitted");
+  const [studentDiscountEligible, setStudentDiscountEligible] = useState(false);
+  const [studentCampus, setStudentCampus] = useState("");
+  const [studentSharedRide, setStudentSharedRide] = useState(false);
+
   const [referralCode, setReferralCode] = useState("");
   const [referralApplied, setReferralApplied] = useState(false);
   const [referralChecking, setReferralChecking] = useState(false);
@@ -63,7 +79,42 @@ export default function BookRideScreen() {
   useEffect(() => {
     slowBackgroundZoom(bgScale).start();
     fadeUp(pageFade, 80).start();
+    loadPassengerProfile();
   }, []);
+
+  async function loadPassengerProfile() {
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("passenger_profiles")
+        .select(
+          "student_verified,student_verification_status,student_discount_eligible,student_university,student_campus"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return;
+
+      const approvedStudent = Boolean(
+        data.student_verified || data.student_discount_eligible
+      );
+
+      setStudentVerified(approvedStudent);
+      setStudentDiscountEligible(approvedStudent);
+      setStudentStatus(data.student_verification_status || "Not Submitted");
+      setStudentCampus(data.student_campus || data.student_university || "");
+    } catch (error: any) {
+      console.log("Student profile load skipped:", error?.message);
+    }
+  }
 
   async function searchAddress(text: string, type: "pickup" | "dropoff") {
     if (type === "pickup") {
@@ -150,11 +201,12 @@ export default function BookRideScreen() {
       } = await supabase.auth.getUser();
 
       if (userError) throw userError;
+      if (!user) throw new Error("Please sign in again.");
 
       const { data: referrer, error } = await supabase
         .from("passenger_profiles")
         .select("user_id, first_name, last_name, email, referral_code")
-        .eq("referral_code", cleanCode)
+        .ilike("referral_code", cleanCode)
         .maybeSingle();
 
       if (error) throw error;
@@ -165,9 +217,27 @@ export default function BookRideScreen() {
         return;
       }
 
-      if (user?.id && referrer.user_id === user.id) {
+      if (referrer.user_id === user.id) {
         setReferralMessage("You cannot use your own referral code.");
         Alert.alert("Invalid Code", "You cannot use your own referral code.");
+        return;
+      }
+
+      const userEmail = user.email?.trim().toLowerCase() || "";
+
+      const { data: previousUse } = await supabase
+        .from("bookings")
+        .select("id")
+        .ilike("email", userEmail)
+        .eq("referral_applied", true)
+        .limit(1);
+
+      if (previousUse && previousUse.length > 0) {
+        setReferralMessage("Referral already used by this account.");
+        Alert.alert(
+          "Referral Already Used",
+          "This account has already used a referral discount."
+        );
         return;
       }
 
@@ -184,6 +254,25 @@ export default function BookRideScreen() {
       Alert.alert("Referral Error", error.message || "Could not verify referral code.");
     } finally {
       setReferralChecking(false);
+    }
+  }
+
+  function selectRideCategory(category: string) {
+    setRideCategory(category);
+
+    if (category === "Student Shared Ride") {
+      if (!studentVerified) {
+        setStudentSharedRide(false);
+        Alert.alert(
+          "Student Verification Required",
+          "Student Shared Ride is available after your student status is approved by Angel Express."
+        );
+        return;
+      }
+
+      setStudentSharedRide(true);
+    } else {
+      setStudentSharedRide(false);
     }
   }
 
@@ -204,19 +293,35 @@ export default function BookRideScreen() {
       return;
     }
 
+    if (studentSharedRide && !studentVerified) {
+      Alert.alert(
+        "Student Verification Required",
+        "Please complete and get approved for Student Verification before booking a Student Shared Ride."
+      );
+      return;
+    }
+
+    const activeRideCategory = studentSharedRide
+      ? "Student Shared Ride"
+      : rideCategory;
+
     router.push({
       pathname: "/fare-estimate" as any,
       params: {
         pickupAddress: pickupAddress.trim(),
         dropoffAddress: dropoffAddress.trim(),
+
         pickupLat: pickupLat.toString(),
         pickupLng: pickupLng.toString(),
         dropoffLat: dropoffLat.toString(),
         dropoffLng: dropoffLng.toString(),
+
         rideDate: formatDate(rideDate),
         rideTime: formatTime(rideTime),
+
         tripType,
-        rideCategory,
+        rideCategory: activeRideCategory,
+
         passengers,
         luggageCount,
         notes: notes.trim(),
@@ -225,8 +330,19 @@ export default function BookRideScreen() {
         referrerUserId: referralApplied ? referrerUserId : "",
         referralDiscount: referralApplied ? String(REFERRAL_DISCOUNT) : "0",
         referralApplied: referralApplied ? "true" : "false",
-
         promoCode: referralApplied ? referralCode.trim().toUpperCase() : "",
+
+        studentVerified: studentVerified ? "true" : "false",
+        student_verified: studentVerified ? "true" : "false",
+        studentDiscountEligible: studentDiscountEligible ? "true" : "false",
+        student_discount_eligible: studentDiscountEligible ? "true" : "false",
+        studentCampus,
+        student_campus: studentCampus,
+
+        studentSharedRide: studentSharedRide ? "true" : "false",
+        student_shared_ride: studentSharedRide ? "true" : "false",
+        studentPoolRoute: `${pickupAddress.trim()} → ${dropoffAddress.trim()}`,
+        student_pool_route: `${pickupAddress.trim()} → ${dropoffAddress.trim()}`,
       },
     });
   }
@@ -263,14 +379,46 @@ export default function BookRideScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
+            <View style={styles.kicker}>
+              <Text style={styles.kickerText}>A  RIDE BOOKING</Text>
+            </View>
+
             <Text style={styles.title}>Book a Ride</Text>
 
             <Text style={styles.subtitle}>
-              Enter your trip details. Your fare estimate will be calculated next.
+              Enter your trip details. Student discounts, shared rides, and referral rewards will be applied on the fare estimate.
             </Text>
 
+            <AngelCard variant="gold" style={styles.heroCard}>
+              <View style={styles.heroIcon}>
+                <Route size={30} color={AE_COLORS.navy2} />
+              </View>
+
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroTitle}>Plan Your Trip</Text>
+                <Text style={styles.heroText}>
+                  GPS pickup, referral rewards, student travel mode, and fare estimate in one flow.
+                </Text>
+              </View>
+            </AngelCard>
+
+            <View style={styles.statusGrid}>
+              <StatusPill
+                title="Student"
+                value={studentVerified ? "Verified" : studentStatus || "Not Submitted"}
+              />
+              <StatusPill
+                title="Referral"
+                value={referralApplied ? "Applied" : "Optional"}
+              />
+              <StatusPill
+                title="Shared Ride"
+                value={studentSharedRide ? "On" : "Off"}
+              />
+            </View>
+
             <AngelCard style={styles.card}>
-              <Section title="Pickup Address" />
+              <Section title="Pickup Address" icon={<MapPinned size={19} color={GOLD} />} />
 
               <TextInput
                 style={styles.input}
@@ -295,11 +443,11 @@ export default function BookRideScreen() {
                 </TouchableOpacity>
               ))}
 
-              {pickupLat && pickupLng && (
-                <Text style={styles.gpsText}>Pickup GPS saved</Text>
-              )}
+              {pickupLat && pickupLng ? (
+                <Text style={styles.gpsText}>✓ Pickup GPS saved</Text>
+              ) : null}
 
-              <Section title="Drop-off Address" />
+              <Section title="Drop-off Address" icon={<MapPinned size={19} color={GOLD} />} />
 
               <TextInput
                 style={styles.input}
@@ -324,11 +472,11 @@ export default function BookRideScreen() {
                 </TouchableOpacity>
               ))}
 
-              {dropoffLat && dropoffLng && (
-                <Text style={styles.gpsText}>Drop-off GPS saved</Text>
-              )}
+              {dropoffLat && dropoffLng ? (
+                <Text style={styles.gpsText}>✓ Drop-off GPS saved</Text>
+              ) : null}
 
-              <Section title="Date & Time" />
+              <Section title="Date & Time" icon={<ShieldCheck size={19} color={GOLD} />} />
 
               <TouchableOpacity
                 style={styles.input}
@@ -366,7 +514,7 @@ export default function BookRideScreen() {
                 />
               )}
 
-              <Section title="Trip Type" />
+              <Section title="Trip Type" icon={<Route size={19} color={GOLD} />} />
 
               <View style={styles.optionRow}>
                 <OptionButton
@@ -382,24 +530,63 @@ export default function BookRideScreen() {
                 />
               </View>
 
-              <Section title="Ride Category" />
+              <Section title="Ride Category" icon={<CarIcon />} />
 
               {[
                 "Standard Ride",
                 "Airport Transfer",
-                "Student Group Ride",
+                "Student Shared Ride",
                 "Tourist/Event Ride",
               ].map((item) => (
                 <OptionButton
                   key={item}
                   full
                   title={item}
-                  active={rideCategory === item}
-                  onPress={() => setRideCategory(item)}
+                  active={
+                    rideCategory === item ||
+                    (item === "Student Shared Ride" && studentSharedRide)
+                  }
+                  onPress={() => selectRideCategory(item)}
                 />
               ))}
 
-              <Section title="Passengers & Luggage" />
+              {studentVerified ? (
+                <View style={styles.studentBox}>
+                  <GraduationCap size={20} color="#22c55e" />
+                  <View style={styles.studentBoxText}>
+                    <Text style={styles.studentTitle}>Student Travel Mode Active</Text>
+                    <Text style={styles.studentText}>
+                      20% verified student discount is eligible. Student Shared Ride can be selected.
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.pendingStudentBox}>
+                  <GraduationCap size={20} color={GOLD} />
+                  <View style={styles.studentBoxText}>
+                    <Text style={styles.pendingStudentTitle}>
+                      Student Verification: {studentStatus || "Not Submitted"}
+                    </Text>
+                    <Text style={styles.studentText}>
+                      Student discount and Student Shared Ride unlock after owner approval.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {studentSharedRide ? (
+                <View style={styles.sharedRideBox}>
+                  <Users size={20} color="#22c55e" />
+                  <View style={styles.studentBoxText}>
+                    <Text style={styles.studentTitle}>Student Shared Ride Enabled</Text>
+                    <Text style={styles.studentText}>
+                      Your booking will be saved as a student pool request for matching route/date.
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              <Section title="Passengers & Luggage" icon={<Users size={19} color={GOLD} />} />
 
               <TextInput
                 style={styles.input}
@@ -419,7 +606,7 @@ export default function BookRideScreen() {
                 keyboardType="numeric"
               />
 
-              <Section title="Extra Details" />
+              <Section title="Extra Details" icon={<ShieldCheck size={19} color={GOLD} />} />
 
               <TextInput
                 style={[styles.input, styles.notesInput]}
@@ -430,7 +617,7 @@ export default function BookRideScreen() {
                 multiline
               />
 
-              <Section title="Referral Code" />
+              <Section title="Referral Code" icon={<Gift size={19} color={GOLD} />} />
 
               <TextInput
                 style={styles.input}
@@ -470,6 +657,7 @@ export default function BookRideScreen() {
 
               {referralApplied ? (
                 <View style={styles.referralAppliedBox}>
+                  <BadgeCheck size={18} color="#22c55e" />
                   <Text style={styles.referralAppliedText}>
                     $10 referral discount will be passed to your fare estimate.
                   </Text>
@@ -490,8 +678,26 @@ export default function BookRideScreen() {
   );
 }
 
-function Section({ title }: { title: string }) {
-  return <Text style={styles.sectionTitle}>{title}</Text>;
+function Section({ title, icon }: { title: string; icon?: React.ReactNode }) {
+  return (
+    <View style={styles.sectionHeader}>
+      {icon}
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+}
+
+function CarIcon() {
+  return <Route size={19} color={GOLD} />;
+}
+
+function StatusPill({ title, value }: { title: string; value: string }) {
+  return (
+    <View style={styles.statusPill}>
+      <Text style={styles.statusValue}>{value}</Text>
+      <Text style={styles.statusTitle}>{title}</Text>
+    </View>
+  );
 }
 
 function OptionButton({
@@ -551,12 +757,28 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   backText: {
-    color: AE_COLORS.gold,
+    color: GOLD,
     fontSize: 18,
     fontWeight: "900",
   },
+  kicker: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    marginBottom: 18,
+  },
+  kickerText: {
+    color: GOLD,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.3,
+  },
   title: {
-    color: AE_COLORS.gold,
+    color: GOLD,
     fontSize: 38,
     fontWeight: "900",
     marginBottom: 10,
@@ -567,15 +789,79 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 24,
   },
+  heroCard: {
+    minHeight: 126,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 18,
+  },
+  heroIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: "rgba(6,17,31,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  heroCopy: {
+    flex: 1,
+  },
+  heroTitle: {
+    color: AE_COLORS.navy2,
+    fontSize: 22,
+    fontWeight: "900",
+    marginBottom: 6,
+  },
+  heroText: {
+    color: "rgba(6,17,31,0.78)",
+    fontSize: 14.5,
+    lineHeight: 21,
+    fontWeight: "800",
+  },
+  statusGrid: {
+    flexDirection: "row",
+    gap: 9,
+    marginBottom: 18,
+  },
+  statusPill: {
+    flex: 1,
+    minHeight: 76,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.22)",
+    backgroundColor: "rgba(13,20,34,0.84)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 9,
+  },
+  statusValue: {
+    color: GOLD,
+    fontSize: 11.5,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  statusTitle: {
+    color: AE_COLORS.white,
+    fontSize: 11,
+    fontWeight: "800",
+    marginTop: 5,
+    textAlign: "center",
+  },
   card: {
     padding: 22,
   },
-  sectionTitle: {
-    color: AE_COLORS.gold,
-    fontSize: 19,
-    fontWeight: "900",
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
     marginTop: 20,
     marginBottom: 14,
+  },
+  sectionTitle: {
+    color: GOLD,
+    fontSize: 19,
+    fontWeight: "900",
   },
   input: {
     backgroundColor: "rgba(255,255,255,0.07)",
@@ -632,7 +918,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   optionButtonActive: {
-    backgroundColor: AE_COLORS.gold,
+    backgroundColor: GOLD,
     borderColor: AE_COLORS.goldLight,
   },
   optionText: {
@@ -642,6 +928,56 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: AE_COLORS.navy2,
+  },
+  studentBox: {
+    flexDirection: "row",
+    gap: 10,
+    backgroundColor: "rgba(34,197,94,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.35)",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+  },
+  pendingStudentBox: {
+    flexDirection: "row",
+    gap: 10,
+    backgroundColor: "rgba(212,175,55,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.25)",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+  },
+  sharedRideBox: {
+    flexDirection: "row",
+    gap: 10,
+    backgroundColor: "rgba(34,197,94,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.35)",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+  },
+  studentBoxText: {
+    flex: 1,
+  },
+  studentTitle: {
+    color: "#22c55e",
+    fontSize: 14,
+    fontWeight: "900",
+    marginBottom: 5,
+  },
+  pendingStudentTitle: {
+    color: GOLD,
+    fontSize: 14,
+    fontWeight: "900",
+    marginBottom: 5,
+  },
+  studentText: {
+    color: AE_COLORS.textSoft,
+    fontSize: 13,
+    lineHeight: 19,
   },
   notesInput: {
     height: 105,
@@ -672,11 +1008,14 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   referralButtonText: {
-    color: AE_COLORS.gold,
+    color: GOLD,
     fontSize: 15,
     fontWeight: "900",
   },
   referralAppliedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
     backgroundColor: "rgba(34,197,94,0.10)",
     borderWidth: 1,
     borderColor: "rgba(34,197,94,0.35)",
@@ -689,6 +1028,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900",
     lineHeight: 19,
+    flex: 1,
   },
   submitButton: {
     marginTop: 24,

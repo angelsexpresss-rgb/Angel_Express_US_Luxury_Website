@@ -16,11 +16,13 @@ import {
   CarFront,
   Clock,
   CreditCard,
+  GraduationCap,
   MapPinned,
   Route,
   ShieldCheck,
   Sparkles,
   Tag,
+  Users,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
@@ -35,6 +37,7 @@ import {
 
 const GOLD = AE_COLORS.gold;
 const REFERRAL_DISCOUNT_AMOUNT = 10;
+const SHARED_RIDE_ESTIMATED_SAVINGS_RATE = 0.15;
 
 function calculateTieredFare(distanceMiles: number) {
   if (distanceMiles <= 20) {
@@ -82,6 +85,17 @@ export default function FareEstimateScreen() {
   const luggageCount = String(params.luggageCount || "0");
   const notes = String(params.notes || "");
 
+  const studentSharedRide =
+    String(params.studentSharedRide || params.student_shared_ride || "false") ===
+      "true" ||
+    rideCategory.toLowerCase().includes("shared") ||
+    rideCategory.toLowerCase().includes("pool");
+
+  const studentCampus = String(params.studentCampus || params.student_campus || "");
+  const studentPoolRoute = String(
+    params.studentPoolRoute || params.student_pool_route || ""
+  );
+
   const incomingReferralCode = String(
     params.referralCode || params.promoCode || ""
   )
@@ -92,11 +106,23 @@ export default function FareEstimateScreen() {
   const incomingReferralApplied =
     String(params.referralApplied || "false") === "true";
 
+  const incomingStudentVerified =
+    String(params.studentVerified || params.student_verified || "false") === "true";
+
+  const incomingStudentEligible =
+    String(
+      params.studentDiscountEligible ||
+        params.student_discount_eligible ||
+        "false"
+    ) === "true";
+
   const [loading, setLoading] = useState(true);
   const [distanceMiles, setDistanceMiles] = useState(0);
   const [durationText, setDurationText] = useState("");
 
-  const [studentVerified, setStudentVerified] = useState(false);
+  const [studentVerified, setStudentVerified] = useState(incomingStudentVerified);
+  const [studentDiscountEligible, setStudentDiscountEligible] =
+    useState(incomingStudentEligible);
 
   const [referralCode, setReferralCode] = useState(incomingReferralCode);
   const [referrerUserId, setReferrerUserId] = useState(incomingReferrerUserId);
@@ -120,14 +146,25 @@ export default function FareEstimateScreen() {
   const roundTripAdjustment = tripType === "Round Trip" ? oneWayFare : 0;
   const subtotal = oneWayFare + roundTripAdjustment;
 
-  const studentDiscount = studentVerified ? subtotal * 0.2 : 0;
+  const approvedStudent = studentVerified || studentDiscountEligible;
+
+  const studentDiscount = approvedStudent ? subtotal * 0.2 : 0;
 
   const referralDiscount =
     referralApplied && referralCode
       ? Math.min(REFERRAL_DISCOUNT_AMOUNT, Math.max(subtotal - studentDiscount, 0))
       : 0;
 
-  const totalDiscount = studentDiscount + referralDiscount;
+  const beforeSharedRide = Math.max(subtotal - studentDiscount - referralDiscount, 0);
+
+  const sharedRideEstimatedSavings =
+    studentSharedRide && approvedStudent
+      ? beforeSharedRide * SHARED_RIDE_ESTIMATED_SAVINGS_RATE
+      : 0;
+
+  const totalDiscount =
+    studentDiscount + referralDiscount + sharedRideEstimatedSavings;
+
   const finalPrice = Math.max(subtotal - totalDiscount, 0);
 
   const driverPayout = finalPrice * 0.7;
@@ -161,13 +198,17 @@ export default function FareEstimateScreen() {
 
     const { data, error } = await supabase
       .from("passenger_profiles")
-      .select("student_verified, student_status")
+      .select("student_verified, student_discount_eligible")
       .eq("user_id", user.id)
       .maybeSingle();
 
     if (error) throw error;
 
-    setStudentVerified(Boolean(data?.student_verified || data?.student_status));
+    const verified = Boolean(data?.student_verified);
+    const eligible = Boolean(data?.student_discount_eligible);
+
+    setStudentVerified(verified || incomingStudentVerified);
+    setStudentDiscountEligible(eligible || incomingStudentEligible);
   }
 
   async function validateReferralCode() {
@@ -320,7 +361,7 @@ export default function FareEstimateScreen() {
         rideDate,
         rideTime,
         tripType,
-        rideCategory,
+        rideCategory: studentSharedRide ? "Student Shared Ride" : rideCategory,
         passengers,
         luggageCount,
         notes,
@@ -330,6 +371,21 @@ export default function FareEstimateScreen() {
         referralDiscount: referralApplied ? referralDiscount.toFixed(2) : "0",
         referralApplied: referralApplied ? "true" : "false",
         promoCode: referralApplied ? referralCode : "",
+
+        studentVerified: approvedStudent ? "true" : "false",
+        student_verified: approvedStudent ? "true" : "false",
+        studentDiscountEligible: approvedStudent ? "true" : "false",
+        student_discount_eligible: approvedStudent ? "true" : "false",
+
+        studentSharedRide: studentSharedRide ? "true" : "false",
+        student_shared_ride: studentSharedRide ? "true" : "false",
+        studentCampus,
+        student_campus: studentCampus,
+        studentPoolRoute: studentPoolRoute || `${pickupAddress} → ${dropoffAddress}`,
+        student_pool_route: studentPoolRoute || `${pickupAddress} → ${dropoffAddress}`,
+
+        sharedRideDiscount: sharedRideEstimatedSavings.toFixed(2),
+        shared_ride_discount: sharedRideEstimatedSavings.toFixed(2),
 
         distanceMiles: distanceMiles.toString(),
         durationText,
@@ -400,7 +456,7 @@ export default function FareEstimateScreen() {
             <Text style={styles.title}>Fare Estimate</Text>
 
             <Text style={styles.subtitle}>
-              Review your distance, estimated drive time, verified discounts, and final trip estimate.
+              Review your distance, drive time, verified student discount, referral reward, shared ride estimate, and final fare.
             </Text>
 
             <AngelCard variant="gold" style={styles.heroCard}>
@@ -418,9 +474,21 @@ export default function FareEstimateScreen() {
             </AngelCard>
 
             <View style={styles.summaryGrid}>
-              <MiniStat icon={<Route size={18} color={GOLD} />} title="Distance" value={`${distanceMiles} mi`} />
-              <MiniStat icon={<Clock size={18} color={GOLD} />} title="Drive Time" value={durationText || "N/A"} />
-              <MiniStat icon={<CarFront size={18} color={GOLD} />} title="Trip Type" value={tripType} />
+              <MiniStat
+                icon={<Route size={18} color={GOLD} />}
+                title="Distance"
+                value={`${distanceMiles} mi`}
+              />
+              <MiniStat
+                icon={<Clock size={18} color={GOLD} />}
+                title="Drive Time"
+                value={durationText || "N/A"}
+              />
+              <MiniStat
+                icon={<CarFront size={18} color={GOLD} />}
+                title="Trip Type"
+                value={tripType}
+              />
             </View>
 
             <AngelCard style={styles.card}>
@@ -432,7 +500,19 @@ export default function FareEstimateScreen() {
               <Info label="Pickup" value={pickupAddress} />
               <Info label="Drop-off" value={dropoffAddress} />
               <Info label="Date & Time" value={`${rideDate} at ${rideTime}`} />
-              <Info label="Ride Category" value={rideCategory} />
+              <Info
+                label="Ride Category"
+                value={studentSharedRide ? "Student Shared Ride" : rideCategory}
+              />
+
+              {studentSharedRide ? (
+                <View style={styles.sharedBox}>
+                  <Users size={18} color="#22c55e" />
+                  <Text style={styles.sharedText}>
+                    Student Shared Ride is enabled. Your seat may be matched with verified students on a similar route/date.
+                  </Text>
+                </View>
+              ) : null}
 
               <View style={styles.gpsBox}>
                 <ShieldCheck size={18} color="#22c55e" />
@@ -474,7 +554,10 @@ export default function FareEstimateScreen() {
                   value={`-$${studentDiscount.toFixed(2)}`}
                 />
               ) : (
-                <BreakdownRow label="Student Discount" value="$0.00" />
+                <BreakdownRow
+                  label="Student Discount"
+                  value={approvedStudent ? "$0.00" : "Not verified"}
+                />
               )}
 
               {referralCode ? (
@@ -494,11 +577,50 @@ export default function FareEstimateScreen() {
                 <BreakdownRow label="Referral Discount" value="$0.00" />
               )}
 
+              {studentSharedRide ? (
+                approvedStudent ? (
+                  <DiscountRow
+                    icon={<Users size={17} color="#22c55e" />}
+                    label="Student Shared Ride Estimate"
+                    value={`-$${sharedRideEstimatedSavings.toFixed(2)}`}
+                  />
+                ) : (
+                  <WarningRow
+                    label="Student Shared Ride"
+                    value="Student verification required"
+                  />
+                )
+              ) : (
+                <BreakdownRow label="Student Shared Ride" value="Not selected" />
+              )}
+
+              <View style={styles.divider} />
+
+              <BreakdownRow
+                label="Total Savings"
+                value={`-$${totalDiscount.toFixed(2)}`}
+              />
+
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Final Price</Text>
                 <Text style={styles.totalValue}>${finalPrice.toFixed(2)}</Text>
               </View>
             </AngelCard>
+
+            {studentSharedRide ? (
+              <AngelCard style={styles.noticeCard}>
+                <View style={styles.cardHeader}>
+                  <GraduationCap size={22} color={GOLD} />
+                  <Text style={styles.cardTitle}>Shared Ride Notice</Text>
+                </View>
+
+                <Text style={styles.notice}>
+                  Student Shared Ride pricing is an estimate. Angel Express will confirm
+                  final shared ride pricing based on student match availability, route,
+                  date, seat availability, and operational approval.
+                </Text>
+              </AngelCard>
+            ) : null}
 
             <AngelCard style={styles.noticeCard}>
               <View style={styles.cardHeader}>
@@ -735,6 +857,26 @@ const styles = StyleSheet.create({
     color: AE_COLORS.white,
     fontSize: 15.5,
     lineHeight: 23,
+  },
+
+  sharedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(34,197,94,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.35)",
+    borderRadius: 15,
+    padding: 13,
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  sharedText: {
+    color: "#22c55e",
+    fontSize: 13,
+    fontWeight: "900",
+    flex: 1,
+    lineHeight: 19,
   },
 
   gpsBox: {

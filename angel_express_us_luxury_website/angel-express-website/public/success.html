@@ -397,18 +397,18 @@ body{
       <div class="reward-banner" id="referralSuccessBanner">
         <h2>
           <i class="fa-solid fa-gift"></i>
-          Referral Reward Applied
+          Ride Savings Applied
         </h2>
 
-        <p>
-          ✓ <strong>Referral discount applied.</strong>
+        <p id="savingsSummaryText">
+          ✓ <strong>Your eligible ride savings were applied.</strong>
         </p>
 
         <p id="savedText">
           You saved today.
         </p>
 
-        <p>
+        <p id="referrerCreditText">
           Your referrer will receive <strong>$10 ride credit</strong> after your trip is completed.
         </p>
 
@@ -419,13 +419,28 @@ body{
           </div>
 
           <div class="reward-item">
-            <span>Your Savings</span>
+            <span>Referral Savings</span>
             <strong id="successReferralSavings">$0.00</strong>
           </div>
 
           <div class="reward-item">
+            <span>Student Savings</span>
+            <strong id="successStudentSavings">$0.00</strong>
+          </div>
+
+          <div class="reward-item">
+            <span>Shared Ride Savings</span>
+            <strong id="successSharedRideSavings">$0.00</strong>
+          </div>
+
+          <div class="reward-item">
+            <span>Total Savings</span>
+            <strong id="successTotalSavings">$0.00</strong>
+          </div>
+
+          <div class="reward-item">
             <span>Referrer Credit</span>
-            <strong>$10.00</strong>
+            <strong id="successReferrerCredit">$0.00</strong>
           </div>
         </div>
       </div>
@@ -571,29 +586,112 @@ function showReferralSuccess() {
     booking.referral_applied === true ||
     String(booking.referralApplied || booking.referral_applied || "").toLowerCase() === "true";
 
+  const studentVerified =
+    booking.studentVerified === true ||
+    booking.student_verified === true ||
+    String(booking.studentVerified || booking.student_verified || "").toLowerCase() === "true";
+
+  const sharedRideApplied =
+    booking.sharedRidePricingApplied === true ||
+    booking.shared_ride_pricing_applied === true ||
+    booking.sharedRide === true ||
+    booking.shared_ride === true ||
+    booking.is_shared_ride === true ||
+    booking.studentSharedRide === true ||
+    booking.student_shared_ride === true ||
+    String(
+      booking.sharedRidePricingApplied ||
+      booking.shared_ride_pricing_applied ||
+      booking.sharedRide ||
+      booking.shared_ride ||
+      booking.is_shared_ride ||
+      booking.studentSharedRide ||
+      booking.student_shared_ride ||
+      ""
+    ).toLowerCase() === "true";
+
   const referralDiscount = Number(
     booking.referralDiscount ||
     booking.referral_discount ||
     0
   );
 
+  const studentDiscount = Number(
+    booking.studentDiscount ||
+    booking.student_discount ||
+    0
+  );
+
+  const sharedRideSavings = Number(
+    booking.sharedRideDiscount ||
+    booking.shared_ride_discount ||
+    booking.sharedRideSavings ||
+    booking.shared_ride_savings ||
+    booking.sharedDiscount ||
+    booking.shared_discount ||
+    0
+  );
+
+  const totalSavings = Number(
+    booking.totalSavings ||
+    booking.total_savings ||
+    booking.totalDiscount ||
+    booking.total_discount ||
+    referralDiscount + studentDiscount + sharedRideSavings
+  );
+
   const referralCode =
     booking.referralCode ||
     booking.referral_code ||
+    booking.referral_code_used ||
     booking.referral ||
     "";
 
-  if (!referralApplied || referralDiscount <= 0) return;
+  if (totalSavings <= 0) return;
 
   const banner = document.getElementById("referralSuccessBanner");
   const code = document.getElementById("successReferralCode");
-  const savings = document.getElementById("successReferralSavings");
+  const referralSavings = document.getElementById("successReferralSavings");
+  const studentSavings = document.getElementById("successStudentSavings");
+  const sharedSavings = document.getElementById("successSharedRideSavings");
+  const totalSavingsEl = document.getElementById("successTotalSavings");
+  const referrerCredit = document.getElementById("successReferrerCredit");
   const savedText = document.getElementById("savedText");
+  const summaryText = document.getElementById("savingsSummaryText");
+  const referrerCreditText = document.getElementById("referrerCreditText");
 
   banner.classList.add("show");
-  code.textContent = referralCode || "Applied";
-  savings.textContent = money(referralDiscount);
-  savedText.innerHTML = `You saved <strong>${money(referralDiscount)}</strong> today.`;
+
+  code.textContent = referralApplied && referralCode ? referralCode : "N/A";
+  referralSavings.textContent = money(referralDiscount);
+  studentSavings.textContent = money(studentDiscount);
+  sharedSavings.textContent = money(sharedRideSavings);
+  totalSavingsEl.textContent = money(totalSavings);
+  referrerCredit.textContent = referralApplied ? "$10.00" : "$0.00";
+
+  const appliedSavings = [];
+
+  if (referralApplied && referralDiscount > 0) {
+    appliedSavings.push("referral");
+  }
+
+  if (studentVerified && studentDiscount > 0) {
+    appliedSavings.push("student");
+  }
+
+  if (sharedRideApplied && sharedRideSavings > 0) {
+    appliedSavings.push("shared ride");
+  }
+
+  summaryText.innerHTML =
+    appliedSavings.length > 0
+      ? `✓ <strong>${appliedSavings.join(", ")} savings applied.</strong>`
+      : `✓ <strong>Your eligible ride savings were applied.</strong>`;
+
+  savedText.innerHTML =
+    `You saved <strong>${money(totalSavings)}</strong> today.`;
+
+  referrerCreditText.style.display = referralApplied ? "block" : "none";
 }
 
 const mobileMenuBtn = document.getElementById("mobileMenuBtn");
