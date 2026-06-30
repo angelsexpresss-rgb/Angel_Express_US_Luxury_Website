@@ -1,8 +1,9 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   ImageBackground,
   ScrollView,
   StyleSheet,
@@ -32,6 +33,39 @@ export default function ChauffeurSignupScreen() {
 
   const [loading, setLoading] = useState(false);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(28)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.04,
+            duration: 6000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 6000,
+            useNativeDriver: true,
+          }),
+        ])
+      ),
+    ]).start();
+  }, []);
+
   async function handleSignup() {
     if (!fullName.trim() || !email.trim() || !phone.trim() || !password.trim()) {
       Alert.alert("Missing Information", "Please complete all required fields.");
@@ -47,13 +81,13 @@ export default function ChauffeurSignupScreen() {
       setLoading(true);
 
       const cleanEmail = email.trim().toLowerCase();
-
       let userId = "";
 
-      const { data: signupData, error: signupError } = await supabase.auth.signUp({
-        email: cleanEmail,
-        password,
-      });
+      const { data: signupData, error: signupError } =
+        await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+        });
 
       if (signupError && signupError.message.includes("already registered")) {
         const { data: loginData, error: loginError } =
@@ -65,7 +99,7 @@ export default function ChauffeurSignupScreen() {
         if (loginError) {
           Alert.alert(
             "Account Already Exists",
-            "This email is already registered. Please use the same password you use for your passenger account, or use another email."
+            "This email is already registered. Please use the same password or use another email."
           );
           return;
         }
@@ -138,7 +172,7 @@ export default function ChauffeurSignupScreen() {
 
       Alert.alert(
         "Application Submitted",
-        "Your chauffeur application has been submitted. After approval, Angel Express will send you a secure Stripe onboarding link for payouts."
+        "Your chauffeur application has been submitted for Angel Express review."
       );
 
       router.replace("/driver-pending");
@@ -153,258 +187,419 @@ export default function ChauffeurSignupScreen() {
   }
 
   return (
-    <ImageBackground
-      source={require("../assets/images/driver-bg.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.root}>
+      <Animated.View style={[styles.bgWrap, { transform: [{ scale: scaleAnim }] }]}>
+        <ImageBackground
+          source={require("../assets/images/driver-bg.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
+
       <View style={styles.overlay}>
-        <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>Apply as a Chauffeur</Text>
-
-          <Text style={styles.subtitle}>
-            Submit your information for Angel Express approval.
-          </Text>
-
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Full Name *"
-            placeholderTextColor="#94a3b8"
-            value={fullName}
-            onChangeText={setFullName}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Email *"
-            placeholderTextColor="#94a3b8"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Phone *"
-            placeholderTextColor="#94a3b8"
-            keyboardType="phone-pad"
-            value={phone}
-            onChangeText={setPhone}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password *"
-            placeholderTextColor="#94a3b8"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          <Text style={styles.sectionTitle}>Stripe Payout Setup</Text>
-
-          <Text style={styles.helperText}>
-            Angel Express uses Stripe Connect to process chauffeur payouts
-            securely. After approval, you will receive a secure Stripe onboarding
-            link to connect your payout account for 70% trip payouts.
-          </Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Backup Zelle Email or Phone"
-            placeholderTextColor="#94a3b8"
-            value={zelle}
-            onChangeText={setZelle}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Backup Cash App Tag"
-            placeholderTextColor="#94a3b8"
-            value={cashApp}
-            onChangeText={setCashApp}
-          />
-
-          <Text style={styles.sectionTitle}>Vehicle & Experience</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Driver License Number"
-            placeholderTextColor="#94a3b8"
-            value={driverLicense}
-            onChangeText={setDriverLicense}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Vehicle Make"
-            placeholderTextColor="#94a3b8"
-            value={vehicleMake}
-            onChangeText={setVehicleMake}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Vehicle Model"
-            placeholderTextColor="#94a3b8"
-            value={vehicleModel}
-            onChangeText={setVehicleModel}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Vehicle Year"
-            placeholderTextColor="#94a3b8"
-            keyboardType="number-pad"
-            value={vehicleYear}
-            onChangeText={setVehicleYear}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Plate Number"
-            placeholderTextColor="#94a3b8"
-            value={plateNumber}
-            onChangeText={setPlateNumber}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Years of Driving Experience"
-            placeholderTextColor="#94a3b8"
-            keyboardType="number-pad"
-            value={yearsDriving}
-            onChangeText={setYearsDriving}
-          />
-
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Preferred Routes e.g. Dallas to Austin, Airport Trips, Event Transportation"
-            placeholderTextColor="#94a3b8"
-            multiline
-            value={preferredRoutes}
-            onChangeText={setPreferredRoutes}
-          />
-
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleSignup}
-            disabled={loading}
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }}
           >
-            {loading ? (
-              <ActivityIndicator color="#07111f" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Submit Application</Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Text style={styles.backTop}>‹ Back</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => router.push("/driver-login")}>
-            <Text style={styles.link}>Already approved? Login</Text>
-          </TouchableOpacity>
+            <View style={styles.kickerBox}>
+              <Text style={styles.kicker}>ANGEL EXPRESS DRIVER APP</Text>
+            </View>
 
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
+            <Text style={styles.heading}>
+              Apply As <Text style={styles.goldText}>Chauffeur.</Text>
+            </Text>
+
+            <Text style={styles.subtitle}>
+              Submit your details for Angel Express review. Approval is required
+              before receiving trip assignments.
+            </Text>
+
+            <View style={styles.noticeCard}>
+              <Text style={styles.noticeTitle}>Approval Required</Text>
+              <Text style={styles.noticeText}>
+                All chauffeurs are carefully screened and approved by Angel
+                Express before receiving trip assignments.
+              </Text>
+            </View>
+
+            <FormCard title="Personal Information">
+              <Input label="Full Name *" value={fullName} onChangeText={setFullName} />
+              <Input
+                label="Email *"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <Input
+                label="Phone *"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+              <Input
+                label="Password *"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </FormCard>
+
+            <FormCard title="Stripe Payout Setup">
+              <Text style={styles.helperText}>
+                Angel Express uses Stripe Connect to process chauffeur payouts
+                securely. After approval, you will receive a secure Stripe
+                onboarding link for 70% trip payouts.
+              </Text>
+
+              <Input label="Backup Zelle Email or Phone" value={zelle} onChangeText={setZelle} />
+              <Input label="Backup Cash App Tag" value={cashApp} onChangeText={setCashApp} />
+            </FormCard>
+
+            <FormCard title="Vehicle & Experience">
+              <Input label="Driver License Number" value={driverLicense} onChangeText={setDriverLicense} />
+              <Input label="Vehicle Make" value={vehicleMake} onChangeText={setVehicleMake} />
+              <Input label="Vehicle Model" value={vehicleModel} onChangeText={setVehicleModel} />
+              <Input
+                label="Vehicle Year"
+                value={vehicleYear}
+                onChangeText={setVehicleYear}
+                keyboardType="number-pad"
+              />
+              <Input label="Plate Number" value={plateNumber} onChangeText={setPlateNumber} />
+              <Input
+                label="Years of Driving Experience"
+                value={yearsDriving}
+                onChangeText={setYearsDriving}
+                keyboardType="number-pad"
+              />
+
+              <Text style={styles.formLabel}>Preferred Routes</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Dallas to Austin, airport trips, events..."
+                placeholderTextColor="rgba(255,255,255,0.45)"
+                multiline
+                value={preferredRoutes}
+                onChangeText={setPreferredRoutes}
+              />
+            </FormCard>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && styles.disabledButton]}
+              onPress={handleSignup}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <View style={styles.buttonIconBox}>
+                <Text style={styles.buttonIcon}>A</Text>
+              </View>
+
+              {loading ? (
+                <ActivityIndicator color="#050b16" style={{ flex: 1 }} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Submit Application</Text>
+              )}
+
+              <Text style={styles.buttonArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.push("/driver-login")}
+              activeOpacity={0.85}
+            >
+              <View style={styles.outlineIconBox}>
+                <Text style={styles.outlineIcon}>A</Text>
+              </View>
+
+              <Text style={styles.secondaryButtonText}>Already Approved? Login</Text>
+              <Text style={styles.secondaryArrow}>›</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.footer}>
+              Angel Express • Excellence In Every Ride
+            </Text>
+          </Animated.View>
         </ScrollView>
       </View>
-    </ImageBackground>
+    </View>
+  );
+}
+
+function FormCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.formCard}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+function Input(props: any) {
+  const { label, ...rest } = props;
+
+  return (
+    <>
+      <Text style={styles.formLabel}>{label}</Text>
+      <TextInput
+        style={styles.input}
+        placeholder={label}
+        placeholderTextColor="rgba(255,255,255,0.45)"
+        {...rest}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
-  },
+  root: { flex: 1, backgroundColor: "#050b16" },
+  bgWrap: { ...StyleSheet.absoluteFillObject },
+  background: { flex: 1, width: "100%", height: "100%" },
+  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
+
   container: {
     flexGrow: 1,
-    padding: 24,
-    paddingTop: 65,
-    paddingBottom: 45,
+    padding: 22,
+    paddingTop: 58,
+    paddingBottom: 46,
   },
-  title: {
-    color: "#d4af37",
-    fontSize: 30,
-    fontWeight: "900",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#e5e7eb",
-    textAlign: "center",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    color: "#d4af37",
+
+  backTop: {
+    color: "#D4AF37",
     fontSize: 18,
     fontWeight: "900",
-    marginTop: 18,
-    marginBottom: 12,
+    marginBottom: 18,
   },
-  helperText: {
-    color: "#e5e7eb",
+
+  kickerBox: {
+    alignSelf: "flex-start",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderRadius: 999,
+    paddingVertical: 9,
+    paddingHorizontal: 15,
+    marginBottom: 18,
+  },
+
+  kicker: {
+    color: "#D4AF37",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+  },
+
+  heading: {
+    color: "#ffffff",
+    fontSize: 42,
+    fontWeight: "900",
+    letterSpacing: -1.3,
+    lineHeight: 48,
+    marginBottom: 14,
+  },
+
+  goldText: { color: "#D4AF37" },
+
+  subtitle: {
+    color: "#DDE3EA",
+    fontSize: 15.5,
+    lineHeight: 24,
+    marginBottom: 18,
+  },
+
+  noticeCard: {
+    backgroundColor: "rgba(212,175,55,0.09)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.22)",
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 18,
+  },
+
+  noticeTitle: {
+    color: "#D4AF37",
+    fontSize: 18,
+    fontWeight: "900",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+
+  noticeText: {
+    color: "#DDE3EA",
+    textAlign: "center",
     fontSize: 14,
     lineHeight: 22,
-    backgroundColor: "rgba(15,23,42,0.92)",
+    fontWeight: "700",
+  },
+
+  formCard: {
+    backgroundColor: "rgba(13,20,34,0.9)",
     borderWidth: 1,
-    borderColor: "#d4af37",
-    borderRadius: 14,
+    borderColor: "rgba(212,175,55,0.25)",
+    borderRadius: 30,
+    padding: 18,
+    marginBottom: 18,
+  },
+
+  sectionTitle: {
+    color: "#D4AF37",
+    fontSize: 20,
+    fontWeight: "900",
+    marginBottom: 16,
+  },
+
+  helperText: {
+    color: "#DDE3EA",
+    fontSize: 14,
+    lineHeight: 22,
+    backgroundColor: "rgba(212,175,55,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.18)",
+    borderRadius: 18,
     padding: 14,
-    marginBottom: 14,
+    marginBottom: 16,
+    fontWeight: "700",
   },
+
+  formLabel: {
+    color: "#D4AF37",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+
   input: {
-    backgroundColor: "rgba(15,23,42,0.92)",
+    backgroundColor: "rgba(5,11,22,0.82)",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "rgba(212,175,55,0.22)",
     color: "#ffffff",
-    borderRadius: 14,
-    padding: 15,
-    marginBottom: 14,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    fontSize: 16,
+    fontWeight: "700",
   },
+
   textArea: {
-    height: 100,
+    height: 110,
     textAlignVertical: "top",
   },
+
   primaryButton: {
-    backgroundColor: "#d4af37",
-    paddingVertical: 17,
-    borderRadius: 16,
-    marginTop: 14,
+    backgroundColor: "#D4AF37",
+    minHeight: 66,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  primaryButtonText: {
-    color: "#07111f",
-    textAlign: "center",
+
+  disabledButton: { opacity: 0.7 },
+
+  buttonIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: "#050b16",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  buttonIcon: {
+    color: "#D4AF37",
+    fontSize: 25,
     fontWeight: "900",
-    fontSize: 17,
+  },
+
+  primaryButtonText: {
+    flex: 1,
+    color: "#050b16",
+    fontWeight: "900",
+    fontSize: 16,
     textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginLeft: 14,
   },
-  link: {
-    color: "#d4af37",
-    textAlign: "center",
-    marginTop: 22,
-    fontWeight: "800",
+
+  buttonArrow: {
+    color: "#050b16",
+    fontSize: 38,
+    fontWeight: "700",
   },
-  backButton: {
+
+  secondaryButton: {
+    borderWidth: 1.5,
+    borderColor: "#D4AF37",
+    backgroundColor: "rgba(5,11,22,0.78)",
+    minHeight: 66,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    marginBottom: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  outlineIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#64748b",
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginTop: 16,
-    marginBottom: 30,
-    backgroundColor: "rgba(15,23,42,0.75)",
+    borderColor: "rgba(212,175,55,0.45)",
+    backgroundColor: "rgba(212,175,55,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  backButtonText: {
+
+  outlineIcon: {
+    color: "#D4AF37",
+    fontSize: 25,
+    fontWeight: "900",
+  },
+
+  secondaryButtonText: {
+    flex: 1,
+    color: "#D4AF37",
+    fontWeight: "900",
+    fontSize: 15,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginLeft: 14,
+  },
+
+  secondaryArrow: {
+    color: "#D4AF37",
+    fontSize: 38,
+    fontWeight: "700",
+  },
+
+  footer: {
     color: "#ffffff",
     textAlign: "center",
+    fontSize: 13,
     fontWeight: "700",
-    fontSize: 16,
+    opacity: 0.9,
   },
 });

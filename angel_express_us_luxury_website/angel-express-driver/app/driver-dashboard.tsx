@@ -1,9 +1,11 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +16,8 @@ import { supabase } from "../lib/supabase";
 
 export default function ChauffeurDashboardScreen() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [driver, setDriver] = useState<any>(null);
   const [isOnline, setIsOnline] = useState(false);
 
@@ -22,12 +26,58 @@ export default function ChauffeurDashboardScreen() {
   const [weeklyEarnings, setWeeklyEarnings] = useState(0);
   const [driverLevel, setDriverLevel] = useState("Bronze");
 
-  const [showTrips, setShowTrips] = useState(false);
+  const [showTrips, setShowTrips] = useState(true);
   const [showMoneyProfile, setShowMoneyProfile] = useState(false);
   const [showSafetySupport, setShowSafetySupport] = useState(false);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(28)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const bgScale = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     loadDashboard();
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 700,
+        useNativeDriver: true,
+      }),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.04,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+        ])
+      ),
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bgScale, {
+            toValue: 1.05,
+            duration: 7000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bgScale, {
+            toValue: 1,
+            duration: 7000,
+            useNativeDriver: true,
+          }),
+        ])
+      ),
+    ]).start();
   }, []);
 
   function getWeekStartDate() {
@@ -45,21 +95,11 @@ export default function ChauffeurDashboardScreen() {
     safetyCheckins: number,
     feedbackScore: number
   ) {
-    if (
-      trips >= 50 &&
-      avgRating >= 4.9 &&
-      safetyCheckins >= 40 &&
-      feedbackScore >= 4.8
-    ) {
+    if (trips >= 50 && avgRating >= 4.9 && safetyCheckins >= 40 && feedbackScore >= 4.8) {
       return "Angel Elite";
     }
 
-    if (
-      trips >= 25 &&
-      avgRating >= 4.7 &&
-      safetyCheckins >= 20 &&
-      feedbackScore >= 4.6
-    ) {
+    if (trips >= 25 && avgRating >= 4.7 && safetyCheckins >= 20 && feedbackScore >= 4.6) {
       return "Gold";
     }
 
@@ -106,7 +146,7 @@ export default function ChauffeurDashboardScreen() {
         .from("bookings")
         .select("*")
         .eq("driver_id", user.id)
-        .eq("status", "Completed");
+        .in("status", ["Completed", "completed"]);
 
       if (completedError) throw completedError;
 
@@ -128,11 +168,12 @@ export default function ChauffeurDashboardScreen() {
         const completedDate = new Date(
           trip.completed_at || trip.updated_at || trip.created_at
         );
+
         return completedDate >= new Date(weekStart);
       });
 
       const weeklyRevenue = weeklyTrips.reduce((sum, trip) => {
-        return sum + Number(trip.total || trip.total_price || trip.price || 0);
+        return sum + Number(trip.total || trip.total_fare || trip.total_price || trip.price || 0);
       }, 0);
 
       const weeklyDriverPayout = weeklyRevenue * 0.7;
@@ -178,10 +219,16 @@ export default function ChauffeurDashboardScreen() {
         })
         .eq("id", user.id);
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Unable to load dashboard.");
+      Alert.alert("Dashboard Error", err.message || "Unable to load dashboard.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadDashboard();
   }
 
   async function toggleOnlineStatus() {
@@ -202,7 +249,7 @@ export default function ChauffeurDashboardScreen() {
     }
 
     Alert.alert(
-      newStatus ? "You are Online" : "You are Offline",
+      newStatus ? "You Are Online" : "You Are Offline",
       newStatus
         ? "You can now find and accept Angel Express trips."
         : "You cannot find or start trips while offline."
@@ -233,410 +280,926 @@ export default function ChauffeurDashboardScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#d4af37" />
-        <Text style={styles.loadingText}>Loading chauffeur dashboard...</Text>
+        <ActivityIndicator size="large" color="#D4AF37" />
+        <Text style={styles.loadingText}>Loading chauffeur cockpit...</Text>
       </View>
     );
   }
 
   return (
-    <ImageBackground
-      source={require("../assets/images/driver-bg.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.root}>
+      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+        <ImageBackground
+          source={require("../assets/images/driver-bg.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
+
       <View style={styles.overlay}>
-        <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.welcome}>
-            Welcome, {driver?.first_name || "Chauffeur"}
-          </Text>
-
-          <Text style={styles.subtitle}>Angel Express Chauffeur Dashboard</Text>
-
-          <TouchableOpacity
-            style={[
-              styles.onlineToggle,
-              isOnline ? styles.onlineActive : styles.offlineActive,
-            ]}
-            onPress={toggleOnlineStatus}
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#D4AF37"
+            />
+          }
+        >
+          <Animated.View
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            }}
           >
-            <Text style={styles.onlineText}>
-              {isOnline
-                ? "🟢 Online — Available for Trips"
-                : "⚪ Offline — Go Online to Find Trips"}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.topBar}>
+              <View>
+                <Text style={styles.kicker}>ANGEL EXPRESS DRIVER APP</Text>
+                <Text style={styles.welcome}>
+                  Hello, {driver?.first_name || driver?.full_name || "Chauffeur"}
+                </Text>
+              </View>
 
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <Text style={styles.statIcon}>⭐</Text>
-              <Text style={styles.statValue}>{rating}</Text>
-              <Text style={styles.statLabel}>Driver Rating</Text>
+              <TouchableOpacity style={styles.logoutMini} onPress={handleLogout}>
+                <Text style={styles.logoutMiniText}>Logout</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.statCard}>
-              <Text style={styles.statIcon}>🚗</Text>
-              <Text style={styles.statValue}>{completedTrips}</Text>
-              <Text style={styles.statLabel}>Completed Trips</Text>
-            </View>
+            <View style={styles.heroCard}>
+              <View style={styles.heroTopRow}>
+                <View>
+                  <Text style={styles.heroSmall}>TODAY'S DRIVER MODE</Text>
+                  <Text style={styles.heroTitle}>
+                    {isOnline ? "Ready For Trips" : "Go Online To Drive"}
+                  </Text>
+                </View>
 
-            <View style={styles.statCard}>
-              <Text style={styles.statIcon}>💰</Text>
-              <Text style={styles.statValue}>
-                ${weeklyEarnings.toFixed(0)}
+                <Animated.View
+                  style={[
+                    styles.livePill,
+                    isOnline ? styles.livePillOnline : styles.livePillOffline,
+                    { transform: [{ scale: isOnline ? pulseAnim : 1 }] },
+                  ]}
+                >
+                  <Text style={styles.liveDot}>{isOnline ? "●" : "○"}</Text>
+                  <Text style={styles.liveText}>{isOnline ? "ONLINE" : "OFFLINE"}</Text>
+                </Animated.View>
+              </View>
+
+              <Text style={styles.heroText}>
+                {isOnline
+                  ? "You are visible to Angel Express operations and can claim available rides."
+                  : "Switch online to unlock trip discovery, active ride tools, and smart trip queue."}
               </Text>
-              <Text style={styles.statLabel}>This Week</Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.goOnlineButton,
+                  isOnline ? styles.goOfflineButton : styles.goOnlineActiveButton,
+                ]}
+                onPress={toggleOnlineStatus}
+                activeOpacity={0.88}
+              >
+                <View style={styles.buttonIconBox}>
+                  <Text style={styles.buttonIcon}>A</Text>
+                </View>
+
+                <Text style={styles.goOnlineText}>
+                  {isOnline ? "Go Offline" : "Go Online"}
+                </Text>
+
+                <Text style={styles.buttonArrow}>›</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.statCard}>
-              <Text style={styles.statIcon}>🏆</Text>
-              <Text style={styles.statValue}>{driverLevel}</Text>
-              <Text style={styles.statLabel}>Driver Level</Text>
+            <View style={styles.statsGrid}>
+              <StatCard icon="⭐" label="Rating" value={rating.toFixed(1)} />
+              <StatCard icon="🚗" label="Trips" value={String(completedTrips)} />
+              <StatCard icon="💰" label="Week" value={`$${weeklyEarnings.toFixed(0)}`} />
+              <StatCard icon="🏆" label="Level" value={driverLevel} />
             </View>
-          </View>
 
-          <View style={styles.levelCard}>
-            <Text style={styles.levelTitle}>Angel Driver Level System</Text>
-            <Text style={styles.levelText}>
-              Bronze → Silver → Gold → Angel Elite
-            </Text>
-            <Text style={styles.levelSubtext}>
-              Based on completed trips, ratings, on-time pickup, safety
-              check-ins, and passenger feedback.
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.dropdownHeader}
-            onPress={() => setShowTrips(!showTrips)}
-          >
-            <Text style={styles.dropdownTitle}>Trips</Text>
-            <Text style={styles.dropdownIcon}>{showTrips ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-
-          {showTrips && (
-            <View style={styles.dropdownContent}>
-              <TouchableOpacity
-                style={[styles.actionButton, !isOnline && styles.disabledButton]}
-                onPress={() => requireOnline("/find-trips")}
-              >
-                <Text style={styles.actionButtonTitle}>Find Trips</Text>
-                <Text style={styles.actionButtonText}>
-                  You must be online to view and claim available rides.
-                </Text>
-              </TouchableOpacity>
+            <View style={styles.earningsPanel}>
+              <View>
+                <Text style={styles.panelSmall}>70% DRIVER SHARE</Text>
+                <Text style={styles.panelTitle}>${weeklyEarnings.toFixed(2)}</Text>
+                <Text style={styles.panelText}>Estimated chauffeur earnings this week.</Text>
+              </View>
 
               <TouchableOpacity
-                style={[styles.actionButton, !isOnline && styles.disabledButton]}
-                onPress={() => requireOnline("/active-trip")}
-              >
-                <Text style={styles.actionButtonTitle}>My Active Trip</Text>
-                <Text style={styles.actionButtonText}>
-                  Start and manage your assigned trip while online.
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => router.push("/upcoming-trips")}
-              >
-                <Text style={styles.actionButtonTitle}>Upcoming Trips</Text>
-                <Text style={styles.actionButtonText}>
-                  See future trips you have accepted.
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-              style={[styles.actionButton, !isOnline && styles.disabledButton]}
-              onPress={() => requireOnline("/smart-trip-queue")}
-              >
-              <Text style={styles.actionButtonTitle}>Smart Trip Queue</Text>
-              <Text style={styles.actionButtonText}>
-               Future trips available to claim.
-              </Text>
-              </TouchableOpacity>
-            </View>
-            
-          )}
-
-          <TouchableOpacity
-            style={styles.dropdownHeader}
-            onPress={() => setShowMoneyProfile(!showMoneyProfile)}
-          >
-            <Text style={styles.dropdownTitle}>Money & Profile</Text>
-            <Text style={styles.dropdownIcon}>
-              {showMoneyProfile ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
-
-          {showMoneyProfile && (
-            <View style={styles.dropdownContent}>
-              <TouchableOpacity
-                style={styles.actionButton}
+                style={styles.panelButton}
                 onPress={() => router.push("/earnings")}
               >
-                <Text style={styles.actionButtonTitle}>Earnings</Text>
-                <Text style={styles.actionButtonText}>
-                  Track weekly payout, completed trip revenue, Stripe status,
-                  and payout history.
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => router.push("/driver-card")}
-              >
-                <Text style={styles.actionButtonTitle}>Driver Card</Text>
-                <Text style={styles.actionButtonText}>
-                  Preview the chauffeur card passengers will see after
-                  assignment.
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => router.push("/passenger-ratings")}
-              >
-                <Text style={styles.actionButtonTitle}>Passenger Ratings</Text>
-                <Text style={styles.actionButtonText}>
-                  Rate passengers and review completed trip feedback.
-                </Text>
+                <Text style={styles.panelButtonText}>View</Text>
               </TouchableOpacity>
             </View>
-          )}
 
-          <TouchableOpacity
-            style={styles.dropdownHeader}
-            onPress={() => setShowSafetySupport(!showSafetySupport)}
-          >
-            <Text style={styles.dropdownTitle}>Safety & Support</Text>
-            <Text style={styles.dropdownIcon}>
-              {showSafetySupport ? "▲" : "▼"}
-            </Text>
-          </TouchableOpacity>
+            <View style={styles.levelCard}>
+              <View style={styles.levelHeader}>
+                <Text style={styles.levelTitle}>Angel Driver Level</Text>
+                <Text style={styles.levelBadge}>{driverLevel}</Text>
+              </View>
 
-          {showSafetySupport && (
-            <View style={styles.dropdownContent}>
-              <TouchableOpacity
-                style={styles.emergencyButton}
-                onPress={() => router.push("/safety-support")}
-              >
-                <Text style={styles.emergencyTitle}>Emergency Button</Text>
-                <Text style={styles.emergencyText}>
-                  Safety check-ins, panic contact, emergency alert, and location
-                  sharing.
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.levelTrack}>
+                <View
+                  style={[
+                    styles.levelProgress,
+                    {
+                      width:
+                        driverLevel === "Angel Elite"
+                          ? "100%"
+                          : driverLevel === "Gold"
+                          ? "75%"
+                          : driverLevel === "Silver"
+                          ? "50%"
+                          : "25%",
+                    },
+                  ]}
+                />
+              </View>
 
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => router.push("/support")}
-              >
-                <Text style={styles.actionButtonTitle}>Support</Text>
-                <Text style={styles.actionButtonText}>
-                  Contact Angel Express for trip, payment, vehicle, or account
-                  support.
-                </Text>
-              </TouchableOpacity>
+              <Text style={styles.levelSubtext}>
+                Bronze → Silver → Gold → Angel Elite. Based on completed trips,
+                rating, safety check-ins, on-time pickup, and passenger feedback.
+              </Text>
             </View>
-          )}
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Driver Command Center</Text>
+
+            <View style={styles.quickGrid}>
+              <QuickAction
+                title="Find Trips"
+                subtitle="Claim open rides"
+                icon="📍"
+                locked={!isOnline}
+                onPress={() => requireOnline("/find-trips")}
+              />
+
+              <QuickAction
+                title="Active Trip"
+                subtitle="Manage current ride"
+                icon="🚘"
+                locked={!isOnline}
+                onPress={() => requireOnline("/active-trip")}
+              />
+
+              <QuickAction
+                title="Upcoming"
+                subtitle="Accepted trips"
+                icon="📅"
+                onPress={() => router.push("/upcoming-trips")}
+              />
+
+              <QuickAction
+                title="Smart Queue"
+                subtitle="Future claims"
+                icon="⚡"
+                locked={!isOnline}
+                onPress={() => requireOnline("/smart-trip-queue")}
+              />
+            </View>
+
+            <Dropdown
+              title="Trips"
+              subtitle="Find, accept, and manage ride assignments"
+              icon="🛣"
+              open={showTrips}
+              onPress={() => setShowTrips(!showTrips)}
+            />
+
+            {showTrips && (
+              <View style={styles.dropdownContent}>
+                <ActionCard
+                  title="Find Trips"
+                  subtitle="View available website and passenger app bookings."
+                  locked={!isOnline}
+                  onPress={() => requireOnline("/find-trips")}
+                />
+
+                <ActionCard
+                  title="My Active Trip"
+                  subtitle="Navigate to pickup, update ride status, and complete the trip."
+                  locked={!isOnline}
+                  onPress={() => requireOnline("/active-trip")}
+                />
+
+                <ActionCard
+                  title="Upcoming Trips"
+                  subtitle="See today, this week, and future accepted rides."
+                  onPress={() => router.push("/upcoming-trips")}
+                />
+
+                <ActionCard
+                  title="Smart Trip Queue"
+                  subtitle="Claim future trips before they become urgent."
+                  locked={!isOnline}
+                  onPress={() => requireOnline("/smart-trip-queue")}
+                />
+              </View>
+            )}
+
+            <Dropdown
+              title="Money & Profile"
+              subtitle="Earnings, chauffeur card, and passenger feedback"
+              icon="💼"
+              open={showMoneyProfile}
+              onPress={() => setShowMoneyProfile(!showMoneyProfile)}
+            />
+
+            {showMoneyProfile && (
+              <View style={styles.dropdownContent}>
+                <ActionCard
+                  title="Earnings"
+                  subtitle="Track weekly payout, completed trip revenue, and Stripe Connect status."
+                  onPress={() => router.push("/earnings")}
+                />
+
+                <ActionCard
+                  title="Driver Card"
+                  subtitle="Preview what passengers see after assignment."
+                  onPress={() => router.push("/driver-card")}
+                />
+
+                <ActionCard
+                  title="Passenger Ratings"
+                  subtitle="Rate passengers and review completed trip feedback."
+                  onPress={() => router.push("/passenger-ratings")}
+                />
+              </View>
+            )}
+
+            <Dropdown
+              title="Safety & Support"
+              subtitle="Emergency tools, check-ins, and Angel Express support"
+              icon="🛡"
+              open={showSafetySupport}
+              onPress={() => setShowSafetySupport(!showSafetySupport)}
+            />
+
+            {showSafetySupport && (
+              <View style={styles.dropdownContent}>
+                <TouchableOpacity
+                  style={styles.emergencyButton}
+                  onPress={() => router.push("/safety-support")}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.emergencyTitle}>Emergency Button</Text>
+                  <Text style={styles.emergencyText}>
+                    Safety check-ins, panic contact, emergency alert, and location sharing.
+                  </Text>
+                </TouchableOpacity>
+
+                <ActionCard
+                  title="Support Center"
+                  subtitle="Contact Angel Express for trip, payment, vehicle, or account support."
+                  onPress={() => router.push("/support")}
+                />
+              </View>
+            )}
+
+            <View style={styles.footerCard}>
+              <Text style={styles.footerTitle}>Angel Express Standard</Text>
+              <Text style={styles.footerText}>
+                Comfort • Reliability • Security • Cleanliness
+              </Text>
+            </View>
+          </Animated.View>
         </ScrollView>
       </View>
-    </ImageBackground>
+    </View>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.statCard}>
+      <Text style={styles.statIcon}>{icon}</Text>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function QuickAction({
+  title,
+  subtitle,
+  icon,
+  locked,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  icon: string;
+  locked?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.quickCard, locked && styles.lockedCard]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View style={styles.quickIcon}>
+        <Text style={styles.quickIconText}>{icon}</Text>
+      </View>
+
+      <Text style={styles.quickTitle}>{title}</Text>
+      <Text style={styles.quickSubtitle}>{locked ? "Go online first" : subtitle}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function Dropdown({
+  title,
+  subtitle,
+  icon,
+  open,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  icon: string;
+  open: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity style={styles.dropdownHeader} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.dropdownIconBox}>
+        <Text style={styles.dropdownEmoji}>{icon}</Text>
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <Text style={styles.dropdownTitle}>{title}</Text>
+        <Text style={styles.dropdownSubtitle}>{subtitle}</Text>
+      </View>
+
+      <Text style={styles.dropdownArrow}>{open ? "−" : "+"}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function ActionCard({
+  title,
+  subtitle,
+  locked,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  locked?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.actionCard, locked && styles.disabledButton]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View>
+        <Text style={styles.actionButtonTitle}>{title}</Text>
+        <Text style={styles.actionButtonText}>
+          {locked ? "You must be online to access this feature." : subtitle}
+        </Text>
+      </View>
+
+      <Text style={styles.actionArrow}>›</Text>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#050b16",
+  },
+
+  bgWrap: {
+    ...StyleSheet.absoluteFillObject,
+  },
+
   background: {
     flex: 1,
+    width: "100%",
+    height: "100%",
   },
+
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
+    backgroundColor: "rgba(5,11,22,0.91)",
   },
+
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#07111f",
+    backgroundColor: "#050b16",
     justifyContent: "center",
     alignItems: "center",
   },
+
   loadingText: {
-    color: "#e5e7eb",
+    color: "#DDE3EA",
     marginTop: 14,
+    fontWeight: "800",
   },
+
   container: {
     flexGrow: 1,
     padding: 22,
-    paddingTop: 65,
-    paddingBottom: 45,
+    paddingTop: 60,
+    paddingBottom: 46,
   },
+
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 18,
+  },
+
+  kicker: {
+    color: "#D4AF37",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.5,
+    marginBottom: 7,
+  },
+
   welcome: {
     color: "#ffffff",
-    fontSize: 30,
+    fontSize: 31,
     fontWeight: "900",
+    letterSpacing: -0.9,
+  },
+
+  logoutMini: {
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 999,
+  },
+
+  logoutMiniText: {
+    color: "#D4AF37",
+    fontWeight: "900",
+    fontSize: 12,
+  },
+
+  heroCard: {
+    backgroundColor: "rgba(13,20,34,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.28)",
+    borderRadius: 32,
+    padding: 20,
+    marginBottom: 18,
+  },
+
+  heroTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 12,
+  },
+
+  heroSmall: {
+    color: "#D4AF37",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.2,
     marginBottom: 6,
   },
-  subtitle: {
-    color: "#d4af37",
-    fontSize: 15,
-    fontWeight: "800",
-    marginBottom: 20,
+
+  heroTitle: {
+    color: "#ffffff",
+    fontSize: 27,
+    fontWeight: "900",
+    letterSpacing: -0.7,
   },
-  onlineToggle: {
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginBottom: 22,
+
+  heroText: {
+    color: "#DDE3EA",
+    fontSize: 15,
+    lineHeight: 23,
+    marginBottom: 18,
+    fontWeight: "700",
+  },
+
+  livePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 11,
     borderWidth: 1,
   },
-  onlineActive: {
-    backgroundColor: "rgba(34,197,94,0.18)",
-    borderColor: "#22c55e",
+
+  livePillOnline: {
+    backgroundColor: "rgba(46,204,113,0.13)",
+    borderColor: "rgba(46,204,113,0.45)",
   },
-  offlineActive: {
-    backgroundColor: "rgba(15,23,42,0.85)",
-    borderColor: "#64748b",
+
+  livePillOffline: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(255,255,255,0.16)",
   },
-  onlineText: {
+
+  liveDot: {
+    color: "#2ECC71",
+    fontSize: 12,
+  },
+
+  liveText: {
     color: "#ffffff",
-    textAlign: "center",
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: "900",
   },
+
+  goOnlineButton: {
+    minHeight: 66,
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  goOnlineActiveButton: {
+    backgroundColor: "#D4AF37",
+  },
+
+  goOfflineButton: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+  },
+
+  buttonIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: "#050b16",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  buttonIcon: {
+    color: "#D4AF37",
+    fontSize: 25,
+    fontWeight: "900",
+  },
+
+  goOnlineText: {
+    flex: 1,
+    color: "#050b16",
+    fontWeight: "900",
+    fontSize: 17,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginLeft: 14,
+  },
+
+  buttonArrow: {
+    color: "#050b16",
+    fontSize: 38,
+    fontWeight: "700",
+  },
+
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: 4,
   },
+
   statCard: {
     width: "48%",
-    backgroundColor: "rgba(15,23,42,0.92)",
+    backgroundColor: "rgba(13,20,34,0.9)",
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.55)",
-    borderRadius: 18,
+    borderColor: "rgba(212,175,55,0.25)",
+    borderRadius: 24,
     padding: 16,
     marginBottom: 14,
   },
+
   statIcon: {
     fontSize: 24,
     marginBottom: 8,
   },
+
   statValue: {
-    color: "#d4af37",
-    fontSize: 22,
+    color: "#D4AF37",
+    fontSize: 25,
     fontWeight: "900",
   },
+
   statLabel: {
-    color: "#e5e7eb",
+    color: "#DDE3EA",
     fontSize: 13,
     marginTop: 4,
-  },
-  levelCard: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.55)",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 20,
-  },
-  levelTitle: {
-    color: "#d4af37",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  levelText: {
-    color: "#ffffff",
-    fontSize: 15,
     fontWeight: "800",
-    marginBottom: 6,
   },
-  levelSubtext: {
-    color: "#cbd5e1",
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  dropdownHeader: {
-    backgroundColor: "rgba(15,23,42,0.92)",
+
+  earningsPanel: {
+    backgroundColor: "rgba(212,175,55,0.11)",
     borderWidth: 1,
-    borderColor: "#d4af37",
-    borderRadius: 18,
+    borderColor: "rgba(212,175,55,0.25)",
+    borderRadius: 26,
     padding: 18,
-    marginBottom: 12,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+
+  panelSmall: {
+    color: "#D4AF37",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    marginBottom: 5,
+  },
+
+  panelTitle: {
+    color: "#ffffff",
+    fontSize: 32,
+    fontWeight: "900",
+  },
+
+  panelText: {
+    color: "#DDE3EA",
+    fontSize: 13,
+    marginTop: 5,
+    fontWeight: "700",
+  },
+
+  panelButton: {
+    backgroundColor: "#D4AF37",
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    borderRadius: 999,
+  },
+
+  panelButtonText: {
+    color: "#050b16",
+    fontWeight: "900",
+  },
+
+  levelCard: {
+    backgroundColor: "rgba(13,20,34,0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.25)",
+    borderRadius: 26,
+    padding: 18,
+    marginBottom: 22,
+  },
+
+  levelHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    gap: 12,
+    marginBottom: 14,
   },
-  dropdownTitle: {
-    color: "#d4af37",
-    fontSize: 20,
+
+  levelTitle: {
+    color: "#ffffff",
+    fontSize: 19,
     fontWeight: "900",
   },
-  dropdownIcon: {
-    color: "#d4af37",
+
+  levelBadge: {
+    color: "#D4AF37",
+    fontWeight: "900",
+  },
+
+  levelTrack: {
+    height: 9,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 999,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+
+  levelProgress: {
+    height: "100%",
+    backgroundColor: "#D4AF37",
+    borderRadius: 999,
+  },
+
+  levelSubtext: {
+    color: "#DDE3EA",
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: "700",
+  },
+
+  sectionTitle: {
+    color: "#D4AF37",
+    fontSize: 23,
+    fontWeight: "900",
+    marginBottom: 14,
+  },
+
+  quickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+
+  quickCard: {
+    width: "48%",
+    backgroundColor: "rgba(13,20,34,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.22)",
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 13,
+    minHeight: 132,
+  },
+
+  lockedCard: {
+    opacity: 0.55,
+  },
+
+  quickIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: "rgba(212,175,55,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.24)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 11,
+  },
+
+  quickIconText: {
+    fontSize: 22,
+  },
+
+  quickTitle: {
+    color: "#ffffff",
+    fontSize: 17,
+    fontWeight: "900",
+    marginBottom: 5,
+  },
+
+  quickSubtitle: {
+    color: "#B8C1CC",
+    fontSize: 12.5,
+    lineHeight: 18,
+    fontWeight: "700",
+  },
+
+  dropdownHeader: {
+    backgroundColor: "rgba(13,20,34,0.92)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    borderRadius: 24,
+    padding: 17,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  dropdownIconBox: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: "rgba(212,175,55,0.09)",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  dropdownEmoji: {
+    fontSize: 22,
+  },
+
+  dropdownTitle: {
+    color: "#ffffff",
     fontSize: 18,
     fontWeight: "900",
   },
+
+  dropdownSubtitle: {
+    color: "#B8C1CC",
+    fontSize: 12.5,
+    lineHeight: 18,
+    marginTop: 4,
+    fontWeight: "700",
+  },
+
+  dropdownArrow: {
+    color: "#D4AF37",
+    fontSize: 30,
+    fontWeight: "900",
+  },
+
   dropdownContent: {
-    marginBottom: 18,
+    marginBottom: 16,
   },
-  actionButton: {
-    backgroundColor: "rgba(15,23,42,0.92)",
+
+  actionCard: {
+    backgroundColor: "rgba(13,20,34,0.92)",
     borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 13,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 22,
+    padding: 17,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
   },
+
   disabledButton: {
     opacity: 0.55,
-    borderColor: "#64748b",
+    borderColor: "rgba(255,255,255,0.14)",
   },
+
   actionButtonTitle: {
     color: "#ffffff",
     fontSize: 18,
     fontWeight: "900",
     marginBottom: 6,
   },
+
   actionButtonText: {
-    color: "#cbd5e1",
+    color: "#B8C1CC",
     fontSize: 14,
     lineHeight: 21,
+    fontWeight: "700",
+    maxWidth: 280,
   },
+
+  actionArrow: {
+    color: "#D4AF37",
+    fontSize: 34,
+    fontWeight: "800",
+  },
+
   emergencyButton: {
-    backgroundColor: "rgba(127,29,29,0.8)",
+    backgroundColor: "rgba(127,29,29,0.82)",
     borderWidth: 1,
-    borderColor: "#ef4444",
-    borderRadius: 18,
+    borderColor: "#EF4444",
+    borderRadius: 22,
     padding: 18,
-    marginBottom: 13,
+    marginBottom: 12,
   },
+
   emergencyTitle: {
     color: "#ffffff",
     fontSize: 19,
     fontWeight: "900",
     marginBottom: 6,
   },
+
   emergencyText: {
-    color: "#fee2e2",
+    color: "#FEE2E2",
     fontSize: 14,
     lineHeight: 21,
+    fontWeight: "700",
   },
-  logoutButton: {
+
+  footerCard: {
+    backgroundColor: "rgba(0,0,0,0.38)",
     borderWidth: 1,
-    borderColor: "#64748b",
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "rgba(15,23,42,0.75)",
-    marginTop: 6,
+    borderColor: "rgba(212,175,55,0.18)",
+    borderRadius: 24,
+    padding: 18,
+    marginTop: 4,
   },
-  logoutText: {
+
+  footerTitle: {
+    color: "#D4AF37",
+    textAlign: "center",
+    fontWeight: "900",
+    fontSize: 17,
+    marginBottom: 8,
+  },
+
+  footerText: {
     color: "#ffffff",
     textAlign: "center",
-    fontWeight: "800",
-    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    lineHeight: 22,
   },
 });
