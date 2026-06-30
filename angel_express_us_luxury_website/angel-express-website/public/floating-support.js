@@ -12,16 +12,27 @@
   if (hiddenPages.includes(currentPage)) {
     document
       .querySelectorAll(
-        ".mobile-support-dock, .mobile-support-btn, #mobileChatBtn, #chatToggle, .whatsapp-float, #chatbotBox, #angelChatStyle"
+        "#angelChatStyle,#chatToggle,.whatsapp-float,#chatbotBox,.mobile-support-dock,.mobile-support-btn,#mobileChatBtn"
       )
       .forEach((el) => el.remove());
     return;
   }
 
+  const state = {
+    messages: [],
+    intent: "general",
+    rideType: null,
+    pickup: "",
+    dropoff: "",
+    date: "",
+    time: "",
+    passengerType: "",
+  };
+
   function buildAngelSupport() {
     document
       .querySelectorAll(
-        ".mobile-support-dock, .mobile-support-btn, #mobileChatBtn, #chatToggle, .whatsapp-float, #chatbotBox, #angelChatStyle"
+        "#angelChatStyle,#chatToggle,.whatsapp-float,#chatbotBox,.mobile-support-dock,.mobile-support-btn,#mobileChatBtn"
       )
       .forEach((el) => el.remove());
 
@@ -62,50 +73,28 @@
       }
 
       .chatbot-box{
-    position:fixed;
-
-    right:24px;
-    bottom:170px;
-
-    width:390px;
-    height:520px;
-
-    max-width:390px;
-    max-height:520px;
-
-    display:none;
-    flex-direction:column;
-
-    overflow:hidden;
-
-    border-radius:28px;
-
-    background:rgba(5,11,22,.98);
-
-    border:1px solid rgba(212,175,55,.35);
-
-    box-shadow:0 35px 90px rgba(0,0,0,.55);
-
-    backdrop-filter:blur(22px);
-
-    z-index:999999;
-}
+        position:fixed;
+        right:24px;
+        bottom:170px;
+        width:390px;
+        height:520px;
+        max-width:calc(100vw - 40px);
+        max-height:calc(100vh - 130px);
+        z-index:1000000;
         display:none;
         flex-direction:column;
         overflow:hidden;
-        border-radius:30px;
+        border-radius:28px;
         background:rgba(5,11,22,.98);
         border:1px solid rgba(212,175,55,.38);
         box-shadow:0 30px 90px rgba(0,0,0,.58);
         backdrop-filter:blur(22px);
       }
 
-      .chatbot-box.open{
-        display:flex;
-      }
+      .chatbot-box.open{display:flex;}
 
       .chatbot-header{
-        padding:18px;
+        padding:15px;
         background:
           radial-gradient(circle at 10% 0%,rgba(255,255,255,.26),transparent 30%),
           linear-gradient(135deg,#D4AF37,#b88918);
@@ -119,12 +108,12 @@
       .chatbot-brand{
         display:flex;
         align-items:center;
-        gap:12px;
+        gap:10px;
       }
 
       .chatbot-logo{
-        width:42px;
-        height:42px;
+        width:40px;
+        height:40px;
         border-radius:14px;
         background:#050b16;
         color:#D4AF37;
@@ -136,12 +125,12 @@
 
       .chatbot-title{
         font-weight:950;
-        font-size:16px;
+        font-size:15px;
         line-height:1.1;
       }
 
       .chatbot-subtitle{
-        font-size:12px;
+        font-size:11px;
         font-weight:850;
         opacity:.78;
         margin-top:3px;
@@ -151,10 +140,10 @@
         border:none;
         background:rgba(5,11,22,.16);
         color:#050b16;
-        width:36px;
-        height:36px;
+        width:34px;
+        height:34px;
         border-radius:999px;
-        font-size:25px;
+        font-size:24px;
         font-weight:900;
         cursor:pointer;
       }
@@ -163,7 +152,7 @@
         flex:1;
         min-height:0;
         overflow-y:auto;
-        padding:18px;
+        padding:16px;
         display:flex;
         flex-direction:column;
         gap:12px;
@@ -171,7 +160,7 @@
       }
 
       .chat-msg{
-        max-width:88%;
+        max-width:90%;
         padding:13px 15px;
         border-radius:20px;
         line-height:1.5;
@@ -217,18 +206,17 @@
         border-radius:18px;
         font-size:13px;
         display:none;
+        margin:0 16px 10px;
       }
 
-      .typing-bubble.show{
-        display:block;
-      }
+      .typing-bubble.show{display:block;}
 
       .quick-prompts{
         flex-shrink:0;
         display:flex;
         gap:8px;
         flex-wrap:wrap;
-        padding:0 18px 14px;
+        padding:0 16px 12px;
       }
 
       .quick-prompts button{
@@ -236,14 +224,10 @@
         background:rgba(212,175,55,.10);
         color:#D4AF37;
         border-radius:999px;
-        padding:9px 12px;
+        padding:8px 11px;
         font-weight:900;
         font-size:12px;
         cursor:pointer;
-      }
-
-      .quick-prompts button:hover{
-        background:rgba(212,175,55,.18);
       }
 
       .chatbot-input{
@@ -255,8 +239,8 @@
       }
 
       #chatInput{
-        min-height:60px;
-        padding:0 16px;
+        min-height:58px;
+        padding:0 15px;
         background:rgba(255,255,255,.07);
         border:none;
         color:#fff;
@@ -267,7 +251,7 @@
 
       #chatSendBtn{
         border:none;
-        padding:0 22px;
+        padding:0 20px;
         background:#D4AF37;
         color:#050b16;
         font-weight:950;
@@ -306,39 +290,23 @@
           min-height:58px;
         }
 
-        .chat-toggle{
-          bottom:96px;
-        }
-
-        .whatsapp-float{
-          bottom:26px;
-        }
+        .chat-toggle{bottom:96px;}
+        .whatsapp-float{bottom:26px;}
 
         .chatbot-box{
           left:10px;
           right:10px;
           bottom:166px;
           width:auto;
-          height:70vh;
-          max-height:70vh;
+          height:68vh;
+          max-height:68vh;
           max-width:none;
           border-radius:26px;
-        }
-
-        .chatbot-messages{
-          padding:16px;
         }
 
         .chat-msg{
           max-width:92%;
           font-size:14px;
-        }
-      }
-
-      @media(min-width:769px) and (max-width:1180px){
-        .chatbot-box{
-          width:460px;
-          height:640px;
         }
       }
     `;
@@ -367,7 +335,7 @@
           <div class="chatbot-logo">A</div>
           <div>
             <div class="chatbot-title">Angel Express Concierge</div>
-            <div class="chatbot-subtitle">Travel • Airport • Students • Events</div>
+            <div class="chatbot-subtitle">Smart travel support</div>
           </div>
         </div>
         <button type="button" id="chatCloseBtn">×</button>
@@ -378,19 +346,15 @@
 
       <div class="quick-prompts">
         <button data-prompt="I want to book a ride">Book ride</button>
-        <button data-prompt="How much does a ride cost?">Pricing</button>
-        <button data-prompt="Do you offer student discounts?">Student discount</button>
-        <button data-prompt="Can you help with airport pickup?">Airport pickup</button>
+        <button data-prompt="Help me plan an airport pickup">Airport</button>
+        <button data-prompt="I am a student and need a discount">Student</button>
+        <button data-prompt="I need a shared ride">Shared ride</button>
         <button data-prompt="I need World Cup transportation">World Cup</button>
-        <button data-prompt="I need to speak with support">Support</button>
+        <button data-prompt="Talk to support">Support</button>
       </div>
 
       <div class="chatbot-input">
-        <input
-          type="text"
-          id="chatInput"
-          placeholder="Ask about routes, airport pickup, student rides..."
-        >
+        <input id="chatInput" type="text" placeholder="Ask Angel Express anything...">
         <button type="button" id="chatSendBtn">Send</button>
       </div>
     `;
@@ -402,8 +366,6 @@
     const messages = document.getElementById("chatbotMessages");
     const input = document.getElementById("chatInput");
     const typingBubble = document.getElementById("typingBubble");
-
-    const conversation = [];
 
     function nowTime() {
       return new Date().toLocaleTimeString([], {
@@ -418,128 +380,214 @@
       div.innerHTML = `${text}<span class="chat-time">${nowTime()}</span>`;
       messages.appendChild(div);
       messages.scrollTop = messages.scrollHeight;
-
-      conversation.push({ sender, text, time: Date.now() });
+      state.messages.push({ sender, text, time: Date.now() });
     }
 
     function showTyping() {
       typingBubble.classList.add("show");
-      messages.scrollTop = messages.scrollHeight;
     }
 
     function hideTyping() {
       typingBubble.classList.remove("show");
     }
 
-    function botReply(userText) {
+    function detectIntent(text) {
+      const t = text.toLowerCase();
+
+      if (t.includes("airport") || t.includes("dfw") || t.includes("love field") || t.includes("flight")) return "airport";
+      if (t.includes("student") || t.includes("school") || t.includes("campus") || t.includes("discount")) return "student";
+      if (t.includes("shared") || t.includes("pool") || t.includes("split")) return "shared";
+      if (t.includes("world cup") || t.includes("stadium") || t.includes("event") || t.includes("tourist")) return "event";
+      if (t.includes("price") || t.includes("cost") || t.includes("fare") || t.includes("how much")) return "pricing";
+      if (t.includes("book") || t.includes("ride") || t.includes("reserve")) return "booking";
+      if (t.includes("driver") || t.includes("chauffeur")) return "driver";
+      if (t.includes("support") || t.includes("human") || t.includes("whatsapp") || t.includes("call")) return "support";
+      if (t.includes("austin") || t.includes("houston") || t.includes("san antonio") || t.includes("oklahoma") || t.includes("college station")) return "route";
+
+      return "general";
+    }
+
+    function updateMemory(userText) {
       const text = userText.toLowerCase();
 
-      if (text.includes("book") || text.includes("ride") || text.includes("reserve")) {
+      if (text.includes("airport") || text.includes("dfw") || text.includes("love field")) state.rideType = "Airport Transfer";
+      if (text.includes("student")) state.passengerType = "Student";
+      if (text.includes("shared") || text.includes("pool")) state.rideType = "Student Shared Ride";
+      if (text.includes("world cup") || text.includes("event")) state.rideType = "Event / World Cup Ride";
+
+      const routeMatch = userText.match(/from\s+(.+?)\s+to\s+(.+)/i);
+      if (routeMatch) {
+        state.pickup = routeMatch[1].trim();
+        state.dropoff = routeMatch[2].trim();
+      }
+    }
+
+    function buildBookingLink() {
+      return `<a class="chat-action-link" href="book-ride.html">Book This Ride</a>`;
+    }
+
+    function buildSupportLink() {
+      return `<a class="chat-action-link" target="_blank" href="https://wa.me/${OWNER_WHATSAPP}">Talk to Angel Express</a>`;
+    }
+
+    function botReply(userText) {
+      updateMemory(userText);
+      const intent = detectIntent(userText);
+      state.intent = intent;
+
+      if (intent === "booking") {
         return `
-          Absolutely. Angel Express can help with private rides, long-distance Texas trips, airport transfers, student travel, tourist rides, and event transportation.
+          I can help you start a ride request.
           <div class="chat-mini-card">
-            <strong>Fastest path:</strong><br>
-            Book Ride → Fare Estimate → Confirm Booking.
+            <strong>Best flow:</strong><br>
+            1. Enter pickup and drop-off<br>
+            2. Get fare estimate<br>
+            3. Confirm booking<br>
+            4. Angel Express reviews and assigns support
           </div>
-          <a class="chat-action-link" href="book-ride.html">Start Booking</a>
+          ${buildBookingLink()}
         `;
       }
 
-      if (text.includes("price") || text.includes("cost") || text.includes("fare") || text.includes("how much")) {
+      if (intent === "airport") {
         return `
-          Your fare is estimated by route distance, ride category, trip type, student verification, shared ride selection, and referral discount.
+          Airport ride detected ✈️
           <div class="chat-mini-card">
-            <strong>Tip:</strong> Enter pickup and drop-off first so Angel Express can calculate the best estimate.
+            <strong>Airport pickup checklist:</strong><br>
+            • Airport: DFW or Dallas Love Field<br>
+            • Flight number<br>
+            • Terminal or gate if known<br>
+            • Luggage count<br>
+            • Arrival time<br>
+            • Pickup instructions
           </div>
-          <a class="chat-action-link" href="book-ride.html">Get Fare Estimate</a>
+          ${buildBookingLink()}
         `;
       }
 
-      if (text.includes("student") || text.includes("discount") || text.includes("school")) {
+      if (intent === "student") {
         return `
-          Students can receive Angel Express student benefits after verification is approved in the Passenger App.
+          Student travel detected 🎓
           <div class="chat-mini-card">
-            <strong>Student perks:</strong><br>
-            Student discount, Student Travel+, campus pickup support, and shared ride options.
+            <strong>Student benefits:</strong><br>
+            • Student discount after verification<br>
+            • Student Travel+ badge<br>
+            • Campus pickup support<br>
+            • Shared ride options when available
           </div>
+          Use the same email on the website and Passenger App so Angel Express can match your student status.
+          ${buildBookingLink()}
         `;
       }
 
-      if (text.includes("shared") || text.includes("pool")) {
+      if (intent === "shared") {
         return `
-          Student shared rides help reduce trip cost when passengers are matched on similar campus or regional routes.
+          Shared ride request detected 👥
           <div class="chat-mini-card">
-            <strong>Good for:</strong> Dallas ↔ Austin, Houston, College Station, UTD, UNT, SMU, UTA, and group travel.
+            <strong>Best for:</strong><br>
+            Dallas ↔ Austin, Houston, College Station, UTD, UTA, SMU, UNT, Texas A&M, and campus routes.
           </div>
+          Shared ride pricing applies only when selected and available.
+          ${buildBookingLink()}
         `;
       }
 
-      if (text.includes("airport") || text.includes("dfw") || text.includes("love field") || text.includes("flight")) {
+      if (intent === "event") {
         return `
-          Yes. Angel Express supports DFW Airport and Dallas Love Field pickups.
+          Event / World Cup travel detected 🌎
           <div class="chat-mini-card">
-            <strong>Add when booking:</strong><br>
-            Flight number, terminal, luggage count, pickup instructions, and arrival time.
+            <strong>Angel Express can support:</strong><br>
+            • Airport to hotel<br>
+            • Hotel to stadium/event<br>
+            • Private group rides<br>
+            • Tourist routes<br>
+            • Texas city-to-city travel
           </div>
-          <a class="chat-action-link" href="book-ride.html">Book Airport Pickup</a>
+          ${buildBookingLink()}
         `;
       }
 
-      if (text.includes("world cup") || text.includes("stadium") || text.includes("event") || text.includes("tourist")) {
+      if (intent === "pricing") {
         return `
-          Angel Express supports World Cup 2026 visitors, stadium/event transfers, tourists, airport arrivals, hotel pickups, and private group rides.
+          Pricing depends on route distance, trip type, ride category, student verification, referral code, and shared ride selection.
           <div class="chat-mini-card">
-            <strong>Best for:</strong> airport → hotel, hotel → stadium, tourist routes, group transportation, and Texas city-to-city trips.
+            <strong>Quick note:</strong><br>
+            The website calculates your fare after pickup and drop-off are entered.
           </div>
+          ${buildBookingLink()}
         `;
       }
 
-      if (text.includes("austin") || text.includes("houston") || text.includes("san antonio") || text.includes("oklahoma") || text.includes("college station")) {
+      if (intent === "route") {
         return `
-          Yes. Angel Express focuses on private regional rides across Texas and nearby routes.
+          Regional Texas route detected 🛣️
           <div class="chat-mini-card">
-            <strong>Popular routes:</strong><br>
-            Dallas to Austin, Houston, San Antonio, Oklahoma City, College Station, airports, and campuses.
+            <strong>Popular Angel Express routes:</strong><br>
+            Dallas → Austin<br>
+            Dallas → Houston<br>
+            Dallas → San Antonio<br>
+            Dallas → Oklahoma City<br>
+            Dallas → College Station
           </div>
-          <a class="chat-action-link" href="book-ride.html">Plan This Route</a>
+          ${buildBookingLink()}
         `;
       }
 
-      if (text.includes("referral") || text.includes("promo") || text.includes("code")) {
+      if (intent === "driver") {
         return `
-          Angel Express supports referral and promo codes. Enter your code during booking, and eligible discounts will be checked during fare estimate and confirmation.
+          Chauffeur interest detected 🚘
           <div class="chat-mini-card">
-            <strong>Reward note:</strong> Referrers receive credit after the referred ride is completed.
+            Angel Express chauffeurs are reviewed and approved before receiving ride assignments. Driver payout model is built around a 70% chauffeur share.
           </div>
+          <a class="chat-action-link" href="driver.html">Apply As Chauffeur</a>
         `;
       }
 
-      if (text.includes("driver") || text.includes("chauffeur")) {
+      if (intent === "support") {
         return `
-          Interested in driving with Angel Express? Chauffeurs are reviewed and approved before receiving trips.
+          I can escalate you to Angel Express support.
           <div class="chat-mini-card">
-            <strong>Driver model:</strong> professional service, approved drivers, route support, and 70% driver share.
+            Use WhatsApp for urgent booking questions, ride changes, airport pickup details, or special requests.
           </div>
-          <a class="chat-action-link" href="driver.html">Become a Chauffeur</a>
-        `;
-      }
-
-      if (text.includes("help") || text.includes("support") || text.includes("whatsapp") || text.includes("call") || text.includes("human")) {
-        return `
-          I can connect you with Angel Express support directly.
-          <a class="chat-action-link" target="_blank" href="https://wa.me/${OWNER_WHATSAPP}">Chat on WhatsApp</a>
+          ${buildSupportLink()}
         `;
       }
 
       return `
-        I can help with bookings, fare estimates, airport pickup, student discounts, shared rides, referral rewards, Texas routes, tourist trips, World Cup travel, and support.
+        I can help you plan your Angel Express ride.
         <div class="chat-mini-card">
           Try asking:<br>
-          <strong>“Can I book Dallas to Austin?”</strong><br>
-          <strong>“How does student discount work?”</strong><br>
-          <strong>“Can you pick me up at DFW?”</strong>
+          <strong>“Book from Dallas to Austin”</strong><br>
+          <strong>“I need DFW airport pickup”</strong><br>
+          <strong>“I am a student and need a shared ride”</strong><br>
+          <strong>“I need World Cup transportation”</strong>
         </div>
       `;
+    }
+
+    function streamBotMessage(html) {
+      const plainText = html;
+      const div = document.createElement("div");
+      div.className = "chat-msg bot";
+      messages.appendChild(div);
+
+      let i = 0;
+      const speed = 8;
+
+      function type() {
+        if (i < plainText.length) {
+          div.innerHTML = plainText.slice(0, i + 1);
+          messages.scrollTop = messages.scrollHeight;
+          i++;
+          setTimeout(type, speed);
+        } else {
+          div.innerHTML = `${plainText}<span class="chat-time">${nowTime()}</span>`;
+          messages.scrollTop = messages.scrollHeight;
+          state.messages.push({ sender: "bot", text: plainText, time: Date.now() });
+        }
+      }
+
+      type();
     }
 
     function sendChat() {
@@ -548,13 +596,12 @@
 
       addMessage(value, "user");
       input.value = "";
-
       showTyping();
 
       setTimeout(() => {
         hideTyping();
-        addMessage(botReply(value), "bot");
-      }, 500);
+        streamBotMessage(botReply(value));
+      }, 450);
     }
 
     window.sendChat = sendChat;
@@ -594,8 +641,8 @@
 
     addMessage(
       `
-      Hi! I’m your Angel Express Travel Concierge. I can help with booking, pricing, airport pickup, student discounts, shared rides, referrals, tourist trips, and World Cup transportation.<br><br>
-      What are you planning today?
+      Hi! I’m your Angel Express AI Concierge. Tell me what you need and I’ll guide you like a travel assistant.<br><br>
+      I can help with rides, pricing, airport pickup, student discounts, shared rides, referrals, tourist trips, World Cup transportation, and support.
       `,
       "bot"
     );
