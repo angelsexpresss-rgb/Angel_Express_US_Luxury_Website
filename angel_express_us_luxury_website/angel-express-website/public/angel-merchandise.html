@@ -9,46 +9,40 @@
 <style>
 :root{
   --navy:#050b16;
-  --navy2:#08111f;
   --card:#111827;
   --gold:#d4af37;
-  --gold2:#f3d56b;
+  --gold2:#f4d96b;
   --soft:#dbe3ee;
   --muted:#9aa4b2;
   --green:#0f5132;
-  --pink:#f3a6bd;
-  --blue:#82d7f7;
 }
 
 *{box-sizing:border-box}
-
 html{scroll-behavior:smooth}
 
 body{
   margin:0;
   background:
-    radial-gradient(circle at top left,rgba(212,175,55,.12),transparent 34%),
-    radial-gradient(circle at bottom right,rgba(130,215,247,.10),transparent 30%),
+    radial-gradient(circle at top left,rgba(212,175,55,.13),transparent 35%),
+    radial-gradient(circle at bottom right,rgba(15,81,50,.16),transparent 36%),
     var(--navy);
   color:white;
-  font-family:Arial, sans-serif;
+  font-family:Arial,sans-serif;
   overflow-x:hidden;
 }
 
-a{text-decoration:none}
+img,video{max-width:100%}
 
 .merch-page{
   overflow:hidden;
 }
 
-/* HERO */
 .merch-hero{
   position:relative;
   min-height:92vh;
   display:flex;
   align-items:center;
-  justify-content:center;
-  padding:110px 22px 80px;
+  padding:120px 22px 80px;
   isolation:isolate;
 }
 
@@ -56,7 +50,6 @@ a{text-decoration:none}
   position:absolute;
   inset:0;
   z-index:-3;
-  overflow:hidden;
 }
 
 .hero-slide{
@@ -66,7 +59,7 @@ a{text-decoration:none}
   background-position:center;
   opacity:0;
   transform:scale(1.08);
-  transition:opacity 1.2s ease, transform 6s ease;
+  transition:opacity 1.1s ease, transform 6s ease;
 }
 
 .hero-slide.active{
@@ -79,58 +72,50 @@ a{text-decoration:none}
   inset:0;
   z-index:-2;
   background:
-    linear-gradient(90deg,rgba(5,11,22,.96),rgba(5,11,22,.76),rgba(5,11,22,.96)),
-    linear-gradient(180deg,rgba(5,11,22,.25),rgba(5,11,22,.96));
+    linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.74),rgba(5,11,22,.96)),
+    linear-gradient(180deg,rgba(5,11,22,.2),rgba(5,11,22,.96));
 }
 
-.hero-glow{
-  position:absolute;
-  width:360px;
-  height:360px;
-  border-radius:50%;
-  background:rgba(212,175,55,.18);
-  filter:blur(80px);
-  top:14%;
-  right:8%;
-  z-index:-1;
-}
-
-.merch-wrap{
+.container{
   width:100%;
   max-width:1200px;
-  animation:fadeUp .9s ease both;
+  margin:auto;
 }
 
-.brand-lockup{
+.logo-lockup{
   display:flex;
   align-items:center;
   gap:18px;
   margin-bottom:28px;
+  animation:fadeUp .9s ease both;
 }
 
-.logo-mark{
-  width:90px;
-  height:90px;
-  border-radius:26px;
-  background:linear-gradient(135deg,var(--gold2),var(--gold));
+.logo-box{
+  width:100px;
+  height:100px;
+  border-radius:28px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(212,175,55,.28);
   display:grid;
   place-items:center;
-  box-shadow:0 24px 70px rgba(212,175,55,.25);
+  padding:10px;
+  box-shadow:0 25px 70px rgba(0,0,0,.35);
 }
 
-.logo-mark svg{
-  width:72px;
-  height:72px;
+.logo-box img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
 }
 
-.brand-name{
+.brand-title{
   font-size:34px;
   font-weight:950;
   letter-spacing:4px;
   line-height:1;
 }
 
-.brand-sub{
+.brand-subtitle{
   color:var(--gold);
   font-size:12px;
   font-weight:900;
@@ -140,23 +125,25 @@ a{text-decoration:none}
 
 .badge{
   display:inline-block;
-  border:1px solid rgba(212,175,55,.35);
+  border:1px solid rgba(212,175,55,.38);
   color:var(--gold);
   padding:10px 18px;
   border-radius:999px;
   font-weight:900;
   letter-spacing:2px;
   margin-bottom:22px;
-  background:rgba(5,11,22,.58);
+  background:rgba(5,11,22,.62);
   backdrop-filter:blur(10px);
+  animation:fadeUp 1s ease both;
 }
 
 .hero-title{
-  font-size:clamp(48px,8vw,96px);
+  font-size:clamp(46px,8vw,96px);
   line-height:.95;
   margin:0;
   font-weight:950;
-  max-width:880px;
+  max-width:900px;
+  animation:fadeUp 1.1s ease both;
 }
 
 .hero-title span{
@@ -164,17 +151,19 @@ a{text-decoration:none}
 }
 
 .hero-text{
-  max-width:780px;
+  max-width:790px;
   color:var(--soft);
   font-size:20px;
   line-height:1.7;
   margin:26px 0;
+  animation:fadeUp 1.2s ease both;
 }
 
 .hero-actions{
   display:flex;
   gap:16px;
   flex-wrap:wrap;
+  animation:fadeUp 1.3s ease both;
 }
 
 .btn{
@@ -197,30 +186,21 @@ a{text-decoration:none}
 }
 
 .btn.outline{
-  border:1px solid var(--gold);
+  border:1px solid rgba(212,175,55,.7);
   color:var(--gold);
-  background:rgba(5,11,22,.45);
+  background:rgba(5,11,22,.5);
 }
 
 .btn:hover{
-  transform:translateY(-3px);
+  transform:translateY(-4px) scale(1.02);
   box-shadow:0 18px 45px rgba(212,175,55,.24);
 }
 
-/* SECTION */
 .section{
   padding:80px 22px;
-  position:relative;
 }
 
-.container{
-  max-width:1200px;
-  margin:auto;
-}
-
-.center{
-  text-align:center;
-}
+.center{text-align:center}
 
 .section-kicker{
   color:var(--gold);
@@ -250,33 +230,36 @@ a{text-decoration:none}
   font-size:17px;
 }
 
-/* COLLECTIONS */
-.collection-grid{
+.collection-grid,
+.apparel-grid{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:22px;
 }
 
-.collection-card{
-  position:relative;
-  overflow:hidden;
-  min-height:520px;
+.collection-card,
+.apparel-card,
+.product{
+  background:rgba(17,24,39,.92);
+  border:1px solid rgba(212,175,55,.24);
   border-radius:32px;
-  border:1px solid rgba(212,175,55,.25);
-  background:rgba(17,24,39,.84);
-  box-shadow:0 30px 90px rgba(0,0,0,.25);
+  overflow:hidden;
   transition:.35s ease;
+  box-shadow:0 28px 80px rgba(0,0,0,.24);
 }
 
-.collection-card:hover{
+.collection-card:hover,
+.apparel-card:hover,
+.product:hover{
   transform:translateY(-8px);
   border-color:rgba(212,175,55,.65);
 }
 
 .collection-media{
   height:260px;
-  position:relative;
+  background:#000;
   overflow:hidden;
+  position:relative;
 }
 
 .collection-media img,
@@ -285,14 +268,6 @@ a{text-decoration:none}
   height:100%;
   object-fit:cover;
   display:block;
-  filter:saturate(1.1) contrast(1.05);
-}
-
-.collection-media:after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:linear-gradient(180deg,transparent,rgba(5,11,22,.9));
 }
 
 .collection-body{
@@ -324,12 +299,6 @@ a{text-decoration:none}
   line-height:1.7;
 }
 
-.collection-card ul{
-  padding-left:18px;
-  margin-bottom:0;
-}
-
-/* PRODUCTS */
 .filter-tabs{
   display:flex;
   justify-content:center;
@@ -353,6 +322,89 @@ a{text-decoration:none}
   color:var(--navy);
 }
 
+.mockup-stage{
+  min-height:360px;
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(circle at center,rgba(212,175,55,.14),transparent 42%),
+    linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
+  position:relative;
+}
+
+.shirt{
+  width:230px;
+  height:260px;
+  position:relative;
+  clip-path:polygon(25% 0,38% 8%,62% 8%,75% 0,100% 20%,85% 42%,78% 33%,78% 100%,22% 100%,22% 33%,15% 42%,0 20%);
+  display:grid;
+  place-items:center;
+  box-shadow:inset 0 -20px 50px rgba(0,0,0,.18);
+}
+
+.cap{
+  width:240px;
+  height:145px;
+  border-radius:120px 120px 48px 48px;
+  position:relative;
+  display:grid;
+  place-items:center;
+  box-shadow:inset 0 -22px 44px rgba(0,0,0,.2);
+}
+
+.cap:after{
+  content:"";
+  position:absolute;
+  width:150px;
+  height:38px;
+  bottom:-16px;
+  right:18px;
+  border-radius:0 0 80px 80px;
+  background:inherit;
+  filter:brightness(.88);
+}
+
+.white{background:#f7f7f2}
+.black{background:#050505}
+.green{background:#0f5132}
+
+.mock-logo{
+  width:132px;
+  height:92px;
+  object-fit:contain;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.28));
+  position:relative;
+  z-index:2;
+}
+
+.cap .mock-logo{
+  width:96px;
+  height:70px;
+}
+
+.mockup-name{
+  padding:20px;
+}
+
+.mockup-name h3,
+.product h3{
+  margin:0 0 8px;
+  color:white;
+}
+
+.price{
+  color:var(--gold);
+  font-weight:950;
+  font-size:22px;
+  margin:10px 0;
+}
+
+.note{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.6;
+}
+
 .product-grid{
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -360,17 +412,7 @@ a{text-decoration:none}
 }
 
 .product{
-  background:rgba(17,24,39,.92);
-  border:1px solid rgba(212,175,55,.24);
-  border-radius:28px;
-  overflow:hidden;
-  transition:.35s ease;
   position:relative;
-}
-
-.product:hover{
-  transform:translateY(-7px);
-  border-color:rgba(212,175,55,.65);
 }
 
 .product-tag{
@@ -399,142 +441,12 @@ a{text-decoration:none}
   padding:18px;
 }
 
-.product h3{
-  margin:0 0 8px;
-  color:white;
-  font-size:20px;
-}
-
-.price{
-  color:var(--gold);
-  font-weight:950;
-  font-size:22px;
-  margin:10px 0;
-}
-
-.note{
-  color:var(--muted);
-  font-size:14px;
-  line-height:1.6;
-}
-
-/* APPAREL MOCKUPS */
-.apparel-grid{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:22px;
-}
-
-.apparel-card{
-  background:rgba(17,24,39,.92);
-  border:1px solid rgba(212,175,55,.24);
-  border-radius:32px;
-  overflow:hidden;
-  transition:.35s ease;
-}
-
-.apparel-card:hover{
-  transform:translateY(-8px);
-  border-color:rgba(212,175,55,.65);
-}
-
-.mockup-stage{
-  min-height:360px;
-  display:grid;
-  place-items:center;
-  background:
-    radial-gradient(circle at center,rgba(212,175,55,.14),transparent 42%),
-    linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.02));
-  position:relative;
-  overflow:hidden;
-}
-
-.mockup-stage:before{
-  content:"";
-  position:absolute;
-  width:180px;
-  height:180px;
-  background:rgba(212,175,55,.18);
-  filter:blur(70px);
-  border-radius:50%;
-}
-
-.shirt{
-  width:220px;
-  height:250px;
-  position:relative;
-  clip-path:polygon(25% 0,38% 8%,62% 8%,75% 0,100% 20%,85% 42%,78% 33%,78% 100%,22% 100%,22% 33%,15% 42%,0 20%);
-  display:grid;
-  place-items:center;
-  box-shadow:inset 0 -20px 50px rgba(0,0,0,.16);
-}
-
-.cap{
-  width:230px;
-  height:145px;
-  border-radius:120px 120px 46px 46px;
-  position:relative;
-  display:grid;
-  place-items:center;
-  box-shadow:inset 0 -22px 44px rgba(0,0,0,.18);
-}
-
-.cap:after{
-  content:"";
-  position:absolute;
-  width:145px;
-  height:38px;
-  bottom:-16px;
-  right:18px;
-  border-radius:0 0 80px 80px;
-  background:inherit;
-  filter:brightness(.9);
-}
-
-.white{background:#f7f7f2;color:#050b16}
-.black{background:#050505;color:white}
-.green{background:#0f5132;color:white}
-
-.wing-logo{
-  width:118px;
-  height:88px;
-  position:relative;
-  z-index:2;
-}
-
-.cap .wing-logo{
-  width:92px;
-  height:68px;
-}
-
-.mockup-name{
-  padding:20px;
-}
-
-.mockup-name h3{
-  margin:0 0 8px;
-}
-
-.mockup-name p{
-  margin:0;
-}
-
-/* GALLERY */
 .gallery-track{
   display:flex;
   gap:18px;
   overflow-x:auto;
   padding:10px 0 20px;
   scroll-snap-type:x mandatory;
-}
-
-.gallery-track::-webkit-scrollbar{
-  height:8px;
-}
-
-.gallery-track::-webkit-scrollbar-thumb{
-  background:var(--gold);
-  border-radius:999px;
 }
 
 .gallery-item{
@@ -554,7 +466,6 @@ a{text-decoration:none}
   object-fit:cover;
 }
 
-/* PROMISE */
 .promise{
   background:
     radial-gradient(circle at top,rgba(212,175,55,.22),transparent 35%),
@@ -596,7 +507,6 @@ a{text-decoration:none}
   color:var(--gold);
 }
 
-/* FLOATING CART */
 .merch-cart{
   position:fixed;
   left:22px;
@@ -656,12 +566,12 @@ a{text-decoration:none}
 }
 
 @media(max-width:650px){
-  .brand-lockup{
+  .logo-lockup{
     flex-direction:column;
     align-items:flex-start;
   }
 
-  .brand-name{
+  .brand-title{
     font-size:25px;
   }
 
@@ -697,21 +607,16 @@ a{text-decoration:none}
 <section class="merch-hero">
   <div class="hero-slider" id="heroSlider"></div>
   <div class="hero-overlay"></div>
-  <div class="hero-glow"></div>
 
-  <div class="merch-wrap">
-    <div class="brand-lockup">
-      <div class="logo-mark">
-        <svg viewBox="0 0 200 140" aria-label="Angel Express Logo">
-          <path d="M87 78 L54 28 C42 58 42 86 78 104 C61 105 34 91 18 60 C24 96 49 120 88 116" fill="#050b16"/>
-          <path d="M113 78 L146 28 C158 58 158 86 122 104 C139 105 166 91 182 60 C176 96 151 120 112 116" fill="#050b16"/>
-          <text x="100" y="94" text-anchor="middle" font-size="72" font-weight="900" fill="#050b16" font-family="Arial">A</text>
-        </svg>
+  <div class="container">
+    <div class="logo-lockup">
+      <div class="logo-box">
+        <img src="images/hero/angel-logo-transparent.png" alt="Angel Express Logo">
       </div>
 
       <div>
-        <div class="brand-name">ANGEL EXPRESS</div>
-        <div class="brand-sub">MERCHANDISE HOUSE</div>
+        <div class="brand-title">ANGEL EXPRESS</div>
+        <div class="brand-subtitle">MERCHANDISE HOUSE</div>
       </div>
     </div>
 
@@ -802,7 +707,7 @@ a{text-decoration:none}
       <div class="section-kicker">Premium Angel Express Apparel</div>
       <h2 class="section-title">Wear The <span>Angel Express Brand</span></h2>
       <p class="section-sub">
-        Clean, bold, premium tees and caps featuring the Angel Express winged A mark.
+        White, black, and green tees and caps featuring the official Angel Express winged logo.
       </p>
     </div>
 
@@ -814,126 +719,33 @@ a{text-decoration:none}
 
     <div class="apparel-grid">
       <div class="apparel-card apparel-item" data-category="shirt">
-        <div class="mockup-stage">
-          <div class="shirt white">
-            <div class="wing-logo">
-              <svg viewBox="0 0 200 140">
-                <path d="M87 78 L54 28 C42 58 42 86 78 104 C61 105 34 91 18 60 C24 96 49 120 88 116" fill="#d4af37"/>
-                <path d="M113 78 L146 28 C158 58 158 86 122 104 C139 105 166 91 182 60 C176 96 151 120 112 116" fill="#d4af37"/>
-                <text x="100" y="94" text-anchor="middle" font-size="72" font-weight="900" fill="#d4af37" font-family="Arial">A</text>
-                <text x="100" y="126" text-anchor="middle" font-size="18" font-weight="800" fill="#050b16" font-family="Arial">ANGEL EXPRESS</text>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <div class="mockup-name">
-          <h3>Angel Express Tee — White</h3>
-          <p class="note">Premium logo t-shirt.</p>
-          <p class="price">$50.00</p>
-          <button class="btn gold add-cart">Add to Cart</button>
-        </div>
+        <div class="mockup-stage"><div class="shirt white"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div>
+        <div class="mockup-name"><h3>Angel Express Tee — White</h3><p class="note">Premium logo t-shirt.</p><p class="price">$50.00</p><button class="btn gold add-cart">Add to Cart</button></div>
       </div>
 
       <div class="apparel-card apparel-item" data-category="shirt">
-        <div class="mockup-stage">
-          <div class="shirt black">
-            <div class="wing-logo">
-              <svg viewBox="0 0 200 140">
-                <path d="M87 78 L54 28 C42 58 42 86 78 104 C61 105 34 91 18 60 C24 96 49 120 88 116" fill="#d4af37"/>
-                <path d="M113 78 L146 28 C158 58 158 86 122 104 C139 105 166 91 182 60 C176 96 151 120 112 116" fill="#d4af37"/>
-                <text x="100" y="94" text-anchor="middle" font-size="72" font-weight="900" fill="#d4af37" font-family="Arial">A</text>
-                <text x="100" y="126" text-anchor="middle" font-size="18" font-weight="800" fill="#fff" font-family="Arial">ANGEL EXPRESS</text>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <div class="mockup-name">
-          <h3>Angel Express Tee — Black</h3>
-          <p class="note">Luxury dark tee with gold wing logo.</p>
-          <p class="price">$50.00</p>
-          <button class="btn gold add-cart">Add to Cart</button>
-        </div>
+        <div class="mockup-stage"><div class="shirt black"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div>
+        <div class="mockup-name"><h3>Angel Express Tee — Black</h3><p class="note">Luxury dark tee with Angel Express logo.</p><p class="price">$50.00</p><button class="btn gold add-cart">Add to Cart</button></div>
       </div>
 
       <div class="apparel-card apparel-item" data-category="shirt">
-        <div class="mockup-stage">
-          <div class="shirt green">
-            <div class="wing-logo">
-              <svg viewBox="0 0 200 140">
-                <path d="M87 78 L54 28 C42 58 42 86 78 104 C61 105 34 91 18 60 C24 96 49 120 88 116" fill="#d4af37"/>
-                <path d="M113 78 L146 28 C158 58 158 86 122 104 C139 105 166 91 182 60 C176 96 151 120 112 116" fill="#d4af37"/>
-                <text x="100" y="94" text-anchor="middle" font-size="72" font-weight="900" fill="#d4af37" font-family="Arial">A</text>
-                <text x="100" y="126" text-anchor="middle" font-size="18" font-weight="800" fill="#fff" font-family="Arial">ANGEL EXPRESS</text>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <div class="mockup-name">
-          <h3>Angel Express Tee — Green</h3>
-          <p class="note">Bold green tee with gold Angel Express mark.</p>
-          <p class="price">$50.00</p>
-          <button class="btn gold add-cart">Add to Cart</button>
-        </div>
+        <div class="mockup-stage"><div class="shirt green"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div>
+        <div class="mockup-name"><h3>Angel Express Tee — Green</h3><p class="note">Bold green tee with official Angel Express mark.</p><p class="price">$50.00</p><button class="btn gold add-cart">Add to Cart</button></div>
       </div>
 
       <div class="apparel-card apparel-item" data-category="cap">
-        <div class="mockup-stage">
-          <div class="cap white">
-            <div class="wing-logo">
-              <svg viewBox="0 0 200 140">
-                <path d="M87 78 L54 28 C42 58 42 86 78 104 C61 105 34 91 18 60 C24 96 49 120 88 116" fill="#d4af37"/>
-                <path d="M113 78 L146 28 C158 58 158 86 122 104 C139 105 166 91 182 60 C176 96 151 120 112 116" fill="#d4af37"/>
-                <text x="100" y="94" text-anchor="middle" font-size="72" font-weight="900" fill="#d4af37" font-family="Arial">A</text>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <div class="mockup-name">
-          <h3>Angel Express Cap — White</h3>
-          <p class="note">Clean cap with gold winged A logo.</p>
-          <p class="price">$20.00</p>
-          <button class="btn gold add-cart">Add to Cart</button>
-        </div>
+        <div class="mockup-stage"><div class="cap white"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div>
+        <div class="mockup-name"><h3>Angel Express Cap — White</h3><p class="note">Clean cap with gold wing logo.</p><p class="price">$20.00</p><button class="btn gold add-cart">Add to Cart</button></div>
       </div>
 
       <div class="apparel-card apparel-item" data-category="cap">
-        <div class="mockup-stage">
-          <div class="cap black">
-            <div class="wing-logo">
-              <svg viewBox="0 0 200 140">
-                <path d="M87 78 L54 28 C42 58 42 86 78 104 C61 105 34 91 18 60 C24 96 49 120 88 116" fill="#d4af37"/>
-                <path d="M113 78 L146 28 C158 58 158 86 122 104 C139 105 166 91 182 60 C176 96 151 120 112 116" fill="#d4af37"/>
-                <text x="100" y="94" text-anchor="middle" font-size="72" font-weight="900" fill="#d4af37" font-family="Arial">A</text>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <div class="mockup-name">
-          <h3>Angel Express Cap — Black</h3>
-          <p class="note">Premium black cap with gold logo.</p>
-          <p class="price">$20.00</p>
-          <button class="btn gold add-cart">Add to Cart</button>
-        </div>
+        <div class="mockup-stage"><div class="cap black"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div>
+        <div class="mockup-name"><h3>Angel Express Cap — Black</h3><p class="note">Premium black cap with logo.</p><p class="price">$20.00</p><button class="btn gold add-cart">Add to Cart</button></div>
       </div>
 
       <div class="apparel-card apparel-item" data-category="cap">
-        <div class="mockup-stage">
-          <div class="cap green">
-            <div class="wing-logo">
-              <svg viewBox="0 0 200 140">
-                <path d="M87 78 L54 28 C42 58 42 86 78 104 C61 105 34 91 18 60 C24 96 49 120 88 116" fill="#d4af37"/>
-                <path d="M113 78 L146 28 C158 58 158 86 122 104 C139 105 166 91 182 60 C176 96 151 120 112 116" fill="#d4af37"/>
-                <text x="100" y="94" text-anchor="middle" font-size="72" font-weight="900" fill="#d4af37" font-family="Arial">A</text>
-              </svg>
-            </div>
-          </div>
-        </div>
-        <div class="mockup-name">
-          <h3>Angel Express Cap — Green</h3>
-          <p class="note">Green cap with Angel Express gold logo.</p>
-          <p class="price">$20.00</p>
-          <button class="btn gold add-cart">Add to Cart</button>
-        </div>
+        <div class="mockup-stage"><div class="cap green"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div>
+        <div class="mockup-name"><h3>Angel Express Cap — Green</h3><p class="note">Green cap with Angel Express logo.</p><p class="price">$20.00</p><button class="btn gold add-cart">Add to Cart</button></div>
       </div>
     </div>
   </div>
@@ -945,15 +757,14 @@ a{text-decoration:none}
       <div class="section-kicker">Featured Candles</div>
       <h2 class="section-title">Shop <span>Signature Candles</span></h2>
       <p class="section-sub">
-        A curated selection from Angels Scented Candle. Prices can be updated based on jar size,
-        custom design, scent profile, and gift packaging.
+        A curated selection from Angels Scented Candle.
       </p>
     </div>
 
     <div class="product-grid">
-      <div class="product" data-category="candle">
+      <div class="product">
         <span class="product-tag">JULIANA</span>
-        <img src="images/hero/imagesocean-breeze3.HEIC" alt="Ocean Breeze Candle">
+        <img src="images/hero/imagesocean-breeze3.jpg" alt="Ocean Breeze Candle">
         <div class="product-body">
           <h3>Ocean Breeze</h3>
           <p class="note">Lavender + Eucalyptus. Fresh, calming, spa-like.</p>
@@ -962,9 +773,9 @@ a{text-decoration:none}
         </div>
       </div>
 
-      <div class="product" data-category="candle">
+      <div class="product">
         <span class="product-tag">JULIANA</span>
-        <img src="images/hero/imagescheesecake.HEIC" alt="Cheesecake Candle">
+        <img src="images/hero/imagescheesecake.jpg" alt="Cheesecake Candle">
         <div class="product-body">
           <h3>Cheesecake</h3>
           <p class="note">Warm dessert-inspired candle from Juliana Collection.</p>
@@ -973,7 +784,7 @@ a{text-decoration:none}
         </div>
       </div>
 
-      <div class="product" data-category="candle">
+      <div class="product">
         <span class="product-tag">AUDREY</span>
         <video src="images/hero/imagesvalentine-red.MOV" muted autoplay loop playsinline></video>
         <div class="product-body">
@@ -984,7 +795,7 @@ a{text-decoration:none}
         </div>
       </div>
 
-      <div class="product" data-category="candle">
+      <div class="product">
         <span class="product-tag">AUDREY</span>
         <img src="images/hero/imagescupid.JPG" alt="Cupid Candle">
         <div class="product-body">
@@ -995,10 +806,6 @@ a{text-decoration:none}
         </div>
       </div>
     </div>
-
-    <div class="center" style="margin-top:40px">
-      <a href="https://wa.me/19728367910" class="btn gold">Order Now on WhatsApp</a>
-    </div>
   </div>
 </section>
 
@@ -1007,9 +814,8 @@ a{text-decoration:none}
     <div class="center">
       <div class="section-kicker">Luxury Gallery</div>
       <h2 class="section-title">Angel <span>Visual Story</span></h2>
-      <p class="section-sub">Swipe through real Angel candle visuals, seasonal launches, and product moments.</p>
+      <p class="section-sub">Swipe through real Angel candle visuals and seasonal launches.</p>
     </div>
-
     <div class="gallery-track" id="galleryTrack"></div>
   </div>
 </section>
@@ -1019,8 +825,8 @@ a{text-decoration:none}
     <div class="promise">
       <h2>Elevate Your Space.</h2>
       <p>
-        Angels Scented Candle and Angel Express Merchandise are built on elegance, serenity,
-        sustainability, comfort, meaningful design, and handcrafted care.
+        Angels Scented Candle and Angel Express Merchandise are built on elegance,
+        serenity, sustainability, comfort, meaningful design, and handcrafted care.
       </p>
 
       <div class="features">
@@ -1047,19 +853,19 @@ const HERO_IMAGES = [
   "images/hero/imagesangel-candles-hero3.JPG",
   "images/hero/imagesangel-candles-hero4.jpg",
   "images/hero/imagescupid.JPG",
-  "images/hero/imagesocean-breeze3.HEIC",
-  "images/hero/imagescheesecake.HEIC"
+  "images/hero/imagesocean-breeze3.jpg",
+  "images/hero/imagescheesecake.jpg"
 ];
 
 const COLLECTIONS = {
   juliana:[
-    "images/hero/imagesocean-breeze.HEIC",
-    "images/hero/imagesocean-breeze (2).HEIC",
-    "images/hero/imagesocean-breeze3.HEIC",
-    "images/hero/imagescheesecake.HEIC",
-    "images/hero/imagescheesecake (2).heic",
-    "images/hero/imagescheesecake3.HEIC",
-    "images/hero/imagescheesecake4.HEIC"
+    "images/hero/imagesocean-breeze.jpg",
+    "images/hero/imagesocean-breeze (2).jpg",
+    "images/hero/imagesocean-breeze3.jpg",
+    "images/hero/imagescheesecake.jpg",
+    "images/hero/imagescheesecake (2).jpg",
+    "images/hero/imagescheesecake3.jpg",
+    "images/hero/imagescheesecake4.jpg"
   ],
   ace:[
     "images/hero/imagesangel-candles-hero.JPG",
@@ -1069,22 +875,18 @@ const COLLECTIONS = {
   ],
   audrey:[
     "images/hero/imagescupid.JPG",
-    "images/hero/imagescupid.HEIC",
-    "images/hero/imagescupid (2).HEIC",
     "images/hero/imagesvalentine-red.MOV",
-    "images/hero/imagesvalentine-red2.HEIC",
-    "images/hero/imagesvalentine-red3.HEIC",
+    "images/hero/imagesvalentine-red2.jpg",
+    "images/hero/imagesvalentine-red3.jpg",
     "images/hero/imagesvalentine-red4.MOV",
-    "images/hero/imagesvalentine-red5.HEIC",
-    "images/hero/imagesvalentine-red6.HEIC",
+    "images/hero/imagesvalentine-red5.jpg",
+    "images/hero/imagesvalentine-red6.jpg",
     "images/hero/imagesvalentine-red7.MOV"
   ]
 };
 
 const GALLERY = [
   ...HERO_IMAGES,
-  "images/hero/imagesangel-candles-hero.5.heic",
-  "images/hero/imagesangel-candles-hero6.HEIC",
   ...COLLECTIONS.juliana,
   ...COLLECTIONS.ace,
   ...COLLECTIONS.audrey
