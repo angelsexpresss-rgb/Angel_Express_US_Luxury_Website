@@ -2032,4 +2032,128 @@ a.whatsapp-float {
     height: 210px !important;
     max-height: 210px !important;
   }
+}.ae-global-header{
+  position:sticky;
+  top:0;
+  z-index:9999;
+  background:rgba(5,11,22,.96);
+  border-bottom:1px solid rgba(212,175,55,.18);
+  backdrop-filter:blur(18px);
+  padding:18px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.ae-nav-brand{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  cursor:pointer;
+}
+
+.ae-logo-box{
+  width:58px;
+  height:58px;
+  border-radius:18px;
+  background:#d4af37;
+  color:#050b16;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:32px;
+  font-weight:900;
+}
+
+.ae-brand-title{
+  color:white;
+  font-size:24px;
+  font-weight:900;
+  letter-spacing:3px;
+}
+
+.ae-brand-subtitle{
+  color:#cbd5e1;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:3px;
+}
+
+.ae-nav-menu{
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.ae-nav-menu a{
+  color:white;
+  text-decoration:none;
+  font-weight:800;
+  font-size:15px;
+  transition:.25s ease;
+}
+
+.ae-nav-menu a:hover,
+.ae-nav-menu a.active{
+  color:#d4af37;
+}
+
+.ae-menu-toggle{
+  display:none;
+  width:58px;
+  height:58px;
+  border-radius:22px;
+  border:1px solid rgba(212,175,55,.35);
+  background:rgba(255,255,255,.06);
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:6px;
+  cursor:pointer;
+}
+
+.ae-menu-toggle span{
+  width:26px;
+  height:3px;
+  background:white;
+  border-radius:99px;
+}
+
+@media(max-width:900px){
+  .ae-menu-toggle{
+    display:flex;
+  }
+
+  .ae-nav-menu{
+    position:absolute;
+    top:95px;
+    left:0;
+    right:0;
+    background:#050b16;
+    padding:24px;
+    display:none;
+    flex-direction:column;
+    align-items:stretch;
+    gap:14px;
+    border-bottom:1px solid rgba(212,175,55,.18);
+  }
+
+  .ae-nav-menu.open{
+    display:flex;
+  }
+
+  .ae-nav-menu a{
+    background:rgba(255,255,255,.06);
+    padding:20px;
+    border-radius:20px;
+    font-size:20px;
+  }
+
+  .ae-brand-title{
+    font-size:20px;
+  }
+
+  .ae-brand-subtitle{
+    font-size:10px;
+  }
 }

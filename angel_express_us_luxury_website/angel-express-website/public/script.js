@@ -675,3 +675,63 @@ function sendChat() {
 
   chatInput.value = "";
 }
+document.addEventListener("DOMContentLoaded", () => {
+  const navItems = [
+    { label: "Home", href: "index.html" },
+    { label: "Book Ride", href: "book-ride.html" },
+    { label: "Fare Estimate", href: "fare-estimate.html" },
+    { label: "Passengers", href: "passenger.html" },
+    { label: "Drivers", href: "driver.html" },
+    { label: "Terms", href: "terms.html" },
+    { label: "Blog", href: "blog.html" },
+    { label: "Angel Merchandise", href: "angel-merchandise.html" },
+    { label: "Contact", href: "contact.html" },
+    { label: "Become a Chauffeur", href: "driver.html" },
+  ];
+
+  const currentPage = window.location.pathname.split("/").pop() || "index.html";
+
+  const header = document.createElement("header");
+  header.className = "ae-global-header";
+
+  header.innerHTML = `
+    <div class="ae-nav-brand" onclick="window.location.href='index.html'">
+      <div class="ae-logo-box">A</div>
+      <div>
+        <div class="ae-brand-title">ANGEL EXPRESS</div>
+        <div class="ae-brand-subtitle">MOBILITY ECOSYSTEM</div>
+      </div>
+    </div>
+
+    <button class="ae-menu-toggle" id="aeMenuToggle" type="button">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="ae-nav-menu" id="aeNavMenu">
+      ${navItems
+        .map(
+          (item) => `
+          <a 
+            href="${item.href}" 
+            class="${currentPage === item.href ? "active" : ""}"
+          >
+            ${item.label}
+          </a>
+        `
+        )
+        .join("")}
+    </nav>
+  `;
+
+  document.body.prepend(header);
+
+  const menuToggle = document.getElementById("aeMenuToggle");
+  const navMenu = document.getElementById("aeNavMenu");
+
+  menuToggle.addEventListener("click", () => {
+    navMenu.classList.toggle("open");
+    menuToggle.classList.toggle("open");
+  });
+});
