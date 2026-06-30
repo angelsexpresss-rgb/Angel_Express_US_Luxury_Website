@@ -62,14 +62,34 @@
       }
 
       .chatbot-box{
-        position:fixed;
-        right:24px;
-        bottom:176px;
-        width:420px;
-        height:620px;
-        max-width:calc(100vw - 40px);
-        max-height:calc(100vh - 120px);
-        z-index:1000000;
+    position:fixed;
+
+    right:24px;
+    bottom:170px;
+
+    width:390px;
+    height:520px;
+
+    max-width:390px;
+    max-height:520px;
+
+    display:none;
+    flex-direction:column;
+
+    overflow:hidden;
+
+    border-radius:28px;
+
+    background:rgba(5,11,22,.98);
+
+    border:1px solid rgba(212,175,55,.35);
+
+    box-shadow:0 35px 90px rgba(0,0,0,.55);
+
+    backdrop-filter:blur(22px);
+
+    z-index:999999;
+}
         display:none;
         flex-direction:column;
         overflow:hidden;
