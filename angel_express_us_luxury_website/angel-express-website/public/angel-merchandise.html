@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Angel Merchandise | Angel Express</title>
+<link rel="stylesheet" href="style.css" />
+
+<style>
+:root{
+  --navy:#050b16;
+  --card:#111827;
+  --gold:#d4af37;
+  --soft:#dbe3ee;
+  --muted:#9aa4b2;
+}
+
+body{
+  margin:0;
+  background:var(--navy);
+  color:white;
+  font-family:Arial, sans-serif;
+}
+
+.merch-hero{
+  min-height:92vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:80px 22px;
+  background:
+    linear-gradient(rgba(5,11,22,.88),rgba(5,11,22,.95)),
+    url("images/angel-candles-hero.jpg");
+  background-size:cover;
+  background-position:center;
+}
+
+.merch-wrap{
+  width:100%;
+  max-width:1200px;
+}
+
+.badge{
+  display:inline-block;
+  border:1px solid rgba(212,175,55,.35);
+  color:var(--gold);
+  padding:10px 18px;
+  border-radius:999px;
+  font-weight:900;
+  letter-spacing:2px;
+  margin-bottom:22px;
+}
+
+.hero-title{
+  font-size:clamp(46px,8vw,92px);
+  line-height:.95;
+  margin:0;
+  font-weight:950;
+}
+
+.hero-title span{
+  color:var(--gold);
+}
+
+.hero-text{
+  max-width:760px;
+  color:var(--soft);
+  font-size:20px;
+  line-height:1.7;
+  margin:25px 0;
+}
+
+.hero-actions{
+  display:flex;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:58px;
+  padding:0 28px;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:950;
+}
+
+.btn.gold{
+  background:var(--gold);
+  color:var(--navy);
+}
+
+.btn.outline{
+  border:1px solid var(--gold);
+  color:var(--gold);
+}
+
+.section{
+  padding:80px 22px;
+}
+
+.container{
+  max-width:1200px;
+  margin:auto;
+}
+
+.section-title{
+  color:var(--gold);
+  font-size:42px;
+  margin-bottom:12px;
+}
+
+.section-sub{
+  color:var(--soft);
+  max-width:720px;
+  line-height:1.7;
+  margin-bottom:34px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:22px;
+}
+
+.card{
+  background:rgba(17,24,39,.9);
+  border:1px solid rgba(212,175,55,.24);
+  border-radius:28px;
+  padding:24px;
+}
+
+.card h3{
+  color:var(--gold);
+  font-size:26px;
+  margin-top:0;
+}
+
+.card p, .card li{
+  color:var(--soft);
+  line-height:1.7;
+}
+
+.product-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:20px;
+}
+
+.product{
+  background:rgba(17,24,39,.92);
+  border:1px solid rgba(212,175,55,.24);
+  border-radius:26px;
+  overflow:hidden;
+}
+
+.product img{
+  width:100%;
+  height:240px;
+  object-fit:cover;
+  background:#000;
+}
+
+.product-body{
+  padding:18px;
+}
+
+.product h3{
+  margin:0 0 8px;
+  color:white;
+}
+
+.price{
+  color:var(--gold);
+  font-weight:950;
+  font-size:20px;
+}
+
+.note{
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.6;
+}
+
+.promise{
+  background:linear-gradient(135deg,rgba(212,175,55,.18),rgba(17,24,39,.95));
+  border:1px solid rgba(212,175,55,.28);
+  border-radius:32px;
+  padding:35px;
+  text-align:center;
+}
+
+.promise h2{
+  color:var(--gold);
+  font-size:38px;
+}
+
+.whatsapp-order{
+  text-align:center;
+  margin-top:40px;
+}
+
+@media(max-width:900px){
+  .grid,
+  .product-grid{
+    grid-template-columns:1fr;
+  }
+
+  .hero-actions{
+    flex-direction:column;
+  }
+
+  .btn{
+    width:100%;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<section class="merch-hero">
+  <div class="merch-wrap">
+    <div class="badge">ANGEL EXPRESS MERCHANDISE</div>
+
+    <h1 class="hero-title">
+      Angels Scented <span>Candle.</span>
+    </h1>
+
+    <p class="hero-text">
+      Luxury handcrafted candles created to elevate your space with elegance,
+      serenity, fragrance, and meaning. Discover feminine, masculine, seasonal,
+      devotional, and gift-ready candle collections.
+    </p>
+
+    <div class="hero-actions">
+      <a href="#collections" class="btn gold">Browse Collections</a>
+      <a href="https://wa.me/19728367910" class="btn outline">Order via WhatsApp</a>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="collections">
+  <div class="container">
+    <h2 class="section-title">Our Collections</h2>
+    <p class="section-sub">
+      Each Angels Scented Candle collection is designed around emotion,
+      personality, season, and atmosphere.
+    </p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Juliana Collection</h3>
+        <p>Feminine, soft, elegant, and comforting scents.</p>
+        <ul>
+          <li>Ocean Breeze</li>
+          <li>Bumblebee</li>
+          <li>Hot Chocolate</li>
+          <li>Strawberry Cheesecake</li>
+          <li>Naija Forest</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>ACE Collection</h3>
+        <p>Masculine-inspired candles with bold and grounding energy.</p>
+        <ul>
+          <li>Hero</li>
+          <li>Chocolate Chips</li>
+          <li>White Sand</li>
+          <li>Hope</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Audrey Collection</h3>
+        <p>Seasonal, romantic, holiday, and decorative candle pieces.</p>
+        <ul>
+          <li>Valentine Red</li>
+          <li>Cupid</li>
+          <li>Easter Egg</li>
+          <li>4th July</li>
+          <li>Turkey</li>
+          <li>Snow Balls</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="section-title">Featured Candles</h2>
+    <p class="section-sub">
+      A curated selection from Angels Scented Candle. Prices can be updated
+      anytime based on jar size, custom design, and gift packaging.
+    </p>
+
+    <div class="product-grid">
+      <div class="product">
+        <img src="images/ocean-breeze.jpg" alt="Ocean Breeze Candle">
+        <div class="product-body">
+          <h3>Ocean Breeze</h3>
+          <p class="note">Lavender + Eucalyptus. Fresh, calming, spa-like.</p>
+          <p class="price">$24.99</p>
+        </div>
+      </div>
+
+      <div class="product">
+        <img src="images/cheesecake.jpg" alt="Cheesecake Candle">
+        <div class="product-body">
+          <h3>Cheesecake</h3>
+          <p class="note">Warm dessert-inspired candle from Juliana Collection.</p>
+          <p class="price">$24.99</p>
+        </div>
+      </div>
+
+      <div class="product">
+        <img src="images/valentine-red.jpg" alt="Valentine Red Candle">
+        <div class="product-body">
+          <h3>Valentine Red</h3>
+          <p class="note">Romantic seasonal candle from Audrey Collection.</p>
+          <p class="price">$29.99</p>
+        </div>
+      </div>
+
+      <div class="product">
+        <img src="images/cupid.jpg" alt="Cupid Candle">
+        <div class="product-body">
+          <h3>Cupid</h3>
+          <p class="note">Cute pink angel decorative candle.</p>
+          <p class="price">$18.99</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="whatsapp-order">
+      <a href="https://wa.me/19728367910" class="btn gold">Order Now on WhatsApp</a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="promise">
+      <h2>Elevate Your Space.</h2>
+      <p>
+        Angels Scented Candle is built on elegance, serenity, sustainability,
+        handmade care, and meaningful fragrance experiences.
+      </p>
+    </div>
+  </div>
+</section>
+
+<script src="floating-support.js"></script>
+
+</body>
+</html>
