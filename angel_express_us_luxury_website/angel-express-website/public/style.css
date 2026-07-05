@@ -2156,7 +2156,4 @@ a.whatsapp-float {
   .ae-brand-subtitle{
     font-size:10px;
   }
-}/* Hide old homepage navigation */
-header:first-of-type{
-    display:none !important;
 }
