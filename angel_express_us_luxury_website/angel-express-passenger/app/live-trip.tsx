@@ -15,10 +15,7 @@ import {
 import MapView, { Marker, Polyline } from "react-native-maps";
 import {
   CarFront,
-  Clock,
   ExternalLink,
-  MapPinned,
-  Navigation,
   Phone,
   ShieldCheck,
   UserRound,
@@ -36,6 +33,16 @@ import {
 
 const GOLD = AE_COLORS.gold;
 
+const LIVE_STATUSES = [
+  "confirmed",
+  "driver_assigned",
+  "assigned",
+  "accepted",
+  "driver_accepted",
+  "driver_arrived",
+  "in_progress",
+];
+
 export default function LiveTripScreen() {
   const params = useLocalSearchParams();
 
@@ -45,6 +52,7 @@ export default function LiveTripScreen() {
   const [loading, setLoading] = useState(true);
   const [trip, setTrip] = useState<any>(null);
   const [location, setLocation] = useState<any>(null);
+  const [driverProfile, setDriverProfile] = useState<any>(null);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -62,6 +70,37 @@ export default function LiveTripScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  function firstAvailable(...values: any[]) {
+    for (const value of values) {
+      if (value !== null && value !== undefined && String(value).trim() !== "") {
+        return String(value).trim();
+      }
+    }
+
+    return "";
+  }
+
+  function cleanStatus(value: any) {
+    return String(value || "").toLowerCase().trim();
+  }
+
+  function getStatusLabel(value: any) {
+    const status = cleanStatus(value);
+
+    if (status === "pending") return "Pending";
+    if (status === "confirmed") return "Confirmed";
+    if (status === "driver_assigned") return "Driver Assigned";
+    if (status === "assigned") return "Driver Assigned";
+    if (status === "accepted") return "Driver Accepted";
+    if (status === "driver_accepted") return "Driver Accepted";
+    if (status === "driver_arrived") return "Driver Arrived";
+    if (status === "in_progress") return "In Progress";
+    if (status === "completed") return "Completed";
+    if (status === "cancelled") return "Cancelled";
+
+    return String(value || "Pending").replace(/_/g, " ");
+  }
+
   async function loadLiveTrip(showLoader = true) {
     try {
       if (showLoader) setLoading(true);
@@ -78,39 +117,58 @@ export default function LiveTripScreen() {
         return;
       }
 
-      const userEmail = user.email?.trim().toLowerCase();
+      const userEmail = user.email?.trim().toLowerCase() || "";
 
-      let bookingQuery = supabase
-        .from("bookings")
-        .select("*")
-        .or(`user_id.eq.${user.id},email.ilike.${userEmail}`);
-
-      if (invoiceNo) {
-        bookingQuery = bookingQuery.eq("invoice_no", invoiceNo);
-      }
+      let booking: any = null;
 
       if (bookingId) {
-        bookingQuery = bookingQuery.eq("id", bookingId);
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("id", bookingId)
+          .maybeSingle();
+
+        if (error) throw error;
+        booking = data;
+      } else if (invoiceNo) {
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("invoice_no", invoiceNo)
+          .maybeSingle();
+
+        if (error) throw error;
+        booking = data;
+      } else {
+        let query = supabase
+          .from("bookings")
+          .select("*")
+          .in("status", LIVE_STATUSES)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (userEmail) {
+          query = query.or(`user_id.eq.${user.id},email.ilike.${userEmail}`);
+        } else {
+          query = query.eq("user_id", user.id);
+        }
+
+        const { data, error } = await query.maybeSingle();
+
+        if (error) throw error;
+        booking = data;
       }
 
-      const { data: booking, error: bookingError } =
-        await bookingQuery.maybeSingle();
+      setTrip(booking || null);
 
-      if (bookingError) throw bookingError;
+      if (!booking) {
+        setLocation(null);
+        setDriverProfile(null);
+        return;
+      }
 
-      setTrip(booking);
-
-      if (!booking) return;
-
-      const { data: liveLocation, error: locationError } = await supabase
-        .from("live_trip_locations")
-        .select("*")
-        .eq("invoice_no", booking.invoice_no)
-        .maybeSingle();
-
-      if (locationError) throw locationError;
-
-      setLocation(liveLocation);
+      await loadDriverProfile(booking);
+      await loadDriverLiveLocation(booking);
     } catch (error: any) {
       Alert.alert(
         "Live Tracking Error",
@@ -121,15 +179,184 @@ export default function LiveTripScreen() {
     }
   }
 
-  function openInMaps() {
-    if (!location?.latitude || !location?.longitude) return;
+  async function loadDriverProfile(booking: any) {
+    try {
+      const driverId = firstAvailable(
+        booking?.driver_id,
+        booking?.assigned_driver_id
+      );
 
-    const url = `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
+      if (!driverId) {
+        setDriverProfile(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("drivers")
+        .select("*")
+        .eq("id", driverId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      setDriverProfile(data || null);
+    } catch (error) {
+      console.log("Driver profile lookup error:", error);
+      setDriverProfile(null);
+    }
+  }
+
+  async function loadDriverLiveLocation(booking: any) {
+    try {
+      let liveLocation: any = null;
+
+      if (booking?.id) {
+        const { data, error } = await supabase
+          .from("driver_live_locations")
+          .select("*")
+          .eq("booking_id", booking.id)
+          .order("last_updated", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        liveLocation = data;
+      }
+
+      if (!liveLocation && booking?.invoice_no) {
+        const { data } = await supabase
+          .from("live_trip_locations")
+          .select("*")
+          .eq("invoice_no", booking.invoice_no)
+          .limit(1)
+          .maybeSingle();
+
+        liveLocation = data;
+      }
+
+      setLocation(liveLocation || null);
+    } catch (error) {
+      console.log("Live location lookup error:", error);
+      setLocation(null);
+    }
+  }
+
+  function getDriverName() {
+    const first = firstAvailable(driverProfile?.first_name, driverProfile?.firstname);
+    const last = firstAvailable(driverProfile?.last_name, driverProfile?.lastname);
+
+    return firstAvailable(
+      location?.driver_name,
+      trip?.driver_name,
+      trip?.assigned_driver_name,
+      driverProfile?.full_name,
+      driverProfile?.name,
+      first && last ? `${first} ${last}` : "",
+      first,
+      "Angel Express Driver"
+    );
+  }
+
+  function getDriverPhone() {
+    return firstAvailable(
+      location?.driver_phone,
+      trip?.driver_phone,
+      trip?.assigned_driver_phone,
+      driverProfile?.phone,
+      driverProfile?.phone_number,
+      driverProfile?.mobile
+    );
+  }
+
+  function getVehicle() {
+    return firstAvailable(
+      location?.vehicle,
+      location?.vehicle_type,
+      trip?.vehicle,
+      trip?.vehicle_type,
+      driverProfile?.vehicle,
+      driverProfile?.vehicle_type,
+      driverProfile?.car,
+      "Angel Express Vehicle"
+    );
+  }
+
+  function getPlateNumber() {
+    return firstAvailable(
+      location?.plate_number,
+      location?.plate,
+      trip?.plate_number,
+      trip?.plate,
+      driverProfile?.plate_number,
+      driverProfile?.license_plate,
+      "N/A"
+    );
+  }
+
+  function getPickup() {
+    return firstAvailable(
+      trip?.pickup_address,
+      trip?.pickup,
+      trip?.pickup_location,
+      "N/A"
+    );
+  }
+
+  function getDropoff() {
+    return firstAvailable(
+      trip?.dropoff_address,
+      trip?.dropoff,
+      trip?.dropoff_location,
+      trip?.destination,
+      "N/A"
+    );
+  }
+
+  function getPickupCoords() {
+    const latitude = Number(trip?.pickup_lat || location?.pickup_lat);
+    const longitude = Number(trip?.pickup_lng || location?.pickup_lng);
+
+    if (!latitude || !longitude) return null;
+
+    return { latitude, longitude };
+  }
+
+  function getDropoffCoords() {
+    const latitude = Number(trip?.dropoff_lat || location?.dropoff_lat);
+    const longitude = Number(trip?.dropoff_lng || location?.dropoff_lng);
+
+    if (!latitude || !longitude) return null;
+
+    return { latitude, longitude };
+  }
+
+  function getDriverCoords() {
+    if (!location?.latitude || !location?.longitude) return null;
+
+    return {
+      latitude: Number(location.latitude),
+      longitude: Number(location.longitude),
+    };
+  }
+
+  function openInMaps() {
+    const driverCoords = getDriverCoords();
+
+    if (!driverCoords) {
+      Alert.alert(
+        "Driver Location Not Available",
+        "Driver GPS will appear once your chauffeur opens the active trip screen."
+      );
+      return;
+    }
+
+    const url = `https://www.google.com/maps/search/?api=1&query=${driverCoords.latitude},${driverCoords.longitude}`;
     Linking.openURL(url);
   }
 
   function callDriver() {
-    const phone = location?.driver_phone;
+    const phone = getDriverPhone();
 
     if (!phone) {
       Alert.alert("Phone Missing", "Driver phone number is not available yet.");
@@ -143,6 +370,18 @@ export default function LiveTripScreen() {
     inputRange: [0, 1],
     outputRange: [24, 0],
   });
+
+  const driverCoordinate = getDriverCoords();
+  const pickupCoordinate = getPickupCoords();
+  const dropoffCoordinate = getDropoffCoords();
+
+  const hasDriverLocation = Boolean(driverCoordinate);
+
+  const mapCenter =
+    driverCoordinate || pickupCoordinate || dropoffCoordinate || {
+      latitude: 32.7767,
+      longitude: -96.797,
+    };
 
   if (loading) {
     return (
@@ -158,7 +397,7 @@ export default function LiveTripScreen() {
       <View style={styles.centerContainer}>
         <Text style={styles.title}>Trip Not Found</Text>
         <Text style={styles.text}>
-          This trip could not be found for your account.
+          No active accepted trip was found for your account yet.
         </Text>
 
         <TouchableOpacity style={styles.backHomeButton} onPress={() => router.back()}>
@@ -167,15 +406,6 @@ export default function LiveTripScreen() {
       </View>
     );
   }
-
-  const hasDriverLocation = Boolean(location?.latitude && location?.longitude);
-
-  const driverCoordinate = hasDriverLocation
-    ? {
-        latitude: Number(location.latitude),
-        longitude: Number(location.longitude),
-      }
-    : null;
 
   return (
     <View style={styles.root}>
@@ -209,136 +439,167 @@ export default function LiveTripScreen() {
               Track your Angel Express driver in real time.
             </Text>
 
-            {!hasDriverLocation ? (
-              <AngelCard style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <ShieldCheck size={22} color={GOLD} />
-                  <Text style={styles.cardTitle}>Waiting for Driver Location</Text>
-                </View>
+            <AngelCard style={styles.statusCard}>
+              <View style={styles.cardHeader}>
+                <ShieldCheck size={22} color={GOLD} />
+                <Text style={styles.cardTitle}>Ride Status</Text>
+              </View>
 
-                <Text style={styles.text}>
-                  Your driver location will appear here when the trip is active and
-                  the driver starts sharing GPS.
-                </Text>
+              <Text style={styles.statusText}>{getStatusLabel(trip.status)}</Text>
 
-                <View style={styles.infoBlock}>
-                  <Row label="Invoice" value={trip.invoice_no || "N/A"} />
-                  <Row
-                    label="Pickup"
-                    value={trip.pickup_address || trip.pickup || "N/A"}
+              <Text style={styles.text}>
+                {hasDriverLocation
+                  ? "Your driver is sharing live GPS."
+                  : cleanStatus(trip.status) === "driver_assigned"
+                  ? "Your driver has accepted the ride. GPS will appear once the driver opens Active Trip."
+                  : "Waiting for driver GPS location."}
+              </Text>
+            </AngelCard>
+
+            <AngelCard style={styles.mapShell}>
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: mapCenter.latitude,
+                  longitude: mapCenter.longitude,
+                  latitudeDelta: 0.08,
+                  longitudeDelta: 0.08,
+                }}
+                region={{
+                  latitude: mapCenter.latitude,
+                  longitude: mapCenter.longitude,
+                  latitudeDelta: 0.08,
+                  longitudeDelta: 0.08,
+                }}
+              >
+                {driverCoordinate && (
+                  <Marker
+                    coordinate={driverCoordinate}
+                    title={getDriverName()}
+                    description={getVehicle()}
                   />
-                  <Row
-                    label="Drop-off"
-                    value={trip.dropoff_address || trip.dropoff || "N/A"}
-                  />
-                </View>
-              </AngelCard>
-            ) : (
-              <>
-                <AngelCard style={styles.mapShell}>
-                  <MapView
-                    style={styles.map}
-                    initialRegion={{
-                      latitude: driverCoordinate!.latitude,
-                      longitude: driverCoordinate!.longitude,
-                      latitudeDelta: 0.05,
-                      longitudeDelta: 0.05,
-                    }}
-                    region={{
-                      latitude: driverCoordinate!.latitude,
-                      longitude: driverCoordinate!.longitude,
-                      latitudeDelta: 0.05,
-                      longitudeDelta: 0.05,
-                    }}
-                  >
-                    <Marker
-                      coordinate={driverCoordinate!}
-                      title={location.driver_name || "Angel Express Driver"}
-                      description={location.vehicle || "Driver location"}
-                    />
+                )}
 
+                {pickupCoordinate && (
+                  <Marker
+                    coordinate={pickupCoordinate}
+                    title="Pickup"
+                    description={getPickup()}
+                    pinColor="green"
+                  />
+                )}
+
+                {dropoffCoordinate && (
+                  <Marker
+                    coordinate={dropoffCoordinate}
+                    title="Drop-off"
+                    description={getDropoff()}
+                    pinColor="orange"
+                  />
+                )}
+
+                {driverCoordinate &&
+                  pickupCoordinate &&
+                  cleanStatus(trip.status) !== "in_progress" && (
                     <Polyline
-                      coordinates={[driverCoordinate!]}
+                      coordinates={[driverCoordinate, pickupCoordinate]}
                       strokeWidth={4}
                       strokeColor={GOLD}
                     />
-                  </MapView>
-                </AngelCard>
+                  )}
 
-                <AngelCard style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <UserRound size={22} color={GOLD} />
-                    <Text style={styles.cardTitle}>Driver Details</Text>
-                  </View>
+                {driverCoordinate &&
+                  dropoffCoordinate &&
+                  cleanStatus(trip.status) === "in_progress" && (
+                    <Polyline
+                      coordinates={[driverCoordinate, dropoffCoordinate]}
+                      strokeWidth={4}
+                      strokeColor={GOLD}
+                    />
+                  )}
+              </MapView>
+            </AngelCard>
 
-                  <Row label="Driver" value={location.driver_name || "Not assigned"} />
-                  <Row label="Phone" value={location.driver_phone || "N/A"} />
-                  <Row label="Vehicle" value={location.vehicle || "N/A"} />
-                  <Row label="Plate Number" value={location.plate_number || "N/A"} />
-                  <Row
-                    label="ETA"
-                    value={
-                      location.eta_minutes
-                        ? `${location.eta_minutes} minutes`
-                        : "Calculating"
-                    }
-                  />
-                  <Row
-                    label="Last Updated"
-                    value={
-                      location.updated_at
-                        ? new Date(location.updated_at).toLocaleString()
-                        : "N/A"
-                    }
-                  />
+            <AngelCard style={styles.card}>
+              <View style={styles.cardHeader}>
+                <UserRound size={22} color={GOLD} />
+                <Text style={styles.cardTitle}>Driver Details</Text>
+              </View>
 
-                  <View style={styles.driverActions}>
-                    <TouchableOpacity
-                      style={styles.secondaryAction}
-                      onPress={callDriver}
-                      activeOpacity={0.85}
-                    >
-                      <Phone size={17} color={GOLD} />
-                      <Text style={styles.secondaryActionText}>Call Driver</Text>
-                    </TouchableOpacity>
+              <Row label="Driver" value={getDriverName()} />
+              <Row label="Phone" value={getDriverPhone() || "Not available yet"} />
+              <Row label="Vehicle" value={getVehicle()} />
+              <Row label="Plate Number" value={getPlateNumber()} />
+              <Row
+                label="ETA"
+                value={
+                  location?.eta_minutes
+                    ? `${Math.round(Number(location.eta_minutes))} minutes`
+                    : "Calculating"
+                }
+              />
+              <Row
+                label="Trip Phase"
+                value={location?.trip_phase || getStatusLabel(trip.status)}
+              />
+              <Row
+                label="Last Updated"
+                value={
+                  location?.last_updated
+                    ? new Date(location.last_updated).toLocaleString()
+                    : location?.updated_at
+                    ? new Date(location.updated_at).toLocaleString()
+                    : "Waiting for GPS update"
+                }
+              />
 
-                    <TouchableOpacity
-                      style={styles.secondaryAction}
-                      onPress={openInMaps}
-                      activeOpacity={0.85}
-                    >
-                      <ExternalLink size={17} color={GOLD} />
-                      <Text style={styles.secondaryActionText}>Open Maps</Text>
-                    </TouchableOpacity>
-                  </View>
-                </AngelCard>
+              <View style={styles.driverActions}>
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  onPress={callDriver}
+                  activeOpacity={0.85}
+                >
+                  <Phone size={17} color={GOLD} />
+                  <Text style={styles.secondaryActionText}>Call Driver</Text>
+                </TouchableOpacity>
 
-                <AngelCard style={styles.card}>
-                  <View style={styles.cardHeader}>
-                    <CarFront size={22} color={GOLD} />
-                    <Text style={styles.cardTitle}>Trip Details</Text>
-                  </View>
-
-                  <Row label="Invoice" value={trip.invoice_no || "N/A"} />
-                  <Row label="Status" value={trip.status || "N/A"} />
-                  <Row
-                    label="Pickup"
-                    value={trip.pickup_address || trip.pickup || "N/A"}
-                  />
-                  <Row
-                    label="Drop-off"
-                    value={trip.dropoff_address || trip.dropoff || "N/A"}
-                  />
-                </AngelCard>
-
-                <AngelHeroButton
-                  title="Open Driver Location in Maps"
+                <TouchableOpacity
+                  style={styles.secondaryAction}
                   onPress={openInMaps}
-                  variant="gold"
-                  style={styles.openMapButton}
-                />
-              </>
-            )}
+                  activeOpacity={0.85}
+                >
+                  <ExternalLink size={17} color={GOLD} />
+                  <Text style={styles.secondaryActionText}>Open Maps</Text>
+                </TouchableOpacity>
+              </View>
+            </AngelCard>
+
+            <AngelCard style={styles.card}>
+              <View style={styles.cardHeader}>
+                <CarFront size={22} color={GOLD} />
+                <Text style={styles.cardTitle}>Trip Details</Text>
+              </View>
+
+              <Row label="Invoice" value={trip.invoice_no || "N/A"} />
+              <Row label="Status" value={getStatusLabel(trip.status)} />
+              <Row label="Pickup" value={getPickup()} />
+              <Row label="Drop-off" value={getDropoff()} />
+              <Row
+                label="Date"
+                value={trip.date || trip.ride_date || trip.pickup_date || "N/A"}
+              />
+              <Row
+                label="Time"
+                value={trip.time || trip.ride_time || trip.pickup_time || "N/A"}
+              />
+            </AngelCard>
+
+            <AngelHeroButton
+              title="Open Driver Location in Maps"
+              onPress={openInMaps}
+              variant="gold"
+              style={styles.openMapButton}
+            />
           </Animated.View>
         </ScrollView>
       </View>
@@ -430,6 +691,19 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 
+  statusCard: {
+    padding: 18,
+    marginBottom: 18,
+  },
+
+  statusText: {
+    color: GOLD,
+    fontSize: 26,
+    fontWeight: "900",
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
+
   card: {
     padding: 18,
     marginBottom: 18,
@@ -458,10 +732,6 @@ const styles = StyleSheet.create({
 
   map: {
     flex: 1,
-  },
-
-  infoBlock: {
-    marginTop: 18,
   },
 
   row: {

@@ -1,12 +1,11 @@
 import * as Linking from "expo-linking";
 import * as Location from "expo-location";
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   ImageBackground,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -19,10 +18,25 @@ import { supabase } from "../lib/supabase";
 
 const HALF_MILE = 0.5;
 
+const ACTIVE_STATUSES = [
+  "assigned",
+  "driver_assigned",
+  "accepted",
+  "driver_accepted",
+  "driver_arrived",
+  "in_progress",
+];
+
 export default function ActiveTripScreen() {
+  const { booking_id, invoice_no } = useLocalSearchParams<{
+    booking_id?: string;
+    invoice_no?: string;
+  }>();
+
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [trip, setTrip] = useState<any>(null);
+  const [passengerProfile, setPassengerProfile] = useState<any>(null);
   const [driverLocation, setDriverLocation] = useState<any>(null);
 
   const [passengerRating, setPassengerRating] = useState("5.0");
@@ -32,7 +46,7 @@ export default function ActiveTripScreen() {
     useCallback(() => {
       loadActiveTrip();
       getDriverLocation();
-    }, [])
+    }, [booking_id, invoice_no])
   );
 
   useEffect(() => {
@@ -46,6 +60,31 @@ export default function ActiveTripScreen() {
 
     return () => clearInterval(liveTracking);
   }, [trip?.id, trip?.status]);
+
+  function getCleanStatus(value?: string) {
+    return String(value || "").toLowerCase().trim();
+  }
+
+  function isAssignedStatus(value?: string) {
+    const status = getCleanStatus(value);
+
+    return (
+      status === "assigned" ||
+      status === "driver_assigned" ||
+      status === "accepted" ||
+      status === "driver_accepted"
+    );
+  }
+
+  function firstAvailable(...values: any[]) {
+    for (const value of values) {
+      if (value !== null && value !== undefined && String(value).trim() !== "") {
+        return String(value).trim();
+      }
+    }
+
+    return "";
+  }
 
   async function getDriverLocation() {
     try {
@@ -104,11 +143,10 @@ export default function ActiveTripScreen() {
       const dropoffLat = Number(currentTrip.dropoff_lat || 0);
       const dropoffLng = Number(currentTrip.dropoff_lng || 0);
 
-      const targetLat =
-        currentTrip.status === "in_progress" ? dropoffLat : pickupLat;
+      const currentStatus = getCleanStatus(currentTrip.status);
 
-      const targetLng =
-        currentTrip.status === "in_progress" ? dropoffLng : pickupLng;
+      const targetLat = currentStatus === "in_progress" ? dropoffLat : pickupLat;
+      const targetLng = currentStatus === "in_progress" ? dropoffLng : pickupLng;
 
       let distanceToTargetMiles = null;
       let etaMinutes = null;
@@ -127,15 +165,15 @@ export default function ActiveTripScreen() {
 
       let tripPhase = "En Route To Pickup";
 
-      if (currentTrip.status === "driver_arrived") {
+      if (currentStatus === "driver_arrived") {
         tripPhase = "Waiting For Passenger";
       }
 
-      if (currentTrip.status === "in_progress") {
+      if (currentStatus === "in_progress") {
         tripPhase = "Passenger Onboard";
       }
 
-      if (currentTrip.status === "completed") {
+      if (currentStatus === "completed") {
         tripPhase = "Completed";
       }
 
@@ -165,14 +203,8 @@ export default function ActiveTripScreen() {
             currentTrip.assigned_driver_phone ||
             "",
 
-          passenger_name:
-            currentTrip.name ||
-            currentTrip.passenger_name ||
-            currentTrip.full_name ||
-            "Passenger",
-
-          passenger_phone:
-            currentTrip.phone || currentTrip.passenger_phone || "",
+          passenger_name: getPassengerNameFromData(currentTrip, passengerProfile),
+          passenger_phone: getPassengerPhoneFromData(currentTrip, passengerProfile),
 
           pickup_lat: pickupLat || null,
           pickup_lng: pickupLng || null,
@@ -192,6 +224,82 @@ export default function ActiveTripScreen() {
       if (error) throw error;
     } catch (err) {
       console.log("Live GPS update error:", err);
+    }
+  }
+
+  async function loadPassengerProfile(booking: any) {
+    try {
+      setPassengerProfile(null);
+
+      const passengerId = firstAvailable(
+        booking?.user_id,
+        booking?.passenger_id,
+        booking?.passenger_user_id,
+        booking?.customer_id
+      );
+
+      const passengerEmail = firstAvailable(
+        booking?.email,
+        booking?.passenger_email,
+        booking?.customer_email
+      );
+
+      if (passengerId) {
+        const { data } = await supabase
+          .from("passengers")
+          .select("*")
+          .eq("id", passengerId)
+          .maybeSingle();
+
+        if (data) {
+          setPassengerProfile(data);
+          return data;
+        }
+      }
+
+      if (passengerEmail) {
+        const { data } = await supabase
+          .from("passengers")
+          .select("*")
+          .eq("email", passengerEmail)
+          .maybeSingle();
+
+        if (data) {
+          setPassengerProfile(data);
+          return data;
+        }
+      }
+
+      if (passengerId) {
+        const { data } = await supabase
+          .from("passenger_profiles")
+          .select("*")
+          .eq("user_id", passengerId)
+          .maybeSingle();
+
+        if (data) {
+          setPassengerProfile(data);
+          return data;
+        }
+      }
+
+      if (passengerEmail) {
+        const { data } = await supabase
+          .from("passenger_profiles")
+          .select("*")
+          .eq("email", passengerEmail)
+          .maybeSingle();
+
+        if (data) {
+          setPassengerProfile(data);
+          return data;
+        }
+      }
+
+      return null;
+    } catch (err) {
+      console.log("Passenger profile lookup error:", err);
+      return null;
     }
   }
 
@@ -247,22 +355,51 @@ export default function ActiveTripScreen() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("driver_id", user.id)
-        .in("status", ["assigned", "driver_arrived", "in_progress"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      let data: any = null;
+      let error: any = null;
+
+      if (booking_id) {
+        const result = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("id", String(booking_id))
+          .eq("driver_id", user.id)
+          .maybeSingle();
+
+        data = result.data;
+        error = result.error;
+      } else if (invoice_no) {
+        const result = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("invoice_no", String(invoice_no))
+          .eq("driver_id", user.id)
+          .maybeSingle();
+
+        data = result.data;
+        error = result.error;
+      } else {
+        const result = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("driver_id", user.id)
+          .in("status", ACTIVE_STATUSES)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
 
       setTrip(data || null);
 
       if (data) {
+        const profile = await loadPassengerProfile(data);
         await loadPassengerRating(data);
-        await updateLiveDriverLocation(data);
+        await updateLiveDriverLocationWithProfile(data, profile);
       }
     } catch (err: any) {
       Alert.alert("Error", err.message || "Unable to load active trip.");
@@ -271,24 +408,138 @@ export default function ActiveTripScreen() {
     }
   }
 
+  async function updateLiveDriverLocationWithProfile(currentTrip: any, profile: any) {
+    const previousProfile = passengerProfile;
+
+    if (profile) {
+      setPassengerProfile(profile);
+    }
+
+    try {
+      await updateLiveDriverLocation(currentTrip);
+    } finally {
+      if (!profile && previousProfile) {
+        setPassengerProfile(previousProfile);
+      }
+    }
+  }
+
+  function getPassengerNameFromData(booking: any, profile: any) {
+    const profileFirst = firstAvailable(profile?.first_name, profile?.firstname);
+    const profileLast = firstAvailable(profile?.last_name, profile?.lastname);
+
+    const profileFullName = firstAvailable(
+      profile?.full_name,
+      profile?.name,
+      profileFirst && profileLast ? `${profileFirst} ${profileLast}` : "",
+      profileFirst
+    );
+
+    const bookingFirst = firstAvailable(booking?.first_name, booking?.firstname);
+    const bookingLast = firstAvailable(booking?.last_name, booking?.lastname);
+
+    const bookingFullName = firstAvailable(
+      booking?.passenger_name,
+      booking?.customer_name,
+      booking?.full_name,
+      booking?.name,
+      bookingFirst && bookingLast ? `${bookingFirst} ${bookingLast}` : "",
+      bookingFirst
+    );
+
+    return firstAvailable(profileFullName, bookingFullName, "Passenger");
+  }
+
+  function getPassengerPhoneFromData(booking: any, profile: any) {
+    return firstAvailable(
+      booking?.phone,
+      booking?.passenger_phone,
+      booking?.customer_phone,
+      booking?.phone_number,
+      booking?.mobile,
+      profile?.phone,
+      profile?.passenger_phone,
+      profile?.phone_number,
+      profile?.mobile
+    );
+  }
+
+  function getPassengerEmailFromData(booking: any, profile: any) {
+    return firstAvailable(
+      booking?.email,
+      booking?.passenger_email,
+      booking?.customer_email,
+      profile?.email,
+      profile?.passenger_email
+    );
+  }
+
+  function getEmergencyContactNameFromData(booking: any, profile: any) {
+    return firstAvailable(
+      booking?.emergency_contact_name,
+      booking?.emergency_name,
+      profile?.emergency_contact_name,
+      profile?.emergency_name
+    );
+  }
+
+  function getEmergencyContactPhoneFromData(booking: any, profile: any) {
+    return firstAvailable(
+      booking?.emergency_contact_phone,
+      booking?.emergency_phone,
+      profile?.emergency_contact_phone,
+      profile?.emergency_phone
+    );
+  }
+
   function getPassengerName() {
-    return trip?.name || trip?.passenger_name || "Passenger";
+    return getPassengerNameFromData(trip, passengerProfile);
   }
 
   function getPassengerPhone() {
-    return trip?.phone || trip?.passenger_phone || "";
+    return getPassengerPhoneFromData(trip, passengerProfile);
+  }
+
+  function getPassengerEmail() {
+    return getPassengerEmailFromData(trip, passengerProfile);
+  }
+
+  function getEmergencyContactName() {
+    return getEmergencyContactNameFromData(trip, passengerProfile);
+  }
+
+  function getEmergencyContactPhone() {
+    return getEmergencyContactPhoneFromData(trip, passengerProfile);
   }
 
   function getPickup() {
-    return trip?.pickup || trip?.pickup_address || "Not provided";
+    return (
+      trip?.pickup ||
+      trip?.pickup_address ||
+      trip?.pickup_location ||
+      "Not provided"
+    );
   }
 
   function getDropoff() {
-    return trip?.dropoff || trip?.dropoff_address || "Not provided";
+    return (
+      trip?.dropoff ||
+      trip?.dropoff_address ||
+      trip?.dropoff_location ||
+      trip?.destination ||
+      "Not provided"
+    );
   }
 
   function getFare() {
-    return Number(trip?.total) || Number(trip?.total_fare) || 0;
+    return (
+      Number(trip?.total) ||
+      Number(trip?.total_fare) ||
+      Number(trip?.total_price) ||
+      Number(trip?.price) ||
+      Number(trip?.amount) ||
+      0
+    );
   }
 
   function getDriverPayout() {
@@ -311,13 +562,29 @@ export default function ActiveTripScreen() {
 
   function getTargetCoords() {
     if (!trip) return null;
-    if (trip.status === "in_progress") return getDropoffCoords();
+
+    const status = getCleanStatus(trip.status);
+
+    if (status === "in_progress") return getDropoffCoords();
+
     return getPickupCoords();
+  }
+
+  function getTargetAddress() {
+    const status = getCleanStatus(trip?.status);
+
+    if (status === "in_progress") return getDropoff();
+
+    return getPickup();
   }
 
   function getTargetLabel() {
     if (!trip) return "Destination";
-    if (trip.status === "in_progress") return "Drop-off Location";
+
+    const status = getCleanStatus(trip.status);
+
+    if (status === "in_progress") return "Drop-off Location";
+
     return "Pickup Location";
   }
 
@@ -347,6 +614,7 @@ export default function ActiveTripScreen() {
 
   function getDistanceToTarget() {
     const target = getTargetCoords();
+
     if (!driverLocation || !target) return null;
 
     return calculateDistanceMiles(
@@ -364,19 +632,24 @@ export default function ActiveTripScreen() {
 
   function formatDistance() {
     const distance = getDistanceToTarget();
+
     if (distance === null) return "Distance unavailable";
+
     return `${distance.toFixed(2)} miles away`;
   }
 
   function cleanPhone(phone: string) {
-    return phone.replace(/[^\d+]/g, "");
+    return String(phone || "").replace(/[^\d+]/g, "");
   }
 
   function callPassenger() {
     const phone = getPassengerPhone();
 
     if (!phone) {
-      Alert.alert("No Phone Number", "Passenger phone number is not available.");
+      Alert.alert(
+        "No Phone Number",
+        "Passenger phone number is not available for this booking."
+      );
       return;
     }
 
@@ -387,33 +660,96 @@ export default function ActiveTripScreen() {
     const phone = getPassengerPhone();
 
     if (!phone) {
-      Alert.alert("No Phone Number", "Passenger phone number is not available.");
+      Alert.alert(
+        "No Phone Number",
+        "Passenger phone number is not available for this booking."
+      );
       return;
     }
 
     Linking.openURL(`sms:${cleanPhone(phone)}`);
   }
 
+  function chatPassenger() {
+    if (!trip?.id) {
+      Alert.alert("No Active Trip", "There is no active trip to chat about.");
+      return;
+    }
+
+    router.push({
+      pathname: "/trip-chat" as any,
+      params: {
+        booking_id: String(trip.id),
+        passenger_id: String(
+          trip.user_id || trip.passenger_id || trip.passenger_user_id || ""
+        ),
+        passenger_name: getPassengerName(),
+        passenger_phone: getPassengerPhone(),
+      },
+    });
+  }
+
+  async function openUrl(url: string) {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Navigation Error", "Unable to open this map option.");
+    }
+  }
+
   function openNavigation() {
     const target = getTargetCoords();
+    const targetAddress = getTargetAddress();
 
-    if (!target) {
+    if (!target && (!targetAddress || targetAddress === "Not provided")) {
       Alert.alert(
-        "Coordinates Missing",
-        "This trip does not have pickup or drop-off GPS coordinates yet."
+        "Destination Missing",
+        "This trip does not have pickup/drop-off coordinates or address."
       );
       return;
     }
 
-    const label = getTargetLabel();
+    const label = encodeURIComponent(getTargetLabel());
+    const encodedAddress = encodeURIComponent(targetAddress);
 
-    const url = Platform.select({
-      ios: `maps://app?daddr=${target.latitude},${target.longitude}&q=${label}`,
-      android: `google.navigation:q=${target.latitude},${target.longitude}`,
-      default: `https://www.google.com/maps/dir/?api=1&destination=${target.latitude},${target.longitude}`,
-    });
+    const destination = target
+      ? `${target.latitude},${target.longitude}`
+      : encodedAddress;
 
-    if (url) Linking.openURL(url);
+    const appleMapsUrl = target
+      ? `http://maps.apple.com/?daddr=${target.latitude},${target.longitude}&q=${label}&dirflg=d`
+      : `http://maps.apple.com/?daddr=${encodedAddress}&q=${label}&dirflg=d`;
+
+    const googleMapsUrl = target
+      ? `https://www.google.com/maps/dir/?api=1&destination=${target.latitude},${target.longitude}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}&travelmode=driving`;
+
+    const wazeUrl = target
+      ? `https://waze.com/ul?ll=${target.latitude},${target.longitude}&navigate=yes`
+      : `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+
+    Alert.alert(
+      `Navigate to ${getTargetLabel()}`,
+      target ? destination : targetAddress,
+      [
+        {
+          text: "Apple Maps",
+          onPress: () => openUrl(appleMapsUrl),
+        },
+        {
+          text: "Google Maps",
+          onPress: () => openUrl(googleMapsUrl),
+        },
+        {
+          text: "Waze",
+          onPress: () => openUrl(wazeUrl),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
   }
 
   async function updateTripStatus(newStatus: string) {
@@ -448,14 +784,17 @@ export default function ActiveTripScreen() {
 
       if (newStatus === "driver_arrived") {
         updateData.driver_arrived_at = new Date().toISOString();
+        updateData.driver_arrived_at_pickup = new Date().toISOString();
       }
 
       if (newStatus === "in_progress") {
         updateData.started_at = new Date().toISOString();
+        updateData.driver_picked_up_passenger = new Date().toISOString();
       }
 
       if (newStatus === "completed") {
         updateData.completed_at = new Date().toISOString();
+        updateData.driver_dropped_off_passenger = new Date().toISOString();
       }
 
       const { error } = await supabase
@@ -491,7 +830,6 @@ export default function ActiveTripScreen() {
       setUpdating(false);
     }
   }
-
 
   async function sendDriverSOS(alertType = "Driver SOS") {
     if (!trip) {
@@ -566,10 +904,16 @@ export default function ActiveTripScreen() {
   function renderActionButtons() {
     if (!trip) return null;
 
-    if (trip.status === "assigned") {
+    const status = getCleanStatus(trip.status);
+
+    if (isAssignedStatus(status)) {
       return (
         <>
-          <TouchableOpacity style={styles.navigationButton} onPress={openNavigation}>
+          <TouchableOpacity
+            style={styles.navigationButton}
+            onPress={openNavigation}
+            activeOpacity={0.85}
+          >
             <Text style={styles.navigationButtonText}>Navigate to Pickup</Text>
           </TouchableOpacity>
 
@@ -577,6 +921,7 @@ export default function ActiveTripScreen() {
             style={styles.primaryButton}
             onPress={() => updateTripStatus("driver_arrived")}
             disabled={updating}
+            activeOpacity={0.85}
           >
             {updating ? (
               <ActivityIndicator color="#07111f" />
@@ -588,12 +933,13 @@ export default function ActiveTripScreen() {
       );
     }
 
-    if (trip.status === "driver_arrived") {
+    if (status === "driver_arrived") {
       return (
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() => updateTripStatus("in_progress")}
           disabled={updating}
+          activeOpacity={0.85}
         >
           {updating ? (
             <ActivityIndicator color="#07111f" />
@@ -604,10 +950,14 @@ export default function ActiveTripScreen() {
       );
     }
 
-    if (trip.status === "in_progress") {
+    if (status === "in_progress") {
       return (
         <>
-          <TouchableOpacity style={styles.navigationButton} onPress={openNavigation}>
+          <TouchableOpacity
+            style={styles.navigationButton}
+            onPress={openNavigation}
+            activeOpacity={0.85}
+          >
             <Text style={styles.navigationButtonText}>Navigate to Drop-off</Text>
           </TouchableOpacity>
 
@@ -615,6 +965,7 @@ export default function ActiveTripScreen() {
             style={styles.completeButton}
             onPress={() => updateTripStatus("completed")}
             disabled={updating}
+            activeOpacity={0.85}
           >
             {updating ? (
               <ActivityIndicator color="#ffffff" />
@@ -662,7 +1013,8 @@ export default function ActiveTripScreen() {
         >
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.push("/driver-dashboard")}
+            onPress={() => router.back()}
+            activeOpacity={0.85}
           >
             <Text style={styles.backButtonText}>← Dashboard</Text>
           </TouchableOpacity>
@@ -683,7 +1035,8 @@ export default function ActiveTripScreen() {
 
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => router.push("/find-trips")}
+                onPress={() => router.push("/find-trips" as any)}
+                activeOpacity={0.85}
               >
                 <Text style={styles.primaryButtonText}>Find Trips</Text>
               </TouchableOpacity>
@@ -704,7 +1057,9 @@ export default function ActiveTripScreen() {
                     coordinate={targetCoords}
                     title={getTargetLabel()}
                     description={
-                      trip.status === "in_progress" ? getDropoff() : getPickup()
+                      getCleanStatus(trip.status) === "in_progress"
+                        ? getDropoff()
+                        : getPickup()
                     }
                   />
 
@@ -719,7 +1074,8 @@ export default function ActiveTripScreen() {
               ) : (
                 <View style={styles.noMapBox}>
                   <Text style={styles.noMapText}>
-                    GPS coordinates missing for this trip.
+                    GPS coordinates missing for this trip. Navigation will use
+                    the pickup or drop-off address instead.
                   </Text>
                 </View>
               )}
@@ -728,6 +1084,10 @@ export default function ActiveTripScreen() {
                 <Text style={styles.cardHeader}>Passenger Card</Text>
 
                 <Text style={styles.passengerName}>{getPassengerName()}</Text>
+
+                {getPassengerEmail() ? (
+                  <Text style={styles.emailText}>{getPassengerEmail()}</Text>
+                ) : null}
 
                 <Text style={styles.ratingText}>
                   ⭐ {passengerRating} rating • {passengerReviews} review(s)
@@ -753,9 +1113,11 @@ export default function ActiveTripScreen() {
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Emergency Contact</Text>
                   <Text style={styles.infoValue}>
-                    {trip.emergency_contact_name
-                      ? `${trip.emergency_contact_name} • ${
-                          trip.emergency_contact_phone || ""
+                    {getEmergencyContactName()
+                      ? `${getEmergencyContactName()}${
+                          getEmergencyContactPhone()
+                            ? ` • ${getEmergencyContactPhone()}`
+                            : ""
                         }`
                       : "Not provided"}
                   </Text>
@@ -775,7 +1137,9 @@ export default function ActiveTripScreen() {
 
               <View style={styles.statusBadge}>
                 <Text style={styles.statusText}>
-                  Status: {String(trip.status).replace("_", " ").toUpperCase()}
+                  Status: {String(trip.status || "")
+                    .replace(/_/g, " ")
+                    .toUpperCase()}
                 </Text>
               </View>
 
@@ -801,14 +1165,30 @@ export default function ActiveTripScreen() {
               </View>
 
               <View style={styles.contactRow}>
-                <TouchableOpacity style={styles.contactButton} onPress={callPassenger}>
+                <TouchableOpacity
+                  style={styles.contactButton}
+                  onPress={callPassenger}
+                  activeOpacity={0.85}
+                >
                   <Text style={styles.contactButtonText}>Call Passenger</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.contactButton} onPress={textPassenger}>
+                <TouchableOpacity
+                  style={styles.contactButton}
+                  onPress={textPassenger}
+                  activeOpacity={0.85}
+                >
                   <Text style={styles.contactButtonText}>Text Passenger</Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={styles.chatButton}
+                onPress={chatPassenger}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.chatButtonText}>In-App Chat With Passenger</Text>
+              </TouchableOpacity>
 
               <View style={styles.row}>
                 <Text style={styles.label}>Pickup</Text>
@@ -823,14 +1203,14 @@ export default function ActiveTripScreen() {
               <View style={styles.row}>
                 <Text style={styles.label}>Date</Text>
                 <Text style={styles.value}>
-                  {trip.date || trip.ride_date || "Not set"}
+                  {trip.date || trip.ride_date || trip.pickup_date || "Not set"}
                 </Text>
               </View>
 
               <View style={styles.row}>
                 <Text style={styles.label}>Time</Text>
                 <Text style={styles.value}>
-                  {trip.time || trip.ride_time || "Not set"}
+                  {trip.time || trip.ride_time || trip.pickup_time || "Not set"}
                 </Text>
               </View>
 
@@ -852,6 +1232,7 @@ export default function ActiveTripScreen() {
                 style={styles.sosButton}
                 onPress={() => sendDriverSOS("Driver SOS")}
                 disabled={updating}
+                activeOpacity={0.85}
               >
                 <Text style={styles.sosButtonText}>🚨 Driver SOS / Emergency</Text>
               </TouchableOpacity>
@@ -866,21 +1247,34 @@ export default function ActiveTripScreen() {
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)" },
+  background: {
+    flex: 1,
+  },
+
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.72)",
+  },
+
   loadingContainer: {
     flex: 1,
     backgroundColor: "#07111f",
     justifyContent: "center",
     alignItems: "center",
   },
-  loadingText: { color: "#e5e7eb", marginTop: 14 },
+
+  loadingText: {
+    color: "#e5e7eb",
+    marginTop: 14,
+  },
+
   container: {
     flexGrow: 1,
     padding: 22,
     paddingTop: 65,
     paddingBottom: 45,
   },
+
   backButton: {
     borderWidth: 1,
     borderColor: "#d4af37",
@@ -891,19 +1285,26 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginBottom: 20,
   },
-  backButtonText: { color: "#d4af37", fontWeight: "900" },
+
+  backButtonText: {
+    color: "#d4af37",
+    fontWeight: "900",
+  },
+
   title: {
     color: "#d4af37",
     fontSize: 32,
     fontWeight: "900",
     marginBottom: 8,
   },
+
   subtitle: {
     color: "#e5e7eb",
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 18,
   },
+
   emptyCard: {
     backgroundColor: "rgba(15,23,42,0.92)",
     borderWidth: 1,
@@ -911,18 +1312,21 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 22,
   },
+
   emptyTitle: {
     color: "#ffffff",
     fontSize: 20,
     fontWeight: "900",
     marginBottom: 8,
   },
+
   emptyText: {
     color: "#cbd5e1",
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 18,
   },
+
   tripCard: {
     backgroundColor: "rgba(15,23,42,0.94)",
     borderWidth: 1,
@@ -930,14 +1334,26 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
   },
-  map: { height: 260, borderRadius: 18, marginBottom: 18 },
+
+  map: {
+    height: 260,
+    borderRadius: 18,
+    marginBottom: 18,
+  },
+
   noMapBox: {
     backgroundColor: "rgba(0,0,0,0.35)",
     borderRadius: 18,
     padding: 22,
     marginBottom: 18,
   },
-  noMapText: { color: "#ffffff", textAlign: "center" },
+
+  noMapText: {
+    color: "#ffffff",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+
   passengerCard: {
     backgroundColor: "rgba(0,0,0,0.35)",
     borderWidth: 1,
@@ -946,25 +1362,39 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 18,
   },
+
   cardHeader: {
     color: "#d4af37",
     fontSize: 18,
     fontWeight: "900",
     marginBottom: 8,
   },
+
   passengerName: {
     color: "#ffffff",
     fontSize: 24,
     fontWeight: "900",
-    marginBottom: 6,
+    marginBottom: 4,
   },
+
+  emailText: {
+    color: "#cbd5e1",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 7,
+  },
+
   ratingText: {
     color: "#d4af37",
     fontSize: 15,
     fontWeight: "800",
     marginBottom: 14,
   },
-  infoRow: { marginBottom: 10 },
+
+  infoRow: {
+    marginBottom: 10,
+  },
+
   infoLabel: {
     color: "#94a3b8",
     fontSize: 12,
@@ -972,13 +1402,20 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 3,
   },
-  infoValue: { color: "#ffffff", fontSize: 15, lineHeight: 21 },
+
+  infoValue: {
+    color: "#ffffff",
+    fontSize: 15,
+    lineHeight: 21,
+  },
+
   tripTitle: {
     color: "#d4af37",
     fontSize: 21,
     fontWeight: "900",
     marginBottom: 14,
   },
+
   statusBadge: {
     backgroundColor: "rgba(212,175,55,0.18)",
     borderWidth: 1,
@@ -988,32 +1425,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 16,
   },
+
   statusText: {
     color: "#d4af37",
     fontWeight: "900",
     textAlign: "center",
   },
+
   distanceBox: {
     backgroundColor: "rgba(0,0,0,0.35)",
     borderRadius: 16,
     padding: 15,
     marginBottom: 16,
   },
-  distanceTitle: { color: "#d4af37", fontWeight: "900", marginBottom: 5 },
+
+  distanceTitle: {
+    color: "#d4af37",
+    fontWeight: "900",
+    marginBottom: 5,
+  },
+
   distanceText: {
     color: "#ffffff",
     fontSize: 16,
     fontWeight: "800",
     marginBottom: 5,
   },
-  rangeText: { fontSize: 13, fontWeight: "800" },
-  inRangeText: { color: "#22c55e" },
-  outRangeText: { color: "#f97316" },
+
+  rangeText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  inRangeText: {
+    color: "#22c55e",
+  },
+
+  outRangeText: {
+    color: "#f97316",
+  },
+
   contactRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 18,
+    marginBottom: 12,
   },
+
   contactButton: {
     width: "48%",
     backgroundColor: "rgba(15,23,42,0.95)",
@@ -1022,12 +1479,33 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
   },
+
   contactButtonText: {
     color: "#d4af37",
     fontWeight: "900",
     textAlign: "center",
   },
-  row: { marginBottom: 12 },
+
+  chatButton: {
+    borderWidth: 1,
+    borderColor: "#d4af37",
+    backgroundColor: "rgba(212,175,55,0.14)",
+    paddingVertical: 15,
+    borderRadius: 14,
+    marginBottom: 18,
+  },
+
+  chatButtonText: {
+    color: "#d4af37",
+    fontWeight: "900",
+    textAlign: "center",
+    textTransform: "uppercase",
+  },
+
+  row: {
+    marginBottom: 12,
+  },
+
   label: {
     color: "#94a3b8",
     fontSize: 13,
@@ -1035,7 +1513,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textTransform: "uppercase",
   },
-  value: { color: "#ffffff", fontSize: 15, lineHeight: 21 },
+
+  value: {
+    color: "#ffffff",
+    fontSize: 15,
+    lineHeight: 21,
+  },
+
   moneyBox: {
     backgroundColor: "rgba(0,0,0,0.35)",
     borderRadius: 16,
@@ -1045,9 +1529,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  moneyLabel: { color: "#cbd5e1", fontSize: 13, marginBottom: 5 },
-  moneyValue: { color: "#ffffff", fontSize: 20, fontWeight: "900" },
-  payoutValue: { color: "#d4af37", fontSize: 20, fontWeight: "900" },
+
+  moneyLabel: {
+    color: "#cbd5e1",
+    fontSize: 13,
+    marginBottom: 5,
+  },
+
+  moneyValue: {
+    color: "#ffffff",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+
+  payoutValue: {
+    color: "#d4af37",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+
   sosButton: {
     backgroundColor: "#dc2626",
     paddingVertical: 16,
@@ -1056,6 +1556,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#fecaca",
   },
+
   sosButtonText: {
     color: "#ffffff",
     fontSize: 16,
@@ -1063,6 +1564,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     textTransform: "uppercase",
   },
+
   navigationButton: {
     borderWidth: 1,
     borderColor: "#d4af37",
@@ -1071,6 +1573,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 12,
   },
+
   navigationButtonText: {
     color: "#d4af37",
     fontSize: 16,
@@ -1078,11 +1581,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     textTransform: "uppercase",
   },
+
   primaryButton: {
     backgroundColor: "#d4af37",
     paddingVertical: 16,
     borderRadius: 16,
   },
+
   primaryButtonText: {
     color: "#07111f",
     fontSize: 16,
@@ -1090,11 +1595,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
     textTransform: "uppercase",
   },
+
   completeButton: {
     backgroundColor: "#dc2626",
     paddingVertical: 16,
     borderRadius: 16,
   },
+
   completeButtonText: {
     color: "#ffffff",
     fontSize: 16,

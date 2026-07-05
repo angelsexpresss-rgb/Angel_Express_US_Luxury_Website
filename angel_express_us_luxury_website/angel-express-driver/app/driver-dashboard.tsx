@@ -1,20 +1,35 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   ImageBackground,
   RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useColorScheme,
   View,
 } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 
+type ThemeMode = "dark" | "light";
+
 export default function ChauffeurDashboardScreen() {
+  const systemMode = useColorScheme();
+
+  const [themeMode, setThemeMode] = useState<ThemeMode>(
+    systemMode === "light" ? "light" : "dark"
+  );
+
+  const colors = themeMode === "dark" ? darkTheme : lightTheme;
+  const styles = useMemo(() => createStyles(colors), [themeMode]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -26,59 +41,88 @@ export default function ChauffeurDashboardScreen() {
   const [weeklyEarnings, setWeeklyEarnings] = useState(0);
   const [driverLevel, setDriverLevel] = useState("Bronze");
 
-  const [showTrips, setShowTrips] = useState(true);
-  const [showMoneyProfile, setShowMoneyProfile] = useState(false);
-  const [showSafetySupport, setShowSafetySupport] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(28)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const bgScale = useRef(new Animated.Value(1)).current;
+  const pageFade = useRef(new Animated.Value(0)).current;
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const cardFade = useRef(new Animated.Value(0)).current;
+  const bodyFade = useRef(new Animated.Value(0)).current;
+  const toolFade = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const menuAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadDashboard();
 
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.04,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ])
-      ),
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(bgScale, {
-            toValue: 1.05,
-            duration: 7000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(bgScale, {
-            toValue: 1,
-            duration: 7000,
-            useNativeDriver: true,
-          }),
-        ])
-      ),
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.045,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(pageFade, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ]),
+      fadeIn(headerFade, 80),
+      fadeIn(cardFade, 90),
+      fadeIn(bodyFade, 90),
+      fadeIn(toolFade, 90),
     ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   }, []);
+
+  useEffect(() => {
+    Animated.spring(menuAnim, {
+      toValue: menuOpen ? 1 : 0,
+      friction: 8,
+      tension: 75,
+      useNativeDriver: true,
+    }).start();
+  }, [menuOpen]);
+
+  function fadeIn(value: Animated.Value, delay: number) {
+    return Animated.timing(value, {
+      toValue: 1,
+      duration: 520,
+      delay,
+      useNativeDriver: true,
+    });
+  }
 
   function getWeekStartDate() {
     const now = new Date();
@@ -142,7 +186,7 @@ export default function ChauffeurDashboardScreen() {
       setDriver(driverData);
       setIsOnline(driverData.is_online || false);
 
-      const { data: allCompletedTrips, error: completedError } = await supabase
+      const { data: completedData, error: completedError } = await supabase
         .from("bookings")
         .select("*")
         .eq("driver_id", user.id)
@@ -150,7 +194,7 @@ export default function ChauffeurDashboardScreen() {
 
       if (completedError) throw completedError;
 
-      const completed = allCompletedTrips || [];
+      const completed = completedData || [];
       const totalCompletedTrips = completed.length;
 
       const ratings = completed
@@ -168,12 +212,20 @@ export default function ChauffeurDashboardScreen() {
         const completedDate = new Date(
           trip.completed_at || trip.updated_at || trip.created_at
         );
-
         return completedDate >= new Date(weekStart);
       });
 
       const weeklyRevenue = weeklyTrips.reduce((sum, trip) => {
-        return sum + Number(trip.total || trip.total_fare || trip.total_price || trip.price || 0);
+        return (
+          sum +
+          Number(
+            trip.total ||
+              trip.total_fare ||
+              trip.total_price ||
+              trip.price ||
+              0
+          )
+        );
       }, 0);
 
       const weeklyDriverPayout = weeklyRevenue * 0.7;
@@ -185,21 +237,13 @@ export default function ChauffeurDashboardScreen() {
           trip.driver_dropped_off_passenger
       ).length;
 
-      const passengerFeedbackRatings = completed
-        .map((trip) => Number(trip.driver_rating || 0))
-        .filter((value) => value > 0);
-
-      const passengerFeedbackScore =
-        passengerFeedbackRatings.length > 0
-          ? passengerFeedbackRatings.reduce((sum, value) => sum + value, 0) /
-            passengerFeedbackRatings.length
-          : 5;
+      const feedbackScore = ratings.length > 0 ? avgRating : 5;
 
       const level = calculateDriverLevel(
         totalCompletedTrips,
         avgRating,
         safetyCheckins,
-        passengerFeedbackScore
+        feedbackScore
       );
 
       setRating(Number(avgRating.toFixed(1)));
@@ -215,7 +259,7 @@ export default function ChauffeurDashboardScreen() {
           weekly_earnings: weeklyDriverPayout,
           driver_level: level,
           safety_checkins: safetyCheckins,
-          passenger_feedback_score: Number(passengerFeedbackScore.toFixed(1)),
+          passenger_feedback_score: Number(feedbackScore.toFixed(1)),
         })
         .eq("id", user.id);
     } catch (err: any) {
@@ -247,13 +291,6 @@ export default function ChauffeurDashboardScreen() {
       Alert.alert("Error", "Unable to update online status.");
       return;
     }
-
-    Alert.alert(
-      newStatus ? "You Are Online" : "You Are Offline",
-      newStatus
-        ? "You can now find and accept Angel Express trips."
-        : "You cannot find or start trips while offline."
-    );
   }
 
   function requireOnline(route: string) {
@@ -269,25 +306,66 @@ export default function ChauffeurDashboardScreen() {
       return;
     }
 
+    setMenuOpen(false);
+    router.push(route as any);
+  }
+
+  function goTo(route: string) {
+    setMenuOpen(false);
     router.push(route as any);
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut();
-    router.replace("/");
+    Alert.alert("Log Out", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Log Out",
+        style: "destructive",
+        onPress: async () => {
+          await supabase.auth.signOut();
+          router.replace("/");
+        },
+      },
+    ]);
   }
+
+  const driverName =
+    driver?.first_name ||
+    driver?.full_name ||
+    driver?.name ||
+    "Chauffeur";
+
+  const levelProgress =
+    driverLevel === "Angel Elite"
+      ? "100%"
+      : driverLevel === "Gold"
+      ? "75%"
+      : driverLevel === "Silver"
+      ? "50%"
+      : "25%";
+
+  const levelCount =
+    driverLevel === "Angel Elite"
+      ? "4/4"
+      : driverLevel === "Gold"
+      ? "3/4"
+      : driverLevel === "Silver"
+      ? "2/4"
+      : "1/4";
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#D4AF37" />
-        <Text style={styles.loadingText}>Loading chauffeur cockpit...</Text>
+        <ActivityIndicator size="large" color={colors.gold} />
+        <Text style={styles.loadingText}>Loading Angel Driver...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.root}>
+      <StatusBar barStyle={themeMode === "dark" ? "light-content" : "dark-content"} />
+
       <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
         <ImageBackground
           source={require("../assets/images/driver-bg.png")}
@@ -298,908 +376,1291 @@ export default function ChauffeurDashboardScreen() {
 
       <View style={styles.overlay}>
         <ScrollView
+          style={styles.scroll}
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#D4AF37"
+              tintColor={colors.gold}
             />
           }
         >
           <Animated.View
             style={{
-              opacity: fadeAnim,
+              opacity: pageFade,
               transform: [{ translateY: slideAnim }],
             }}
           >
-            <View style={styles.topBar}>
-              <View>
-                <Text style={styles.kicker}>ANGEL EXPRESS DRIVER APP</Text>
-                <Text style={styles.welcome}>
-                  Hello, {driver?.first_name || driver?.full_name || "Chauffeur"}
-                </Text>
-              </View>
-
-              <TouchableOpacity style={styles.logoutMini} onPress={handleLogout}>
-                <Text style={styles.logoutMiniText}>Logout</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.heroCard}>
-              <View style={styles.heroTopRow}>
-                <View>
-                  <Text style={styles.heroSmall}>TODAY'S DRIVER MODE</Text>
-                  <Text style={styles.heroTitle}>
-                    {isOnline ? "Ready For Trips" : "Go Online To Drive"}
-                  </Text>
-                </View>
-
-                <Animated.View
-                  style={[
-                    styles.livePill,
-                    isOnline ? styles.livePillOnline : styles.livePillOffline,
-                    { transform: [{ scale: isOnline ? pulseAnim : 1 }] },
-                  ]}
-                >
-                  <Text style={styles.liveDot}>{isOnline ? "●" : "○"}</Text>
-                  <Text style={styles.liveText}>{isOnline ? "ONLINE" : "OFFLINE"}</Text>
-                </Animated.View>
-              </View>
-
-              <Text style={styles.heroText}>
-                {isOnline
-                  ? "You are visible to Angel Express operations and can claim available rides."
-                  : "Switch online to unlock trip discovery, active ride tools, and smart trip queue."}
-              </Text>
-
-              <TouchableOpacity
-                style={[
-                  styles.goOnlineButton,
-                  isOnline ? styles.goOfflineButton : styles.goOnlineActiveButton,
-                ]}
-                onPress={toggleOnlineStatus}
-                activeOpacity={0.88}
-              >
-                <View style={styles.buttonIconBox}>
-                  <Text style={styles.buttonIcon}>A</Text>
-                </View>
-
-                <Text style={styles.goOnlineText}>
-                  {isOnline ? "Go Offline" : "Go Online"}
-                </Text>
-
-                <Text style={styles.buttonArrow}>›</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.statsGrid}>
-              <StatCard icon="⭐" label="Rating" value={rating.toFixed(1)} />
-              <StatCard icon="🚗" label="Trips" value={String(completedTrips)} />
-              <StatCard icon="💰" label="Week" value={`$${weeklyEarnings.toFixed(0)}`} />
-              <StatCard icon="🏆" label="Level" value={driverLevel} />
-            </View>
-
-            <View style={styles.earningsPanel}>
-              <View>
-                <Text style={styles.panelSmall}>70% DRIVER SHARE</Text>
-                <Text style={styles.panelTitle}>${weeklyEarnings.toFixed(2)}</Text>
-                <Text style={styles.panelText}>Estimated chauffeur earnings this week.</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.panelButton}
-                onPress={() => router.push("/earnings")}
-              >
-                <Text style={styles.panelButtonText}>View</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.levelCard}>
-              <View style={styles.levelHeader}>
-                <Text style={styles.levelTitle}>Angel Driver Level</Text>
-                <Text style={styles.levelBadge}>{driverLevel}</Text>
-              </View>
-
-              <View style={styles.levelTrack}>
-                <View
-                  style={[
-                    styles.levelProgress,
-                    {
-                      width:
-                        driverLevel === "Angel Elite"
-                          ? "100%"
-                          : driverLevel === "Gold"
-                          ? "75%"
-                          : driverLevel === "Silver"
-                          ? "50%"
-                          : "25%",
-                    },
-                  ]}
-                />
-              </View>
-
-              <Text style={styles.levelSubtext}>
-                Bronze → Silver → Gold → Angel Elite. Based on completed trips,
-                rating, safety check-ins, on-time pickup, and passenger feedback.
-              </Text>
-            </View>
-
-            <Text style={styles.sectionTitle}>Driver Command Center</Text>
-
-            <View style={styles.quickGrid}>
-              <QuickAction
-                title="Find Trips"
-                subtitle="Claim open rides"
-                icon="📍"
-                locked={!isOnline}
-                onPress={() => requireOnline("/find-trips")}
-              />
-
-              <QuickAction
-                title="Active Trip"
-                subtitle="Manage current ride"
-                icon="🚘"
-                locked={!isOnline}
-                onPress={() => requireOnline("/active-trip")}
-              />
-
-              <QuickAction
-                title="Upcoming"
-                subtitle="Accepted trips"
-                icon="📅"
-                onPress={() => router.push("/upcoming-trips")}
-              />
-
-              <QuickAction
-                title="Smart Queue"
-                subtitle="Future claims"
-                icon="⚡"
-                locked={!isOnline}
-                onPress={() => requireOnline("/smart-trip-queue")}
-              />
-            </View>
-
-            <Dropdown
-              title="Trips"
-              subtitle="Find, accept, and manage ride assignments"
-              icon="🛣"
-              open={showTrips}
-              onPress={() => setShowTrips(!showTrips)}
-            />
-
-            {showTrips && (
-              <View style={styles.dropdownContent}>
-                <ActionCard
-                  title="Find Trips"
-                  subtitle="View available website and passenger app bookings."
-                  locked={!isOnline}
-                  onPress={() => requireOnline("/find-trips")}
-                />
-
-                <ActionCard
-                  title="My Active Trip"
-                  subtitle="Navigate to pickup, update ride status, and complete the trip."
-                  locked={!isOnline}
-                  onPress={() => requireOnline("/active-trip")}
-                />
-
-                <ActionCard
-                  title="Upcoming Trips"
-                  subtitle="See today, this week, and future accepted rides."
-                  onPress={() => router.push("/upcoming-trips")}
-                />
-
-                <ActionCard
-                  title="Smart Trip Queue"
-                  subtitle="Claim future trips before they become urgent."
-                  locked={!isOnline}
-                  onPress={() => requireOnline("/smart-trip-queue")}
-                />
-              </View>
-            )}
-
-            <Dropdown
-              title="Money & Profile"
-              subtitle="Earnings, chauffeur card, and passenger feedback"
-              icon="💼"
-              open={showMoneyProfile}
-              onPress={() => setShowMoneyProfile(!showMoneyProfile)}
-            />
-
-            {showMoneyProfile && (
-              <View style={styles.dropdownContent}>
-                <ActionCard
-                  title="Earnings"
-                  subtitle="Track weekly payout, completed trip revenue, and Stripe Connect status."
-                  onPress={() => router.push("/earnings")}
-                />
-
-                <ActionCard
-                  title="Driver Card"
-                  subtitle="Preview what passengers see after assignment."
-                  onPress={() => router.push("/driver-card")}
-                />
-
-                <ActionCard
-                  title="Passenger Ratings"
-                  subtitle="Rate passengers and review completed trip feedback."
-                  onPress={() => router.push("/passenger-ratings")}
-                />
-              </View>
-            )}
-
-            <Dropdown
-              title="Safety & Support"
-              subtitle="Emergency tools, check-ins, and Angel Express support"
-              icon="🛡"
-              open={showSafetySupport}
-              onPress={() => setShowSafetySupport(!showSafetySupport)}
-            />
-
-            {showSafetySupport && (
-              <View style={styles.dropdownContent}>
+            <Animated.View style={{ opacity: headerFade }}>
+              <View style={styles.topBar}>
                 <TouchableOpacity
-                  style={styles.emergencyButton}
-                  onPress={() => router.push("/safety-support")}
+                  style={styles.menuButton}
+                  onPress={() => setMenuOpen(!menuOpen)}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.emergencyTitle}>Emergency Button</Text>
-                  <Text style={styles.emergencyText}>
-                    Safety check-ins, panic contact, emergency alert, and location sharing.
-                  </Text>
+                  <Text style={styles.menuIcon}>{menuOpen ? "×" : "☰"}</Text>
                 </TouchableOpacity>
 
-                <ActionCard
-                  title="Support Center"
-                  subtitle="Contact Angel Express for trip, payment, vehicle, or account support."
-                  onPress={() => router.push("/support")}
-                />
-              </View>
-            )}
+                <View style={styles.brandBox}>
+                  <Image
+                    source={require("../assets/images/angel-logo-transparent.png")}
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                </View>
 
-            <View style={styles.footerCard}>
-              <Text style={styles.footerTitle}>Angel Express Standard</Text>
-              <Text style={styles.footerText}>
-                Comfort • Reliability • Security • Cleanliness
-              </Text>
-            </View>
+                <TouchableOpacity
+                  style={styles.bellButton}
+                  onPress={() => goTo("/support")}
+                  activeOpacity={0.85}
+                >
+                  <MaterialCommunityIcons
+                    name="bell-outline"
+                    size={24}
+                    color={colors.text}
+                  />
+
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>3</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.greetingRow}>
+                <View>
+                  <Text style={styles.kicker}>DRIVER DASHBOARD</Text>
+                  <Text style={styles.greeting}>Welcome, {driverName}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.themePill}
+                  onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.themeText}>
+                    {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+
+            <Animated.View style={{ opacity: cardFade }}>
+              <View style={styles.statusCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.statusTitle}>
+                    {isOnline ? "You are online" : "You are offline"}
+                  </Text>
+                  <Text style={styles.statusSub}>
+                    {isOnline
+                      ? "Ready to accept Angel Express ride requests."
+                      : "Go online to start receiving trip requests."}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.switchTrack,
+                    isOnline ? styles.switchOn : styles.switchOff,
+                  ]}
+                  onPress={toggleOnlineStatus}
+                  activeOpacity={0.85}
+                >
+                  <Animated.View
+                    style={[
+                      styles.switchKnob,
+                      isOnline && styles.switchKnobOn,
+                      { transform: [{ scale: isOnline ? pulseAnim : 1 }] },
+                    ]}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.earningsCard}
+                onPress={() => goTo("/earnings")}
+                activeOpacity={0.9}
+              >
+                <View style={styles.earningsTop}>
+                  <View>
+                    <Text style={styles.cardLabel}>Today's Earnings</Text>
+                    <Text style={styles.amount}>${weeklyEarnings.toFixed(2)}</Text>
+                  </View>
+                  <Text style={styles.arrowLight}>›</Text>
+                </View>
+
+                <View style={styles.statsRow}>
+                  <StatBlock label="Trips" value={String(completedTrips)} styles={styles} />
+                  <Divider styles={styles} />
+                  <StatBlock label="Rating" value={rating.toFixed(1)} styles={styles} />
+                  <Divider styles={styles} />
+                  <StatBlock label="Level" value={driverLevel} styles={styles} small />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.levelCard}
+                onPress={() => goTo("/driver-card")}
+                activeOpacity={0.9}
+              >
+                <View style={styles.levelIcon}>
+                  <MaterialCommunityIcons
+                    name="star-four-points"
+                    size={28}
+                    color={colors.mode === "dark" ? "#07111F" : "#FFFFFF"}
+                  />
+                </View>
+
+                <View style={styles.levelMiddle}>
+                  <Text style={styles.levelTitle}>Angel Level Progress</Text>
+                  <Text style={styles.levelText}>
+                    Complete safe trips to unlock higher chauffeur status.
+                  </Text>
+
+                  <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: levelProgress }]} />
+                  </View>
+                </View>
+
+                <Text style={styles.levelCount}>{levelCount}</Text>
+                <Text style={styles.arrowDark}>›</Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View style={{ opacity: bodyFade }}>
+              <View style={styles.goOnlineCard}>
+                <View style={styles.cityArt}>
+                  <Text style={styles.cityEmoji}>🏙️</Text>
+                  <Text style={styles.carEmoji}>{themeMode === "dark" ? "🚘" : "🚕"}</Text>
+                </View>
+
+                <Text style={styles.goOnlineTitle}>
+                  {isOnline ? "You're Online & Ready" : "Go Online to Get Trips"}
+                </Text>
+
+                <Text style={styles.goOnlineText}>
+                  {isOnline
+                    ? "Trip discovery, active ride tools, and smart queue are open."
+                    : "You're offline. Go online to start receiving Angel Express requests."}
+                </Text>
+
+                <TouchableOpacity
+                  style={[styles.primaryButton, isOnline && styles.outlineButton]}
+                  onPress={toggleOnlineStatus}
+                  activeOpacity={0.88}
+                >
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      isOnline && styles.outlineButtonText,
+                    ]}
+                  >
+                    {isOnline ? "Go Offline" : "Go Online"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Upcoming Opportunities</Text>
+
+                <TouchableOpacity onPress={() => goTo("/smart-trip-queue")}>
+                  <Text style={styles.seeAll}>See all</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={styles.opportunityCard}
+                onPress={() => requireOnline("/smart-trip-queue")}
+                activeOpacity={0.9}
+              >
+                <View style={styles.smartQueueIcon}>
+                  <MaterialCommunityIcons
+                    name="map-marker-path"
+                    size={31}
+                    color={colors.gold}
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.opportunityTitle}>Smart Queue</Text>
+                  <Text style={styles.opportunitySub}>
+                    High-demand trips near your location
+                  </Text>
+                  <Text style={styles.opportunityGreen}>
+                    ~12 min away • Priority opportunity
+                  </Text>
+                </View>
+
+                <View style={styles.pricePill}>
+                  <Text style={styles.priceText}>+ $8-12</Text>
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <Animated.View style={{ opacity: toolFade }}>
+              <Text style={styles.menuTitle}>Driver Tools</Text>
+
+              <ToolCard
+                icon="map-search-outline"
+                title="Find Trips"
+                subtitle="View available website and passenger app bookings."
+                locked={!isOnline}
+                onPress={() => requireOnline("/find-trips")}
+                styles={styles}
+                colors={colors}
+              />
+
+              <ToolCard
+                icon="car-clock"
+                title="My Active Trip"
+                subtitle="Navigate to pickup, update status, and complete the ride."
+                locked={!isOnline}
+                onPress={() => requireOnline("/active-trip")}
+                styles={styles}
+                colors={colors}
+              />
+
+              <ToolCard
+                icon="calendar-clock"
+                title="Upcoming Trips"
+                subtitle="See today, this week, and future accepted rides."
+                onPress={() => goTo("/upcoming-trips")}
+                styles={styles}
+                colors={colors}
+              />
+
+              <ToolCard
+                icon="map-marker-path"
+                title="Smart Queue"
+                subtitle="Claim future trips before they become urgent."
+                locked={!isOnline}
+                onPress={() => requireOnline("/smart-trip-queue")}
+                styles={styles}
+                colors={colors}
+              />
+
+              <ToolCard
+                icon="wallet-outline"
+                title="Money Profile"
+                subtitle="Earnings, payout status, driver card, and passenger ratings."
+                onPress={() => goTo("/earnings")}
+                styles={styles}
+                colors={colors}
+              />
+
+              <ToolCard
+                icon="star-check-outline"
+                title="Passenger Ratings"
+                subtitle="Review completed trip feedback and passenger ratings."
+                onPress={() => goTo("/passenger-ratings")}
+                styles={styles}
+                colors={colors}
+              />
+
+              <ToolCard
+                icon="shield-check-outline"
+                title="Safety & Support"
+                subtitle="Emergency button, safety check-ins, and Angel Express support."
+                onPress={() => goTo("/safety-support")}
+                styles={styles}
+                colors={colors}
+                danger
+              />
+
+              <View style={styles.footerCard}>
+                <Text style={styles.footerTitle}>Angel Express Standard</Text>
+                <Text style={styles.footerText}>
+                  Comfort • Operational Service • Reliability • Cleanliness
+                </Text>
+              </View>
+            </Animated.View>
           </Animated.View>
         </ScrollView>
+      </View>
+
+      {menuOpen && (
+        <TouchableOpacity
+          style={styles.menuBackdrop}
+          activeOpacity={1}
+          onPress={() => setMenuOpen(false)}
+        />
+      )}
+
+      <Animated.View
+        pointerEvents={menuOpen ? "auto" : "none"}
+        style={[
+          styles.bottomMenuPanel,
+          {
+            opacity: menuAnim,
+            transform: [
+              {
+                translateY: menuAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [28, 0],
+                }),
+              },
+              {
+                scale: menuAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.97, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <Text style={styles.bottomMenuTitle}>Angel Driver Menu</Text>
+
+        <View style={styles.bottomMenuGrid}>
+          <MenuOption
+            icon="home-variant-outline"
+            title="Home"
+            onPress={() => setMenuOpen(false)}
+            styles={styles}
+            colors={colors}
+          />
+
+          <MenuOption
+            icon="car-clock"
+            title="Trips"
+            onPress={() => requireOnline("/active-trip")}
+            styles={styles}
+            colors={colors}
+          />
+
+          <MenuOption
+            icon="wallet-outline"
+            title="Earnings"
+            onPress={() => goTo("/earnings")}
+            styles={styles}
+            colors={colors}
+          />
+
+          <MenuOption
+            icon="headset"
+            title="Support"
+            onPress={() => goTo("/support")}
+            styles={styles}
+            colors={colors}
+          />
+
+          <MenuOption
+            icon="gift-outline"
+            title="Rewards"
+            onPress={() => goTo("/driver-card")}
+            styles={styles}
+            colors={colors}
+          />
+
+          <MenuOption
+            icon="account-circle-outline"
+            title="Account"
+            onPress={() => goTo("/driver-card")}
+            styles={styles}
+            colors={colors}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.logoutText}>🚪 Log Out</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      <View style={styles.bottomNav}>
+        <BottomTab
+          icon="home-variant"
+          label="Home"
+          active
+          styles={styles}
+          colors={colors}
+        />
+
+        <BottomTab
+          icon="car-clock"
+          label="Trips"
+          onPress={() => requireOnline("/active-trip")}
+          styles={styles}
+          colors={colors}
+        />
+
+        <TouchableOpacity
+          style={styles.centerMenuButton}
+          onPress={() => setMenuOpen(!menuOpen)}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.centerMenuIcon}>{menuOpen ? "×" : "☰"}</Text>
+        </TouchableOpacity>
+
+        <BottomTab
+          icon="wallet"
+          label="Earnings"
+          onPress={() => goTo("/earnings")}
+          styles={styles}
+          colors={colors}
+        />
+
+        <BottomTab
+          icon="account-circle"
+          label="Account"
+          onPress={() => goTo("/driver-card")}
+          styles={styles}
+          colors={colors}
+        />
       </View>
     </View>
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) {
+function StatBlock({ label, value, styles, small }: any) {
   return (
-    <View style={styles.statCard}>
-      <Text style={styles.statIcon}>{icon}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+    <View style={styles.statBlock}>
+      <Text style={[styles.statValue, small && styles.statValueSmall]} numberOfLines={1}>
+        {value}
+      </Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
-function QuickAction({
+function Divider({ styles }: any) {
+  return <View style={styles.divider} />;
+}
+
+function ToolCard({
+  icon,
   title,
   subtitle,
-  icon,
-  locked,
   onPress,
-}: {
-  title: string;
-  subtitle: string;
-  icon: string;
-  locked?: boolean;
-  onPress: () => void;
-}) {
+  locked,
+  styles,
+  colors,
+  danger,
+}: any) {
   return (
     <TouchableOpacity
-      style={[styles.quickCard, locked && styles.lockedCard]}
+      style={[styles.toolCard, locked && styles.lockedCard, danger && styles.dangerCard]}
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={styles.quickIcon}>
-        <Text style={styles.quickIconText}>{icon}</Text>
-      </View>
-
-      <Text style={styles.quickTitle}>{title}</Text>
-      <Text style={styles.quickSubtitle}>{locked ? "Go online first" : subtitle}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function Dropdown({
-  title,
-  subtitle,
-  icon,
-  open,
-  onPress,
-}: {
-  title: string;
-  subtitle: string;
-  icon: string;
-  open: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.dropdownHeader} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.dropdownIconBox}>
-        <Text style={styles.dropdownEmoji}>{icon}</Text>
+      <View style={styles.toolIconBox}>
+        <MaterialCommunityIcons
+          name={icon}
+          size={26}
+          color={danger ? colors.danger : colors.gold}
+        />
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.dropdownTitle}>{title}</Text>
-        <Text style={styles.dropdownSubtitle}>{subtitle}</Text>
-      </View>
-
-      <Text style={styles.dropdownArrow}>{open ? "−" : "+"}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function ActionCard({
-  title,
-  subtitle,
-  locked,
-  onPress,
-}: {
-  title: string;
-  subtitle: string;
-  locked?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      style={[styles.actionCard, locked && styles.disabledButton]}
-      onPress={onPress}
-      activeOpacity={0.85}
-    >
-      <View>
-        <Text style={styles.actionButtonTitle}>{title}</Text>
-        <Text style={styles.actionButtonText}>
-          {locked ? "You must be online to access this feature." : subtitle}
+        <Text style={styles.toolTitle}>{title}</Text>
+        <Text style={styles.toolSub}>
+          {locked ? "Go online first to access this feature." : subtitle}
         </Text>
       </View>
 
-      <Text style={styles.actionArrow}>›</Text>
+      <Text style={styles.toolArrow}>›</Text>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#050b16",
-  },
-
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.91)",
-  },
-
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#050b16",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  loadingText: {
-    color: "#DDE3EA",
-    marginTop: 14,
-    fontWeight: "800",
-  },
-
-  container: {
-    flexGrow: 1,
-    padding: 22,
-    paddingTop: 60,
-    paddingBottom: 46,
-  },
-
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 18,
-  },
-
-  kicker: {
-    color: "#D4AF37",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-    marginBottom: 7,
-  },
-
-  welcome: {
-    color: "#ffffff",
-    fontSize: 31,
-    fontWeight: "900",
-    letterSpacing: -0.9,
-  },
-
-  logoutMini: {
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderRadius: 999,
-  },
-
-  logoutMiniText: {
-    color: "#D4AF37",
-    fontWeight: "900",
-    fontSize: 12,
-  },
-
-  heroCard: {
-    backgroundColor: "rgba(13,20,34,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    borderRadius: 32,
-    padding: 20,
-    marginBottom: 18,
-  },
-
-  heroTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 12,
-  },
-
-  heroSmall: {
-    color: "#D4AF37",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-    marginBottom: 6,
-  },
-
-  heroTitle: {
-    color: "#ffffff",
-    fontSize: 27,
-    fontWeight: "900",
-    letterSpacing: -0.7,
-  },
-
-  heroText: {
-    color: "#DDE3EA",
-    fontSize: 15,
-    lineHeight: 23,
-    marginBottom: 18,
-    fontWeight: "700",
-  },
-
-  livePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 11,
-    borderWidth: 1,
-  },
-
-  livePillOnline: {
-    backgroundColor: "rgba(46,204,113,0.13)",
-    borderColor: "rgba(46,204,113,0.45)",
-  },
-
-  livePillOffline: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderColor: "rgba(255,255,255,0.16)",
-  },
-
-  liveDot: {
-    color: "#2ECC71",
-    fontSize: 12,
-  },
-
-  liveText: {
-    color: "#ffffff",
-    fontSize: 11,
-    fontWeight: "900",
-  },
-
-  goOnlineButton: {
-    minHeight: 66,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  goOnlineActiveButton: {
-    backgroundColor: "#D4AF37",
-  },
-
-  goOfflineButton: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-  },
-
-  buttonIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#050b16",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  buttonIcon: {
-    color: "#D4AF37",
-    fontSize: 25,
-    fontWeight: "900",
-  },
-
-  goOnlineText: {
-    flex: 1,
-    color: "#050b16",
-    fontWeight: "900",
-    fontSize: 17,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginLeft: 14,
-  },
-
-  buttonArrow: {
-    color: "#050b16",
-    fontSize: 38,
-    fontWeight: "700",
-  },
-
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
-
-  statCard: {
-    width: "48%",
-    backgroundColor: "rgba(13,20,34,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 14,
-  },
-
-  statIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-
-  statValue: {
-    color: "#D4AF37",
-    fontSize: 25,
-    fontWeight: "900",
-  },
-
-  statLabel: {
-    color: "#DDE3EA",
-    fontSize: 13,
-    marginTop: 4,
-    fontWeight: "800",
-  },
-
-  earningsPanel: {
-    backgroundColor: "rgba(212,175,55,0.11)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    borderRadius: 26,
-    padding: 18,
-    marginBottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-
-  panelSmall: {
-    color: "#D4AF37",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-    marginBottom: 5,
-  },
-
-  panelTitle: {
-    color: "#ffffff",
-    fontSize: 32,
-    fontWeight: "900",
-  },
-
-  panelText: {
-    color: "#DDE3EA",
-    fontSize: 13,
-    marginTop: 5,
-    fontWeight: "700",
-  },
-
-  panelButton: {
-    backgroundColor: "#D4AF37",
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-    borderRadius: 999,
-  },
-
-  panelButtonText: {
-    color: "#050b16",
-    fontWeight: "900",
-  },
-
-  levelCard: {
-    backgroundColor: "rgba(13,20,34,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    borderRadius: 26,
-    padding: 18,
-    marginBottom: 22,
-  },
-
-  levelHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 14,
-  },
-
-  levelTitle: {
-    color: "#ffffff",
-    fontSize: 19,
-    fontWeight: "900",
-  },
-
-  levelBadge: {
-    color: "#D4AF37",
-    fontWeight: "900",
-  },
-
-  levelTrack: {
-    height: 9,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 999,
-    overflow: "hidden",
-    marginBottom: 12,
-  },
-
-  levelProgress: {
-    height: "100%",
-    backgroundColor: "#D4AF37",
-    borderRadius: 999,
-  },
-
-  levelSubtext: {
-    color: "#DDE3EA",
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: "700",
-  },
-
-  sectionTitle: {
-    color: "#D4AF37",
-    fontSize: 23,
-    fontWeight: "900",
-    marginBottom: 14,
-  },
-
-  quickGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-
-  quickCard: {
-    width: "48%",
-    backgroundColor: "rgba(13,20,34,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    borderRadius: 24,
-    padding: 16,
-    marginBottom: 13,
-    minHeight: 132,
-  },
-
-  lockedCard: {
-    opacity: 0.55,
-  },
-
-  quickIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 15,
-    backgroundColor: "rgba(212,175,55,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.24)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 11,
-  },
-
-  quickIconText: {
-    fontSize: 22,
-  },
-
-  quickTitle: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 5,
-  },
-
-  quickSubtitle: {
-    color: "#B8C1CC",
-    fontSize: 12.5,
-    lineHeight: 18,
-    fontWeight: "700",
-  },
-
-  dropdownHeader: {
-    backgroundColor: "rgba(13,20,34,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    borderRadius: 24,
-    padding: 17,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-
-  dropdownIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: "rgba(212,175,55,0.09)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  dropdownEmoji: {
-    fontSize: 22,
-  },
-
-  dropdownTitle: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  dropdownSubtitle: {
-    color: "#B8C1CC",
-    fontSize: 12.5,
-    lineHeight: 18,
-    marginTop: 4,
-    fontWeight: "700",
-  },
-
-  dropdownArrow: {
-    color: "#D4AF37",
-    fontSize: 30,
-    fontWeight: "900",
-  },
-
-  dropdownContent: {
-    marginBottom: 16,
-  },
-
-  actionCard: {
-    backgroundColor: "rgba(13,20,34,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 22,
-    padding: 17,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-
-  disabledButton: {
-    opacity: 0.55,
-    borderColor: "rgba(255,255,255,0.14)",
-  },
-
-  actionButtonTitle: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-
-  actionButtonText: {
-    color: "#B8C1CC",
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "700",
-    maxWidth: 280,
-  },
-
-  actionArrow: {
-    color: "#D4AF37",
-    fontSize: 34,
-    fontWeight: "800",
-  },
-
-  emergencyButton: {
-    backgroundColor: "rgba(127,29,29,0.82)",
-    borderWidth: 1,
-    borderColor: "#EF4444",
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 12,
-  },
-
-  emergencyTitle: {
-    color: "#ffffff",
-    fontSize: 19,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-
-  emergencyText: {
-    color: "#FEE2E2",
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-
-  footerCard: {
-    backgroundColor: "rgba(0,0,0,0.38)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    borderRadius: 24,
-    padding: 18,
-    marginTop: 4,
-  },
-
-  footerTitle: {
-    color: "#D4AF37",
-    textAlign: "center",
-    fontWeight: "900",
-    fontSize: 17,
-    marginBottom: 8,
-  },
-
-  footerText: {
-    color: "#ffffff",
-    textAlign: "center",
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    lineHeight: 22,
-  },
-});
+function BottomTab({ icon, label, active, onPress, styles, colors }: any) {
+  return (
+    <TouchableOpacity
+      style={styles.bottomTab}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <MaterialCommunityIcons
+        name={icon}
+        size={24}
+        color={active ? colors.gold : colors.muted}
+      />
+      <Text style={[styles.bottomLabel, active && styles.bottomLabelActive]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function MenuOption({ icon, title, onPress, styles, colors }: any) {
+  return (
+    <TouchableOpacity
+      style={styles.menuOption}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <MaterialCommunityIcons name={icon} size={27} color={colors.gold} />
+      <Text style={styles.menuOptionTitle}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+const darkTheme = {
+  mode: "dark",
+  bg: "#050B16",
+  overlay: "rgba(5,11,22,0.91)",
+  card: "rgba(16,24,39,0.94)",
+  card2: "rgba(21,31,43,0.95)",
+  text: "#FFFFFF",
+  muted: "#B8C1CC",
+  soft: "rgba(255,255,255,0.07)",
+  border: "rgba(212,175,55,0.26)",
+  lightBorder: "rgba(255,255,255,0.10)",
+  gold: "#D4AF37",
+  gold2: "#B8860B",
+  navy: "#050B16",
+  green: "#20C461",
+  danger: "#EF4444",
+  nav: "rgba(8,14,24,0.98)",
+};
+
+const lightTheme = {
+  mode: "light",
+  bg: "#F7F7F5",
+  overlay: "rgba(247,247,245,0.88)",
+  card: "rgba(255,255,255,0.96)",
+  card2: "#FFF8E8",
+  text: "#07111F",
+  muted: "#5D6673",
+  soft: "rgba(7,17,31,0.05)",
+  border: "rgba(184,134,11,0.24)",
+  lightBorder: "rgba(7,17,31,0.10)",
+  gold: "#B8860B",
+  gold2: "#D4AF37",
+  navy: "#07111F",
+  green: "#16A34A",
+  danger: "#DC2626",
+  nav: "rgba(255,255,255,0.98)",
+};
+
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+
+    background: {
+      flex: 1,
+      width: "100%",
+      height: "100%",
+    },
+
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    loadingText: {
+      color: c.text,
+      fontWeight: "900",
+      marginTop: 14,
+      letterSpacing: 0.3,
+    },
+
+    scroll: {
+      flex: 1,
+    },
+
+    container: {
+      paddingTop: 54,
+      paddingHorizontal: 20,
+      paddingBottom: 150,
+    },
+
+    topBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 18,
+    },
+
+    menuButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.lightBorder,
+    },
+
+    menuIcon: {
+      color: c.text,
+      fontSize: 27,
+      fontWeight: "900",
+      marginTop: -2,
+    },
+
+    brandBox: {
+      alignItems: "center",
+      justifyContent: "center",
+      flex: 1,
+      paddingHorizontal: 12,
+    },
+
+    logo: {
+      width: 178,
+      height: 62,
+    },
+
+    bellButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 16,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.lightBorder,
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+
+    badge: {
+      position: "absolute",
+      top: -4,
+      right: -3,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: "#FF3045",
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: c.mode === "dark" ? "#050B16" : "#FFFFFF",
+    },
+
+    badgeText: {
+      color: "#FFFFFF",
+      fontSize: 11,
+      fontWeight: "900",
+    },
+
+    greetingRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      justifyContent: "space-between",
+      gap: 14,
+      marginBottom: 16,
+    },
+
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.5,
+      marginBottom: 6,
+    },
+
+    greeting: {
+      color: c.text,
+      fontSize: 28,
+      fontWeight: "900",
+      letterSpacing: -0.7,
+      maxWidth: 235,
+    },
+
+    themePill: {
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      paddingHorizontal: 13,
+      paddingVertical: 10,
+      borderRadius: 999,
+    },
+
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+
+    statusCard: {
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 22,
+      padding: 17,
+      marginBottom: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 16,
+    },
+
+    statusTitle: {
+      color: c.text,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
+
+    statusSub: {
+      color: c.muted,
+      fontSize: 13.5,
+      fontWeight: "700",
+      lineHeight: 20,
+    },
+
+    switchTrack: {
+      width: 54,
+      height: 31,
+      borderRadius: 999,
+      padding: 3,
+      justifyContent: "center",
+    },
+
+    switchOn: {
+      backgroundColor: c.green,
+      alignItems: "flex-end",
+    },
+
+    switchOff: {
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.lightBorder,
+      alignItems: "flex-start",
+    },
+
+    switchKnob: {
+      width: 25,
+      height: 25,
+      borderRadius: 13,
+      backgroundColor: "#FFFFFF",
+    },
+
+    switchKnobOn: {
+      backgroundColor: "#FFFFFF",
+    },
+
+    earningsCard: {
+      backgroundColor: c.mode === "dark" ? "rgba(7,17,31,0.98)" : "#07111F",
+      borderRadius: 26,
+      padding: 22,
+      marginBottom: 18,
+      borderWidth: 1,
+      borderColor: c.mode === "dark" ? c.border : "rgba(0,0,0,0.06)",
+      shadowColor: "#000",
+      shadowOpacity: 0.18,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 8,
+    },
+
+    earningsTop: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 26,
+    },
+
+    cardLabel: {
+      color: "#EAF0F6",
+      fontSize: 16,
+      fontWeight: "800",
+      marginBottom: 8,
+    },
+
+    amount: {
+      color: "#FFFFFF",
+      fontSize: 46,
+      fontWeight: "900",
+      letterSpacing: -1.2,
+    },
+
+    arrowLight: {
+      color: "#FFFFFF",
+      fontSize: 42,
+      fontWeight: "500",
+      marginTop: 12,
+    },
+
+    statsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+
+    statBlock: {
+      flex: 1,
+    },
+
+    statValue: {
+      color: "#FFFFFF",
+      fontSize: 21,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
+
+    statValueSmall: {
+      fontSize: 15,
+    },
+
+    statLabel: {
+      color: "#D6DEE8",
+      fontSize: 14,
+      fontWeight: "700",
+    },
+
+    divider: {
+      width: 1,
+      height: 58,
+      backgroundColor: "rgba(255,255,255,0.16)",
+      marginHorizontal: 12,
+    },
+
+    levelCard: {
+      backgroundColor: c.mode === "dark" ? "rgba(21,31,43,0.94)" : "#FFF8E8",
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 18,
+      marginBottom: 28,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 13,
+    },
+
+    levelIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: c.gold,
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+    },
+
+    levelMiddle: {
+      flex: 1,
+    },
+
+    levelTitle: {
+      color: c.text,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+
+    levelText: {
+      color: c.muted,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: "700",
+      marginBottom: 10,
+    },
+
+    progressTrack: {
+      height: 8,
+      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.18)" : "#F2DEAD",
+      borderRadius: 999,
+      overflow: "hidden",
+    },
+
+    progressFill: {
+      height: "100%",
+      backgroundColor: c.gold,
+      borderRadius: 999,
+    },
+
+    levelCount: {
+      color: c.text,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+
+    arrowDark: {
+      color: c.text,
+      fontSize: 30,
+      fontWeight: "700",
+    },
+
+    goOnlineCard: {
+      backgroundColor: c.card,
+      borderRadius: 25,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 20,
+      marginBottom: 28,
+      overflow: "hidden",
+    },
+
+    cityArt: {
+      position: "absolute",
+      right: 16,
+      top: 22,
+      alignItems: "center",
+      opacity: c.mode === "dark" ? 0.72 : 0.9,
+    },
+
+    cityEmoji: {
+      fontSize: 64,
+      opacity: 0.35,
+    },
+
+    carEmoji: {
+      fontSize: 54,
+      marginTop: -34,
+    },
+
+    goOnlineTitle: {
+      color: c.text,
+      fontSize: 21,
+      fontWeight: "900",
+      marginBottom: 10,
+      maxWidth: "72%",
+    },
+
+    goOnlineText: {
+      color: c.muted,
+      fontSize: 15,
+      fontWeight: "700",
+      lineHeight: 22,
+      marginBottom: 20,
+      maxWidth: "78%",
+    },
+
+    primaryButton: {
+      backgroundColor: c.gold,
+      paddingVertical: 16,
+      borderRadius: 16,
+      alignItems: "center",
+      shadowColor: c.gold,
+      shadowOpacity: 0.25,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 7 },
+    },
+
+    primaryButtonText: {
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
+      fontSize: 17,
+      fontWeight: "900",
+    },
+
+    outlineButton: {
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      shadowOpacity: 0,
+    },
+
+    outlineButtonText: {
+      color: c.gold,
+    },
+
+    sectionHeaderRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+
+    sectionTitle: {
+      color: c.text,
+      fontSize: 22,
+      fontWeight: "900",
+      marginBottom: 14,
+      letterSpacing: -0.4,
+    },
+
+    seeAll: {
+      color: c.gold,
+      fontSize: 16,
+      fontWeight: "900",
+      marginBottom: 14,
+    },
+
+    opportunityCard: {
+      backgroundColor: c.card,
+      borderRadius: 23,
+      borderWidth: 1,
+      borderColor: c.lightBorder,
+      padding: 17,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 15,
+      marginBottom: 30,
+    },
+
+    smartQueueIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 29,
+      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.20)" : "#FCE8B6",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    opportunityTitle: {
+      color: c.text,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+
+    opportunitySub: {
+      color: c.muted,
+      fontSize: 13,
+      fontWeight: "700",
+      marginBottom: 4,
+    },
+
+    opportunityGreen: {
+      color: "#16A34A",
+      fontSize: 13,
+      fontWeight: "800",
+    },
+
+    pricePill: {
+      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.16)" : "#FFF0CC",
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+
+    priceText: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "900",
+    },
+
+    menuTitle: {
+      color: c.gold,
+      fontSize: 14,
+      fontWeight: "900",
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+      marginBottom: 12,
+    },
+
+    toolCard: {
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.lightBorder,
+      borderRadius: 23,
+      padding: 16,
+      marginBottom: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+    },
+
+    dangerCard: {
+      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.45)" : "rgba(220,38,38,0.30)",
+    },
+
+    lockedCard: {
+      opacity: 0.48,
+    },
+
+    toolIconBox: {
+      width: 50,
+      height: 50,
+      borderRadius: 17,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+
+    toolTitle: {
+      color: c.text,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+
+    toolSub: {
+      color: c.muted,
+      fontSize: 13,
+      fontWeight: "700",
+      lineHeight: 19,
+    },
+
+    toolArrow: {
+      color: c.gold,
+      fontSize: 32,
+      fontWeight: "800",
+    },
+
+    footerCard: {
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 23,
+      padding: 18,
+      marginTop: 4,
+    },
+
+    footerTitle: {
+      color: c.gold,
+      textAlign: "center",
+      fontWeight: "900",
+      fontSize: 17,
+      marginBottom: 8,
+    },
+
+    footerText: {
+      color: c.text,
+      textAlign: "center",
+      fontWeight: "800",
+      lineHeight: 22,
+    },
+
+    menuBackdrop: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: c.mode === "dark" ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.18)",
+    },
+
+    bottomMenuPanel: {
+      position: "absolute",
+      left: 18,
+      right: 18,
+      bottom: 102,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 28,
+      padding: 18,
+      shadowColor: "#000",
+      shadowOpacity: 0.25,
+      shadowRadius: 22,
+      shadowOffset: { width: 0, height: 14 },
+      elevation: 16,
+    },
+
+    bottomMenuTitle: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "900",
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      marginBottom: 14,
+      textAlign: "center",
+    },
+
+    bottomMenuGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+    },
+
+    menuOption: {
+      width: "31.5%",
+      minHeight: 86,
+      borderRadius: 20,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.lightBorder,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 10,
+      paddingHorizontal: 6,
+      gap: 7,
+    },
+
+    menuOptionTitle: {
+      color: c.text,
+      fontSize: 12.5,
+      fontWeight: "900",
+      textAlign: "center",
+    },
+
+    logoutButton: {
+      marginTop: 4,
+      height: 48,
+      borderRadius: 17,
+      backgroundColor: c.mode === "dark" ? "rgba(239,68,68,0.16)" : "#FEE2E2",
+      borderWidth: 1,
+      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.4)" : "rgba(220,38,38,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    logoutText: {
+      color: c.mode === "dark" ? "#FCA5A5" : "#991B1B",
+      fontWeight: "900",
+      fontSize: 15,
+    },
+
+    bottomNav: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 92,
+      backgroundColor: c.nav,
+      borderTopWidth: 1,
+      borderTopColor: c.lightBorder,
+      flexDirection: "row",
+      justifyContent: "space-around",
+      alignItems: "center",
+      paddingBottom: 14,
+      paddingHorizontal: 8,
+    },
+
+    bottomTab: {
+      alignItems: "center",
+      justifyContent: "center",
+      flex: 1,
+    },
+
+    bottomLabel: {
+      color: c.muted,
+      fontSize: 11,
+      fontWeight: "900",
+      marginTop: 4,
+    },
+
+    bottomLabelActive: {
+      color: c.gold,
+    },
+
+    centerMenuButton: {
+      width: 62,
+      height: 62,
+      borderRadius: 31,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 26,
+      shadowColor: c.gold,
+      shadowOpacity: 0.35,
+      shadowRadius: 15,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 10,
+      borderWidth: 4,
+      borderColor: c.mode === "dark" ? "#050B16" : "#FFFFFF",
+    },
+
+    centerMenuIcon: {
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
+      fontSize: 31,
+      fontWeight: "900",
+      marginTop: -2,
+    },
+  });
+}

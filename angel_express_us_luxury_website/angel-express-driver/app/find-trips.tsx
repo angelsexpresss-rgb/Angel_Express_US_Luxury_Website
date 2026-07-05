@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { supabase } from "../lib/supabase";
 
+const AUTO_CANCEL_AFTER_START_MINUTES = 45;
+
 export default function FindTripsScreen() {
   const [loading, setLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState<any>(null);
@@ -31,13 +33,32 @@ export default function FindTripsScreen() {
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
-        .is("driver_id", null)
         .in("status", ["pending", "confirmed", "Pending", "Confirmed"])
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setTrips(data || []);
+      const visibleTrips: any[] = [];
+
+      for (const trip of data || []) {
+        const hasDriverAccepted =
+          Boolean(trip.driver_id) || Boolean(trip.assigned_driver_id);
+
+        if (hasDriverAccepted) {
+          continue;
+        }
+
+        const isExpiredUnaccepted = isUnacceptedRideExpired(trip);
+
+        if (isExpiredUnaccepted) {
+          await cancelExpiredUnacceptedRide(trip);
+          continue;
+        }
+
+        visibleTrips.push(trip);
+      }
+
+      setTrips(visibleTrips);
     } catch (err: any) {
       Alert.alert("Error", err.message || "Unable to load available trips.");
     } finally {
@@ -45,8 +66,210 @@ export default function FindTripsScreen() {
     }
   }
 
+  function isUnacceptedRideExpired(trip: any) {
+    const hasDriverAccepted =
+      Boolean(trip.driver_id) || Boolean(trip.assigned_driver_id);
+
+    if (hasDriverAccepted) {
+      return false;
+    }
+
+    const rideStartDateTime = getRideStartDateTime(trip);
+
+    if (!rideStartDateTime) {
+      return false;
+    }
+
+    const cancelAfter = new Date(
+      rideStartDateTime.getTime() + AUTO_CANCEL_AFTER_START_MINUTES * 60 * 1000
+    );
+
+    return new Date() > cancelAfter;
+  }
+
+  async function cancelExpiredUnacceptedRide(trip: any) {
+    try {
+      const hasDriverAccepted =
+        Boolean(trip.driver_id) || Boolean(trip.assigned_driver_id);
+
+      if (hasDriverAccepted) {
+        return;
+      }
+
+      await supabase
+        .from("bookings")
+      .update({
+  status: "cancelled",
+})
+        .eq("id", trip.id)
+        .is("driver_id", null)
+        .in("status", ["pending", "confirmed", "Pending", "Confirmed"]);
+    } catch (err) {
+      console.log("Auto-cancel expired unaccepted ride error:", err);
+    }
+  }
+
+  function getRideStartDate(trip: any) {
+    return (
+      trip.date ||
+      trip.ride_date ||
+      trip.pickup_date ||
+      trip.start_date ||
+      null
+    );
+  }
+
+  function getRideStartTime(trip: any) {
+    return (
+      trip.time ||
+      trip.ride_time ||
+      trip.pickup_time ||
+      trip.start_time ||
+      null
+    );
+  }
+
+  function getRideStartDateTime(trip: any) {
+    const dateValue = getRideStartDate(trip);
+    const timeValue = getRideStartTime(trip);
+
+    if (!dateValue || !timeValue) {
+      return null;
+    }
+
+    return buildDateTime(dateValue, timeValue);
+  }
+
+  function buildDateTime(dateValue: any, timeValue: any) {
+    if (!dateValue || !timeValue) return null;
+
+    const rawDate = String(dateValue).trim();
+    const rawTime = String(timeValue).trim();
+
+    if (!rawDate || !rawTime) return null;
+
+    const dateOnly = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
+
+    const parsedTime = parseTime(rawTime);
+
+    if (!parsedTime) {
+      const directDate = new Date(`${dateOnly} ${rawTime}`);
+
+      if (!isNaN(directDate.getTime())) {
+        return directDate;
+      }
+
+      return null;
+    }
+
+    const yearMonthDay = dateOnly.split("-").map((item) => Number(item));
+
+    if (yearMonthDay.length < 3 || yearMonthDay.some((item) => isNaN(item))) {
+      const fallbackDate = new Date(dateOnly);
+
+      if (isNaN(fallbackDate.getTime())) return null;
+
+      fallbackDate.setHours(parsedTime.hours, parsedTime.minutes, 0, 0);
+      return fallbackDate;
+    }
+
+    const [year, month, day] = yearMonthDay;
+
+    return new Date(
+      year,
+      month - 1,
+      day,
+      parsedTime.hours,
+      parsedTime.minutes,
+      0,
+      0
+    );
+  }
+
+  function parseTime(timeValue: string) {
+    const cleanTime = String(timeValue || "")
+      .trim()
+      .replace(/\./g, "")
+      .toUpperCase();
+
+    if (!cleanTime) return null;
+
+    const amPmMatch = cleanTime.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/);
+
+    if (amPmMatch) {
+      let hours = Number(amPmMatch[1]);
+      const minutes = Number(amPmMatch[2] || 0);
+      const period = amPmMatch[3];
+
+      if (period === "PM" && hours < 12) hours += 12;
+      if (period === "AM" && hours === 12) hours = 0;
+
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        return null;
+      }
+
+      return { hours, minutes };
+    }
+
+    const twentyFourHourMatch = cleanTime.match(/^(\d{1,2}):(\d{2})$/);
+
+    if (twentyFourHourMatch) {
+      const hours = Number(twentyFourHourMatch[1]);
+      const minutes = Number(twentyFourHourMatch[2]);
+
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+        return null;
+      }
+
+      return { hours, minutes };
+    }
+
+    const hourOnlyMatch = cleanTime.match(/^(\d{1,2})$/);
+
+    if (hourOnlyMatch) {
+      const hours = Number(hourOnlyMatch[1]);
+
+      if (hours < 0 || hours > 23) {
+        return null;
+      }
+
+      return { hours, minutes: 0 };
+    }
+
+    return null;
+  }
+
+  function formatCancelInfo(trip: any) {
+    const startDateTime = getRideStartDateTime(trip);
+
+    if (!startDateTime) {
+      return "Auto-cancel time unavailable";
+    }
+
+    const cancelAfter = new Date(
+      startDateTime.getTime() + AUTO_CANCEL_AFTER_START_MINUTES * 60 * 1000
+    );
+
+    return `Cancels if not accepted by ${cancelAfter.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    })}`;
+  }
+
   async function acceptTrip(trip: any) {
     try {
+      if (isUnacceptedRideExpired(trip)) {
+        await cancelExpiredUnacceptedRide(trip);
+
+        Alert.alert(
+          "Ride Expired",
+          "This ride was not accepted within 45 minutes after the start time, so it has been cancelled for the passenger."
+        );
+
+        await loadAvailableTrips();
+        return;
+      }
+
       setAcceptingId(trip.id);
 
       const {
@@ -85,25 +308,102 @@ export default function FindTripsScreen() {
         return;
       }
 
-      const { error: updateError } = await supabase
+      const { data: latestTrip, error: latestTripError } = await supabase
         .from("bookings")
-        .update({
-          driver_id: user.id,
-          status: "driver_assigned",
-        })
+        .select("*")
         .eq("id", trip.id)
-        .is("driver_id", null);
+        .maybeSingle();
+
+      if (latestTripError) throw latestTripError;
+
+      if (!latestTrip) {
+        Alert.alert("Trip Not Found", "This trip no longer exists.");
+        await loadAvailableTrips();
+        return;
+      }
+
+      const alreadyAccepted =
+        Boolean(latestTrip.driver_id) || Boolean(latestTrip.assigned_driver_id);
+
+      if (alreadyAccepted) {
+        Alert.alert(
+          "Trip Already Accepted",
+          "Another driver may have accepted this ride already."
+        );
+
+        await loadAvailableTrips();
+        return;
+      }
+
+      if (isUnacceptedRideExpired(latestTrip)) {
+        await cancelExpiredUnacceptedRide(latestTrip);
+
+        Alert.alert(
+          "Ride Expired",
+          "This ride was not accepted within 45 minutes after the start time, so it has been cancelled for the passenger."
+        );
+
+        await loadAvailableTrips();
+        return;
+      }
+
+      const { data: updatedTrip, error: updateError } = await supabase
+        .from("bookings")
+      .update({
+  driver_id: user.id,
+  status: "driver_assigned",
+})
+        .eq("id", trip.id)
+        .is("driver_id", null)
+        .in("status", ["pending", "confirmed", "Pending", "Confirmed"])
+        .select("*")
+        .maybeSingle();
 
       if (updateError) throw updateError;
 
-      Alert.alert("Trip Accepted", "This trip has been assigned to you.");
+      if (!updatedTrip) {
+        Alert.alert(
+          "Trip Already Accepted",
+          "Another driver may have accepted this ride already."
+        );
 
-      loadAvailableTrips();
+        await loadAvailableTrips();
+        return;
+      }
+
+      setTrips((currentTrips) =>
+        currentTrips.filter((item) => item.id !== trip.id)
+      );
+
+      router.replace({
+        pathname: "/active-trip" as any,
+        params: {
+          booking_id: String(updatedTrip.id),
+          invoice_no: String(updatedTrip.invoice_no || ""),
+        },
+      });
     } catch (err: any) {
       Alert.alert("Accept Failed", err.message || "Unable to accept this trip.");
     } finally {
       setAcceptingId(null);
     }
+  }
+
+  function confirmAcceptTrip(trip: any) {
+    Alert.alert(
+      "Accept Ride?",
+      "This ride will move to your Active Trip screen immediately.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Accept Ride",
+          onPress: () => acceptTrip(trip),
+        },
+      ]
+    );
   }
 
   function getTripTitle(trip: any) {
@@ -184,7 +484,10 @@ export default function FindTripsScreen() {
             Available Angel Express bookings ready for approved chauffeurs.
           </Text>
 
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
             <Text style={styles.backButtonText}>Back to Dashboard</Text>
           </TouchableOpacity>
 
@@ -197,8 +500,9 @@ export default function FindTripsScreen() {
             <View style={styles.emptyCard}>
               <Text style={styles.emptyTitle}>No Available Trips</Text>
               <Text style={styles.emptyText}>
-                There are no unassigned trips right now. Check again later or
-                refresh this page.
+                There are no unassigned trips right now. Rides not accepted
+                within 45 minutes after the start time are automatically
+                cancelled for the passenger.
               </Text>
             </View>
           ) : (
@@ -230,10 +534,15 @@ export default function FindTripsScreen() {
                   </View>
 
                   <View style={styles.row}>
-                    <Text style={styles.label}>Time</Text>
+                    <Text style={styles.label}>Start Time</Text>
                     <Text style={styles.value}>
                       {trip.time || trip.ride_time || trip.pickup_time || "Not set"}
                     </Text>
+                  </View>
+
+                  <View style={styles.row}>
+                    <Text style={styles.label}>Auto Cancel Rule</Text>
+                    <Text style={styles.value}>{formatCancelInfo(trip)}</Text>
                   </View>
 
                   <View style={styles.row}>
@@ -263,8 +572,11 @@ export default function FindTripsScreen() {
                   </View>
 
                   <TouchableOpacity
-                    style={styles.acceptButton}
-                    onPress={() => acceptTrip(trip)}
+                    style={[
+                      styles.acceptButton,
+                      acceptingId === trip.id && styles.disabledButton,
+                    ]}
+                    onPress={() => confirmAcceptTrip(trip)}
                     disabled={acceptingId === trip.id}
                   >
                     {acceptingId === trip.id ? (
@@ -287,28 +599,33 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
+
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.72)",
   },
+
   container: {
     flexGrow: 1,
     padding: 22,
     paddingTop: 65,
     paddingBottom: 45,
   },
+
   title: {
     color: "#d4af37",
     fontSize: 32,
     fontWeight: "900",
     marginBottom: 8,
   },
+
   subtitle: {
     color: "#e5e7eb",
     fontSize: 15,
     lineHeight: 22,
     marginBottom: 18,
   },
+
   backButton: {
     borderWidth: 1,
     borderColor: "#64748b",
@@ -317,21 +634,25 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(15,23,42,0.75)",
     marginBottom: 20,
   },
+
   backButtonText: {
     color: "#ffffff",
     textAlign: "center",
     fontWeight: "800",
   },
+
   loadingBox: {
     backgroundColor: "rgba(15,23,42,0.92)",
     borderRadius: 18,
     padding: 24,
     alignItems: "center",
   },
+
   loadingText: {
     color: "#e5e7eb",
     marginTop: 12,
   },
+
   emptyCard: {
     backgroundColor: "rgba(15,23,42,0.92)",
     borderWidth: 1,
@@ -339,17 +660,20 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 22,
   },
+
   emptyTitle: {
     color: "#ffffff",
     fontSize: 20,
     fontWeight: "900",
     marginBottom: 8,
   },
+
   emptyText: {
     color: "#cbd5e1",
     fontSize: 15,
     lineHeight: 22,
   },
+
   tripCard: {
     backgroundColor: "rgba(15,23,42,0.94)",
     borderWidth: 1,
@@ -358,6 +682,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 18,
   },
+
   sourceBadge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(212,175,55,0.16)",
@@ -372,15 +697,18 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     textTransform: "uppercase",
   },
+
   tripTitle: {
     color: "#d4af37",
     fontSize: 21,
     fontWeight: "900",
     marginBottom: 14,
   },
+
   row: {
     marginBottom: 12,
   },
+
   label: {
     color: "#94a3b8",
     fontSize: 13,
@@ -388,11 +716,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textTransform: "uppercase",
   },
+
   value: {
     color: "#ffffff",
     fontSize: 15,
     lineHeight: 21,
   },
+
   moneyBox: {
     backgroundColor: "rgba(0,0,0,0.35)",
     borderRadius: 16,
@@ -402,26 +732,35 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
+
   moneyLabel: {
     color: "#cbd5e1",
     fontSize: 13,
     marginBottom: 5,
   },
+
   moneyValue: {
     color: "#ffffff",
     fontSize: 20,
     fontWeight: "900",
   },
+
   payoutValue: {
     color: "#d4af37",
     fontSize: 20,
     fontWeight: "900",
   },
+
   acceptButton: {
     backgroundColor: "#d4af37",
     paddingVertical: 16,
     borderRadius: 16,
   },
+
+  disabledButton: {
+    opacity: 0.55,
+  },
+
   acceptButtonText: {
     color: "#07111f",
     fontSize: 16,

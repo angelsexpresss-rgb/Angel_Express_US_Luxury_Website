@@ -38,6 +38,22 @@ import {
 
 const GOLD = AE_COLORS.gold;
 
+const PENDING_STATUSES = ["pending", "confirmed", "booked"];
+
+const ASSIGNED_STATUSES = [
+  "assigned",
+  "driver_assigned",
+  "accepted",
+  "driver_accepted",
+  "driver_arrived",
+];
+
+const IN_PROGRESS_STATUSES = ["in_progress"];
+
+const COMPLETED_STATUSES = ["completed"];
+
+const CANCELLED_STATUSES = ["cancelled", "canceled"];
+
 export default function MyTripsScreen() {
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState<any[]>([]);
@@ -68,13 +84,20 @@ export default function MyTripsScreen() {
       if (userError) throw userError;
       if (!user) return;
 
-      const userEmail = user.email?.trim().toLowerCase();
+      const userEmail = user.email?.trim().toLowerCase() || "";
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("bookings")
         .select("*")
-        .or(`user_id.eq.${user.id},email.ilike.${userEmail}`)
         .order("created_at", { ascending: false });
+
+      if (userEmail) {
+        query = query.or(`user_id.eq.${user.id},email.ilike.${userEmail}`);
+      } else {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -89,25 +112,23 @@ export default function MyTripsScreen() {
   const sections = [
     {
       title: "Pending",
-      trips: trips.filter((t) => normalize(t.status) === "pending"),
+      trips: trips.filter((t) => isPendingStatus(t.status)),
     },
     {
       title: "Assigned",
-      trips: trips.filter((t) =>
-        ["assigned", "driver_arrived"].includes(normalize(t.status))
-      ),
+      trips: trips.filter((t) => isAssignedStatus(t.status)),
     },
     {
       title: "In Progress",
-      trips: trips.filter((t) => normalize(t.status) === "in_progress"),
+      trips: trips.filter((t) => isInProgressStatus(t.status)),
     },
     {
       title: "Completed",
-      trips: trips.filter((t) => normalize(t.status) === "completed"),
+      trips: trips.filter((t) => isCompletedStatus(t.status)),
     },
     {
       title: "Cancelled",
-      trips: trips.filter((t) => normalize(t.status) === "cancelled"),
+      trips: trips.filter((t) => isCancelledStatus(t.status)),
     },
   ];
 
@@ -144,7 +165,7 @@ export default function MyTripsScreen() {
           >
             <Text style={styles.title}>My Trips</Text>
             <Text style={styles.subtitle}>
-              View rides booked from the Angel Express app or website.
+              View pending, assigned, in-progress, completed, and cancelled Angel Express rides.
             </Text>
 
             {loading ? (
@@ -172,7 +193,7 @@ export default function MyTripsScreen() {
                   <AngelDropdown
                     key={section.title}
                     title={`${section.title} (${section.trips.length})`}
-                    defaultOpen={index === 0}
+                    defaultOpen={index === 0 || section.trips.length > 0}
                   >
                     {section.trips.length === 0 ? (
                       <Text style={styles.noTripsText}>
@@ -198,29 +219,49 @@ function TripCard({ trip }: { trip: any }) {
   const [driver, setDriver] = useState<any>(null);
   const [driverLoading, setDriverLoading] = useState(false);
 
-  const pickup = trip.pickup_address || trip.pickup || "Pickup not added";
-  const dropoff = trip.dropoff_address || trip.dropoff || "Drop-off not added";
-  const date = trip.ride_date || trip.date || "Date not added";
-  const time = trip.ride_time || trip.time || "Time not added";
-  const status = trip.status || "Pending";
-  const normalizedStatus = normalize(status);
+  const pickup =
+    trip.pickup_address ||
+    trip.pickup ||
+    trip.pickup_location ||
+    "Pickup not added";
+
+  const dropoff =
+    trip.dropoff_address ||
+    trip.dropoff ||
+    trip.dropoff_location ||
+    trip.destination ||
+    "Drop-off not added";
+
+  const date = trip.ride_date || trip.date || trip.pickup_date || "Date not added";
+  const time = trip.ride_time || trip.time || trip.pickup_time || "Time not added";
+
+  const normalizedStatus = normalize(trip.status);
+  const displayStatus = getDisplayStatus(trip.status);
+
   const paymentStatus = normalize(trip.payment_status || "unpaid");
 
   const invoice = trip.invoice_no || "No invoice yet";
-  const total = Number(trip.total_fare || trip.total || 0);
-  const source = trip.source || "website";
+  const total = Number(trip.total_fare || trip.total || trip.total_price || trip.amount || 0);
+  const source = trip.source || "app";
   const miles = Number(trip.estimated_miles || trip.miles || 0);
 
-  const canPayRide = normalizedStatus === "completed" && paymentStatus !== "paid";
-  const isPaid = normalizedStatus === "completed" && paymentStatus === "paid";
+  const driverId = trip.driver_id || trip.assigned_driver_id;
+
+  const canPayRide = isCompletedStatus(normalizedStatus) && paymentStatus !== "paid";
+  const isPaid = isCompletedStatus(normalizedStatus) && paymentStatus === "paid";
+
+  const canTrackLive =
+    isAssignedStatus(normalizedStatus) || isInProgressStatus(normalizedStatus);
 
   useEffect(() => {
-    if (trip.driver_id) {
-      loadDriverCard();
+    if (driverId) {
+      loadDriverCard(driverId);
+    } else {
+      setDriver(null);
     }
-  }, [trip.driver_id]);
+  }, [driverId]);
 
-  async function loadDriverCard() {
+  async function loadDriverCard(id: string) {
     try {
       setDriverLoading(true);
 
@@ -229,7 +270,7 @@ function TripCard({ trip }: { trip: any }) {
         .select(
           "id, full_name, first_name, last_name, phone, rating, total_trips, driver_level, vehicle_make, vehicle_model, vehicle_year, plate_number, years_driving, safety_badge"
         )
-        .eq("id", trip.driver_id)
+        .eq("id", id)
         .maybeSingle();
 
       if (error) throw error;
@@ -242,7 +283,7 @@ function TripCard({ trip }: { trip: any }) {
   }
 
   function cleanPhone(phone: string) {
-    return phone.replace(/[^\d+]/g, "");
+    return String(phone || "").replace(/[^\d+]/g, "");
   }
 
   function callDriver() {
@@ -292,6 +333,16 @@ function TripCard({ trip }: { trip: any }) {
     });
   }
 
+  function openLiveTrip() {
+    router.push({
+      pathname: "/live-trip" as any,
+      params: {
+        booking_id: String(trip.id || ""),
+        invoice_no: String(trip.invoice_no || ""),
+      },
+    });
+  }
+
   return (
     <AngelCard style={styles.card}>
       <View style={styles.cardHeader}>
@@ -300,19 +351,19 @@ function TripCard({ trip }: { trip: any }) {
           <Text style={styles.invoice}>{invoice}</Text>
         </View>
 
-        <View style={styles.statusPill}>
-          <Text style={styles.status}>{status}</Text>
+        <View style={[styles.statusPill, getStatusPillStyle(normalizedStatus)]}>
+          <Text style={styles.status}>{displayStatus}</Text>
         </View>
       </View>
 
       <View style={styles.lifecycleBox}>
         <ShieldCheck size={18} color={GOLD} />
         <Text style={styles.lifecycleText}>
-          {getLifecycleMessage(status, paymentStatus)}
+          {getLifecycleMessage(normalizedStatus, paymentStatus)}
         </Text>
       </View>
 
-      {trip.driver_id ? (
+      {driverId ? (
         <View style={styles.driverCard}>
           <View style={styles.driverTitleRow}>
             <UserRound size={20} color={GOLD} />
@@ -392,7 +443,11 @@ function TripCard({ trip }: { trip: any }) {
         </View>
       ) : (
         <View style={styles.noDriverBox}>
-          <Text style={styles.noDriverText}>Chauffeur assignment pending.</Text>
+          <Text style={styles.noDriverText}>
+            {isCancelledStatus(normalizedStatus)
+              ? "This ride was cancelled before chauffeur assignment."
+              : "Chauffeur assignment pending."}
+          </Text>
         </View>
       )}
 
@@ -419,6 +474,12 @@ function TripCard({ trip }: { trip: any }) {
         <Detail icon={<ReceiptText size={16} color={GOLD} />} text={`Source: ${source}`} />
       </View>
 
+      {canTrackLive && (
+        <TouchableOpacity style={styles.liveButton} onPress={openLiveTrip}>
+          <Text style={styles.liveButtonText}>Track Live Trip</Text>
+        </TouchableOpacity>
+      )}
+
       {canPayRide && (
         <View style={styles.paymentBox}>
           <Text style={styles.paymentTitle}>Ride Completed — Payment Due</Text>
@@ -441,11 +502,13 @@ function TripCard({ trip }: { trip: any }) {
         </View>
       )}
 
-      <TouchableOpacity style={styles.manageButton} onPress={openManageBooking}>
-        <Text style={styles.manageButtonText}>Manage Booking</Text>
-      </TouchableOpacity>
+      {!isCompletedStatus(normalizedStatus) && !isCancelledStatus(normalizedStatus) && (
+        <TouchableOpacity style={styles.manageButton} onPress={openManageBooking}>
+          <Text style={styles.manageButtonText}>Manage Booking</Text>
+        </TouchableOpacity>
+      )}
 
-      {normalizedStatus === "completed" && (
+      {isCompletedStatus(normalizedStatus) && (
         <TouchableOpacity style={styles.rateButton} onPress={openRateDriver}>
           <Text style={styles.rateButtonText}>Rate Your Chauffeur</Text>
         </TouchableOpacity>
@@ -480,11 +543,15 @@ function getLifecycleMessage(status: string, paymentStatus: string) {
   const normalizedStatus = normalize(status);
   const normalizedPayment = normalize(paymentStatus);
 
-  if (normalizedStatus === "pending") {
-    return "Waiting for Angel Express to review your ride.";
+  if (isPendingStatus(normalizedStatus)) {
+    return "Waiting for Angel Express to review and assign your ride.";
   }
 
-  if (normalizedStatus === "assigned") {
+  if (normalizedStatus === "driver_assigned") {
+    return "Your chauffeur has accepted this ride and is preparing for pickup.";
+  }
+
+  if (normalizedStatus === "assigned" || normalizedStatus === "accepted" || normalizedStatus === "driver_accepted") {
     return "Your chauffeur has accepted this ride.";
   }
 
@@ -492,23 +559,71 @@ function getLifecycleMessage(status: string, paymentStatus: string) {
     return "Your chauffeur has arrived at pickup.";
   }
 
-  if (normalizedStatus === "in_progress") {
+  if (isInProgressStatus(normalizedStatus)) {
     return "Ride in progress.";
   }
 
-  if (normalizedStatus === "completed" && normalizedPayment === "paid") {
+  if (isCompletedStatus(normalizedStatus) && normalizedPayment === "paid") {
     return "Ride completed and paid.";
   }
 
-  if (normalizedStatus === "completed") {
+  if (isCompletedStatus(normalizedStatus)) {
     return "Ride completed. Payment is now due.";
   }
 
-  if (normalizedStatus === "cancelled") {
+  if (isCancelledStatus(normalizedStatus)) {
     return "This ride was cancelled.";
   }
 
   return "Ride status updated.";
+}
+
+function getDisplayStatus(status: string) {
+  const normalizedStatus = normalize(status);
+
+  if (isPendingStatus(normalizedStatus)) return "Pending";
+  if (normalizedStatus === "driver_assigned") return "Assigned";
+  if (normalizedStatus === "driver_arrived") return "Driver Arrived";
+  if (normalizedStatus === "assigned") return "Assigned";
+  if (normalizedStatus === "accepted") return "Assigned";
+  if (normalizedStatus === "driver_accepted") return "Assigned";
+  if (isInProgressStatus(normalizedStatus)) return "In Progress";
+  if (isCompletedStatus(normalizedStatus)) return "Completed";
+  if (isCancelledStatus(normalizedStatus)) return "Cancelled";
+
+  return String(status || "Pending").replace(/_/g, " ");
+}
+
+function getStatusPillStyle(status: string) {
+  const normalizedStatus = normalize(status);
+
+  if (isPendingStatus(normalizedStatus)) return styles.pendingPill;
+  if (isAssignedStatus(normalizedStatus)) return styles.assignedPill;
+  if (isInProgressStatus(normalizedStatus)) return styles.progressPill;
+  if (isCompletedStatus(normalizedStatus)) return styles.completedPill;
+  if (isCancelledStatus(normalizedStatus)) return styles.cancelledPill;
+
+  return {};
+}
+
+function isPendingStatus(status: string) {
+  return PENDING_STATUSES.includes(normalize(status));
+}
+
+function isAssignedStatus(status: string) {
+  return ASSIGNED_STATUSES.includes(normalize(status));
+}
+
+function isInProgressStatus(status: string) {
+  return IN_PROGRESS_STATUSES.includes(normalize(status));
+}
+
+function isCompletedStatus(status: string) {
+  return COMPLETED_STATUSES.includes(normalize(status));
+}
+
+function isCancelledStatus(status: string) {
+  return CANCELLED_STATUSES.includes(normalize(status));
 }
 
 function normalize(status: string) {
@@ -647,6 +762,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     backgroundColor: "rgba(212,175,55,0.10)",
+  },
+
+  pendingPill: {
+    borderColor: "rgba(212,175,55,0.45)",
+    backgroundColor: "rgba(212,175,55,0.10)",
+  },
+
+  assignedPill: {
+    borderColor: "rgba(59,130,246,0.45)",
+    backgroundColor: "rgba(59,130,246,0.16)",
+  },
+
+  progressPill: {
+    borderColor: "rgba(249,115,22,0.50)",
+    backgroundColor: "rgba(249,115,22,0.16)",
+  },
+
+  completedPill: {
+    borderColor: "rgba(46,204,113,0.45)",
+    backgroundColor: "rgba(46,204,113,0.12)",
+  },
+
+  cancelledPill: {
+    borderColor: "rgba(239,68,68,0.50)",
+    backgroundColor: "rgba(239,68,68,0.16)",
   },
 
   status: {
@@ -841,6 +981,23 @@ const styles = StyleSheet.create({
     color: AE_COLORS.muted,
     fontSize: 14,
     flex: 1,
+  },
+
+  liveButton: {
+    backgroundColor: "rgba(59,130,246,0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(59,130,246,0.55)",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 14,
+  },
+
+  liveButtonText: {
+    color: "#93C5FD",
+    fontSize: 15,
+    fontWeight: "900",
+    textTransform: "uppercase",
   },
 
   paymentBox: {
