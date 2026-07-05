@@ -1705,41 +1705,13 @@ small {
     font-size: 14px;
     letter-spacing: 1.5px;
   }
-}/* FORCE MOBILE FLOATING BUTTONS TO SHOW */
-#chatToggle.chat-toggle,
-a.whatsapp-float {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: fixed !important;
-  right: 14px !important;
-  z-index: 999999 !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 999px !important;
-  font-weight: 900 !important;
 }
+/* =========================================================
+   ANGEL EXPRESS — FINAL CLEAN SUPPORT + GLOBAL NAV PATCH
+   Replaces old duplicated support/nav emergency blocks.
+   ========================================================= */
 
-#chatToggle.chat-toggle {
-  bottom: 92px !important;
-  background: #D4AF37 !important;
-  color: #050A14 !important;
-}
-
-a.whatsapp-float {
-  bottom: 24px !important;
-  background: #25D366 !important;
-  color: #050A14 !important;
-}
-
-@media (max-width: 768px) {
-  #chatToggle.chat-toggle,
-  a.whatsapp-float {
-    min-height: 46px !important;
-    padding: 11px 15px !important;
-    font-size: 13px !important;
-  }
-}/* EMERGENCY PAGE VISIBILITY FIX */
+/* ---------- Final Visibility Safety ---------- */
 .reveal {
   opacity: 1 !important;
   transform: none !important;
@@ -1754,16 +1726,6 @@ a.whatsapp-float {
   visibility: visible !important;
 }
 
-/* KEEP MOBILE MENU HIDDEN UNTIL OPENED */
-.mobile-menu {
-  display: none !important;
-}
-
-.mobile-menu.open {
-  display: grid !important;
-  grid-template-columns: 1fr;
-  gap: 9px;
-}/* FINAL MOBILE VISIBILITY FIX */
 @media (max-width: 768px) {
   main,
   section,
@@ -1778,107 +1740,299 @@ a.whatsapp-float {
     visibility: visible !important;
     opacity: 1 !important;
   }
+}
 
-  .reveal,
-  .reveal.active {
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-    visibility: visible !important;
-  }
-}/* ANGEL EXPRESS FLOATING SUPPORT SYSTEM */
-.mobile-support-dock,
-.mobile-support-btn,
-#mobileChatBtn {
+/* ---------- Hide Legacy Navigation Once Global JS Nav Loads ---------- */
+.navbar,
+.mobile-menu,
+header.navbar {
   display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
 }
 
-.chat-toggle,
-.whatsapp-float {
-  position: fixed !important;
-  right: 22px !important;
-  z-index: 999999 !important;
-  border: none !important;
-  border-radius: 999px !important;
-  padding: 14px 20px !important;
-  font-weight: 900 !important;
-  cursor: pointer !important;
-  box-shadow: 0 16px 42px rgba(0,0,0,.28) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-decoration: none !important;
+/* =========================================================
+   ANGEL EXPRESS GLOBAL COMPACT V4 NAV — FINAL
+   Works across desktop, tablet, and mobile.
+   Requires script.js to inject:
+   .ae-global-header > .ae-global-inner > .ae-nav-brand + .ae-menu-toggle + .ae-nav-menu
+   ========================================================= */
+
+.ae-global-header {
+  position: sticky;
+  top: 0;
+  z-index: 99999;
+  width: 100%;
+  background: rgba(5, 10, 20, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.16);
 }
 
-.chat-toggle {
-  bottom: 88px !important;
-  background: #D4AF37 !important;
-  color: #050b16 !important;
+.ae-global-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  min-height: 78px;
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
 }
 
-.whatsapp-float {
-  bottom: 24px !important;
-  background: #25d366 !important;
-  color: #06111f !important;
+.ae-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
-.chatbot-box {
-  position: fixed !important;
-  right: 22px !important;
-  bottom: 145px !important;
-  width: 340px !important;
-  max-width: calc(100vw - 44px) !important;
-  background: rgba(5,11,22,.94) !important;
-  border: 1px solid rgba(212,175,55,.35) !important;
-  border-radius: 24px !important;
-  overflow: hidden !important;
-  z-index: 1000000 !important;
+.ae-logo-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #f5d76e, #d4af37);
+  color: #050a14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 950;
+  box-shadow: 0 12px 32px rgba(212, 175, 55, 0.16);
+}
+
+.ae-brand-title {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: 3px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ae-brand-subtitle {
+  margin-top: 5px;
+  color: #b8c1cc;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  white-space: nowrap;
+}
+
+.ae-nav-menu {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ae-nav-menu a {
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.15;
+  white-space: nowrap;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.ae-nav-menu a:hover,
+.ae-nav-menu a.active {
+  color: #d4af37;
+}
+
+.ae-menu-toggle {
   display: none;
-  box-shadow: 0 30px 90px rgba(0,0,0,.45) !important;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(255, 255, 255, 0.06);
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.chatbot-box.open {
-  display: block !important;
+.ae-menu-toggle span {
+  width: 24px;
+  height: 3px;
+  border-radius: 99px;
+  background: #ffffff;
+  transition: 0.25s ease;
 }
 
-@media (max-width: 640px) {
-  .chat-toggle,
-  .whatsapp-float {
-    right: 12px !important;
-    padding: 12px 15px !important;
-    font-size: 13px !important;
-  }
-
-  .chat-toggle {
-    bottom: 86px !important;
-  }
-
-  .whatsapp-float {
-    bottom: 22px !important;
-  }
-
-  .chatbot-box {
-    right: 12px !important;
-    bottom: 145px !important;
-    width: calc(100vw - 24px) !important;
-    max-width: calc(100vw - 24px) !important;
-  }
-}/* FORCE AI CHAT OPEN FIX */
-.chatbot-box.open {
-  display: block !important;
+.ae-menu-toggle.open span:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
 }
 
-#chatbotBox {
-  z-index: 1000000 !important;
+.ae-menu-toggle.open span:nth-child(2) {
+  opacity: 0;
 }
 
-#chatToggle {
-  z-index: 1000001 !important;
-  pointer-events: auto !important;
-}/* ANGEL EXPRESS CLEAN FLOATING SUPPORT */
+.ae-menu-toggle.open span:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+body.ae-menu-open {
+  overflow: hidden;
+}
+
+@media (max-width: 1180px) {
+  .ae-global-inner {
+    min-height: 72px;
+    padding: 11px 22px;
+    gap: 16px;
+  }
+
+  .ae-logo-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 25px;
+  }
+
+  .ae-brand-title {
+    font-size: 17px;
+    letter-spacing: 2.5px;
+  }
+
+  .ae-brand-subtitle {
+    font-size: 8px;
+    letter-spacing: 2.5px;
+  }
+
+  .ae-nav-menu {
+    gap: 13px;
+  }
+
+  .ae-nav-menu a {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 980px) {
+  .ae-global-inner {
+    min-height: 76px;
+    padding: 12px 18px;
+  }
+
+  .ae-logo-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 15px;
+    font-size: 27px;
+  }
+
+  .ae-brand-title {
+    font-size: 18px;
+    letter-spacing: 2.6px;
+  }
+
+  .ae-brand-subtitle {
+    font-size: 8px;
+    letter-spacing: 2.4px;
+  }
+
+  .ae-menu-toggle {
+    display: flex;
+  }
+
+  .ae-nav-menu {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 76px;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 14px 18px 120px;
+    background: rgba(5, 10, 20, 0.985);
+    border-top: 1px solid rgba(212, 175, 55, 0.16);
+    max-height: calc(100vh - 76px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ae-nav-menu.open {
+    display: flex;
+  }
+
+  .ae-nav-menu a {
+    display: block;
+    width: 100%;
+    padding: 13px 15px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.065);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 850;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .ae-nav-menu a.active {
+    color: #d4af37;
+    border: 1px solid rgba(212, 175, 55, 0.28);
+  }
+}
+
+@media (max-width: 430px) {
+  .ae-global-inner {
+    min-height: 72px;
+    padding: 11px 14px;
+  }
+
+  .ae-nav-brand {
+    gap: 10px;
+  }
+
+  .ae-brand-title {
+    font-size: 15px;
+    letter-spacing: 2px;
+  }
+
+  .ae-brand-subtitle {
+    font-size: 7px;
+    letter-spacing: 2px;
+  }
+
+  .ae-logo-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 24px;
+  }
+
+  .ae-menu-toggle {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .ae-nav-menu {
+    top: 72px;
+    max-height: calc(100vh - 72px);
+    padding: 12px 14px 120px;
+  }
+
+  .ae-nav-menu a {
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 13px;
+  }
+}
+
+/* =========================================================
+   ANGEL EXPRESS CLEAN FLOATING SUPPORT — FINAL
+   ========================================================= */
+
 .mobile-support-dock,
 .mobile-support-btn,
 #mobileChatBtn {
@@ -1905,18 +2059,18 @@ a.whatsapp-float {
   align-items: center !important;
   justify-content: center !important;
   text-decoration: none !important;
-  box-shadow: 0 18px 45px rgba(0,0,0,.35) !important;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35) !important;
 }
 
 .chat-toggle {
   bottom: 96px !important;
-  background: #D4AF37 !important;
+  background: #d4af37 !important;
   color: #050b16 !important;
 }
 
 .whatsapp-float {
   bottom: 26px !important;
-  background: #25D366 !important;
+  background: #25d366 !important;
   color: #06111f !important;
 }
 
@@ -1928,13 +2082,13 @@ a.whatsapp-float {
   max-width: calc(100vw - 44px) !important;
   max-height: 520px !important;
   background: #050b16 !important;
-  border: 1px solid rgba(212,175,55,.45) !important;
+  border: 1px solid rgba(212, 175, 55, 0.45) !important;
   border-radius: 24px !important;
   overflow: hidden !important;
   z-index: 2147483641 !important;
   display: none !important;
   flex-direction: column !important;
-  box-shadow: 0 30px 90px rgba(0,0,0,.55) !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55) !important;
 }
 
 .chatbot-box.open {
@@ -1944,7 +2098,7 @@ a.whatsapp-float {
 .chatbot-header {
   min-height: 56px !important;
   padding: 0 16px !important;
-  background: #D4AF37 !important;
+  background: #d4af37 !important;
   color: #050b16 !important;
   font-size: 17px !important;
   font-weight: 900 !important;
@@ -1958,7 +2112,7 @@ a.whatsapp-float {
   height: 34px !important;
   border-radius: 50% !important;
   border: none !important;
-  background: rgba(5,11,22,.14) !important;
+  background: rgba(5, 11, 22, 0.14) !important;
   color: #050b16 !important;
   font-size: 24px !important;
   font-weight: 900 !important;
@@ -1978,7 +2132,7 @@ a.whatsapp-float {
 
 .chatbot-input {
   display: flex !important;
-  border-top: 1px solid rgba(255,255,255,.12) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
   background: #050b16 !important;
 }
 
@@ -1987,7 +2141,7 @@ a.whatsapp-float {
   min-width: 0 !important;
   border: none !important;
   padding: 16px !important;
-  background: rgba(255,255,255,.08) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
   color: white !important;
   outline: none !important;
   font-size: 15px !important;
@@ -1996,7 +2150,7 @@ a.whatsapp-float {
 .chatbot-input button {
   border: none !important;
   padding: 0 20px !important;
-  background: #D4AF37 !important;
+  background: #d4af37 !important;
   color: #050b16 !important;
   font-weight: 900 !important;
   cursor: pointer !important;
@@ -2032,385 +2186,23 @@ a.whatsapp-float {
     height: 210px !important;
     max-height: 210px !important;
   }
-}.ae-global-header{
-  position:sticky;
-  top:0;
-  z-index:9999;
-  background:rgba(5,11,22,.96);
-  border-bottom:1px solid rgba(212,175,55,.18);
-  backdrop-filter:blur(18px);
-  padding:18px 24px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
 }
 
-.ae-nav-brand{
-  display:flex;
-  align-items:center;
-  gap:14px;
-  cursor:pointer;
-}
-
-.ae-logo-box{
-  width:58px;
-  height:58px;
-  border-radius:18px;
-  background:#d4af37;
-  color:#050b16;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:32px;
-  font-weight:900;
-}
-
-.ae-brand-title{
-  color:white;
-  font-size:24px;
-  font-weight:900;
-  letter-spacing:3px;
-}
-
-.ae-brand-subtitle{
-  color:#cbd5e1;
-  font-size:12px;
-  font-weight:900;
-  letter-spacing:3px;
-}
-
-.ae-nav-menu{
-  display:flex;
-  align-items:center;
-  gap:20px;
-}
-
-.ae-nav-menu a{
-  color:white;
-  text-decoration:none;
-  font-weight:800;
-  font-size:15px;
-  transition:.25s ease;
-}
-
-.ae-nav-menu a:hover,
-.ae-nav-menu a.active{
-  color:#d4af37;
-}
-
-.ae-menu-toggle{
-  display:none;
-  width:58px;
-  height:58px;
-  border-radius:22px;
-  border:1px solid rgba(212,175,55,.35);
-  background:rgba(255,255,255,.06);
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  gap:6px;
-  cursor:pointer;
-}
-
-.ae-menu-toggle span{
-  width:26px;
-  height:3px;
-  background:white;
-  border-radius:99px;
-}
-
-@media(max-width:900px){
-  .ae-menu-toggle{
-    display:flex;
+@media (max-width: 430px) {
+  .chat-toggle,
+  .whatsapp-float {
+    left: 14px !important;
+    right: 14px !important;
+    min-width: 0 !important;
+    width: auto !important;
+    height: 52px !important;
+    font-size: 14px !important;
   }
 
-  .ae-nav-menu{
-    position:absolute;
-    top:95px;
-    left:0;
-    right:0;
-    background:#050b16;
-    padding:24px;
-    display:none;
-    flex-direction:column;
-    align-items:stretch;
-    gap:14px;
-    border-bottom:1px solid rgba(212,175,55,.18);
-  }
-
-  .ae-nav-menu.open{
-    display:flex;
-  }
-
-  .ae-nav-menu a{
-    background:rgba(255,255,255,.06);
-    padding:20px;
-    border-radius:20px;
-    font-size:20px;
-  }
-
-  .ae-brand-title{
-    font-size:20px;
-  }
-
-  .ae-brand-subtitle{
-    font-size:10px;
-  }
-}
-/* ANGEL EXPRESS GLOBAL V4 NAVIGATION */
-
-.navbar,
-.mobile-menu{
-  display:none !important;
-}
-
-.ae-global-header{
-  width:100%;
-  position:sticky;
-  top:0;
-  z-index:99999;
-  background:rgba(5,11,22,.96);
-  backdrop-filter:blur(18px);
-  border-bottom:1px solid rgba(212,175,55,.16);
-}
-
-.ae-global-inner{
-  max-width:1280px;
-  margin:0 auto;
-  min-height:96px;
-  padding:18px 28px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:28px;
-}
-
-.ae-nav-brand{
-  display:flex;
-  align-items:center;
-  gap:16px;
-  text-decoration:none;
-  flex-shrink:0;
-}
-
-.ae-logo-box{
-  width:64px;
-  height:64px;
-  border-radius:20px;
-  background:linear-gradient(135deg,#f4d96b,#d4af37);
-  color:#050b16;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:36px;
-  font-weight:950;
-  box-shadow:0 12px 35px rgba(212,175,55,.18);
-}
-
-.ae-brand-title{
-  color:#fff;
-  font-size:28px;
-  font-weight:950;
-  letter-spacing:5px;
-  line-height:1;
-}
-
-.ae-brand-subtitle{
-  margin-top:8px;
-  color:#cbd5e1;
-  font-size:12px;
-  font-weight:900;
-  letter-spacing:5px;
-}
-
-.ae-nav-menu{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:22px;
-  flex:1;
-}
-
-.ae-nav-menu a{
-  color:#f8fafc;
-  text-decoration:none;
-  font-size:16px;
-  font-weight:900;
-  line-height:1.15;
-  transition:.2s ease;
-  white-space:normal;
-}
-
-.ae-nav-menu a:hover,
-.ae-nav-menu a.active{
-  color:#d4af37;
-}
-
-.ae-menu-toggle{
-  display:none;
-  width:64px;
-  height:64px;
-  border-radius:22px;
-  border:1px solid rgba(212,175,55,.45);
-  background:rgba(255,255,255,.05);
-  align-items:center;
-  justify-content:center;
-  flex-direction:column;
-  gap:7px;
-  cursor:pointer;
-}
-
-.ae-menu-toggle span{
-  width:30px;
-  height:4px;
-  border-radius:99px;
-  background:#fff;
-  transition:.25s ease;
-}
-
-.ae-menu-toggle.open span:nth-child(1){
-  transform:translateY(11px) rotate(45deg);
-}
-
-.ae-menu-toggle.open span:nth-child(2){
-  opacity:0;
-}
-
-.ae-menu-toggle.open span:nth-child(3){
-  transform:translateY(-11px) rotate(-45deg);
-}
-
-@media(max-width:1150px){
-  .ae-global-inner{
-    min-height:88px;
-    padding:16px 22px;
-  }
-
-  .ae-brand-title{
-    font-size:23px;
-    letter-spacing:4px;
-  }
-
-  .ae-brand-subtitle{
-    font-size:10px;
-    letter-spacing:4px;
-  }
-
-  .ae-nav-menu{
-    gap:15px;
-  }
-
-  .ae-nav-menu a{
-    font-size:14px;
-  }
-
-  .ae-logo-box{
-    width:58px;
-    height:58px;
-    font-size:32px;
-  }
-}
-
-@media(max-width:900px){
-  .ae-global-header{
-    position:sticky;
-    top:0;
-  }
-
-  .ae-global-inner{
-    min-height:104px;
-    padding:18px 20px;
-  }
-
-  .ae-logo-box{
-    width:68px;
-    height:68px;
-    border-radius:22px;
-    font-size:38px;
-  }
-
-  .ae-brand-title{
-    font-size:25px;
-    letter-spacing:4px;
-  }
-
-  .ae-brand-subtitle{
-    font-size:11px;
-    letter-spacing:4px;
-  }
-
-  .ae-menu-toggle{
-    display:flex;
-  }
-
-  .ae-nav-menu{
-    position:absolute;
-    left:0;
-    right:0;
-    top:100%;
-    display:none;
-    flex-direction:column;
-    align-items:stretch;
-    gap:14px;
-    padding:22px;
-    background:rgba(5,11,22,.98);
-    border-top:1px solid rgba(212,175,55,.18);
-    max-height:calc(100vh - 104px);
-    overflow-y:auto;
-  }
-
-  .ae-nav-menu.open{
-    display:flex;
-  }
-
-  .ae-nav-menu a{
-    display:block;
-    width:100%;
-    padding:20px 24px;
-    border-radius:22px;
-    background:rgba(255,255,255,.065);
-    color:#fff;
-    font-size:24px;
-    font-weight:950;
-  }
-
-  .ae-nav-menu a.active{
-    color:#d4af37;
-    border:1px solid rgba(212,175,55,.35);
-  }
-}
-
-@media(max-width:520px){
-  .ae-global-inner{
-    min-height:96px;
-    padding:16px;
-  }
-
-  .ae-logo-box{
-    width:58px;
-    height:58px;
-    border-radius:19px;
-    font-size:32px;
-  }
-
-  .ae-brand-title{
-    font-size:18px;
-    letter-spacing:3px;
-  }
-
-  .ae-brand-subtitle{
-    font-size:8px;
-    letter-spacing:3px;
-  }
-
-  .ae-menu-toggle{
-    width:58px;
-    height:58px;
-    border-radius:20px;
-  }
-
-  .ae-nav-menu a{
-    font-size:22px;
-    padding:18px 22px;
+  .chatbot-box {
+    left: 14px !important;
+    right: 14px !important;
+    width: auto !important;
+    max-width: none !important;
   }
 }
