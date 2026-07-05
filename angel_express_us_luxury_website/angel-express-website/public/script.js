@@ -677,7 +677,9 @@ function sendChat() {
 }
 document.addEventListener("DOMContentLoaded", () => {
   document
-    .querySelectorAll(".navbar, .mobile-menu, .ae-global-header")
+    .querySelectorAll(
+      ".navbar, .mobile-menu, .ae-global-header, header.navbar, header.ae-global-header"
+    )
     .forEach((nav) => nav.remove());
 
   const navItems = [
@@ -690,7 +692,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { label: "Blog", href: "blog.html" },
     { label: "Angel Merchandise", href: "angel-merchandise.html" },
     { label: "Contact", href: "contact.html" },
-    { label: "Become a Chauffeur", href: "driver.html#apply" },
+    { label: "Become a Chauffeur", href: "driver.html" },
   ];
 
   const currentPage = window.location.pathname.split("/").pop() || "index.html";
@@ -699,31 +701,33 @@ document.addEventListener("DOMContentLoaded", () => {
   header.className = "ae-global-header";
 
   header.innerHTML = `
-    <div class="ae-nav-brand" onclick="window.location.href='index.html'">
-      <div class="ae-logo-box">A</div>
-      <div>
-        <div class="ae-brand-title">ANGEL EXPRESS</div>
-        <div class="ae-brand-subtitle">MOBILITY ECOSYSTEM</div>
-      </div>
+    <div class="ae-global-inner">
+      <a class="ae-nav-brand" href="index.html">
+        <div class="ae-logo-box">A</div>
+        <div>
+          <div class="ae-brand-title">ANGEL EXPRESS</div>
+          <div class="ae-brand-subtitle">MOBILITY ECOSYSTEM</div>
+        </div>
+      </a>
+
+      <button class="ae-menu-toggle" id="aeMenuToggle" type="button" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="ae-nav-menu" id="aeNavMenu">
+        ${navItems
+          .map(
+            (item) => `
+              <a href="${item.href}" class="${currentPage === item.href ? "active" : ""}">
+                ${item.label}
+              </a>
+            `
+          )
+          .join("")}
+      </nav>
     </div>
-
-    <button class="ae-menu-toggle" id="aeMenuToggle" type="button" aria-label="Open menu">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
-
-    <nav class="ae-nav-menu" id="aeNavMenu">
-      ${navItems
-        .map(
-          (item) => `
-            <a href="${item.href}" class="${currentPage === item.href ? "active" : ""}">
-              ${item.label}
-            </a>
-          `
-        )
-        .join("")}
-    </nav>
   `;
 
   document.body.prepend(header);
@@ -732,7 +736,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const navMenu = document.getElementById("aeNavMenu");
 
   menuToggle?.addEventListener("click", () => {
-    navMenu?.classList.toggle("open");
     menuToggle.classList.toggle("open");
+    navMenu.classList.toggle("open");
+    document.body.classList.toggle("ae-menu-open");
+  });
+
+  navMenu?.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      menuToggle.classList.remove("open");
+      navMenu.classList.remove("open");
+      document.body.classList.remove("ae-menu-open");
+    });
   });
 });

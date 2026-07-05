@@ -2157,3 +2157,260 @@ a.whatsapp-float {
     font-size:10px;
   }
 }
+/* ANGEL EXPRESS GLOBAL V4 NAVIGATION */
+
+.navbar,
+.mobile-menu{
+  display:none !important;
+}
+
+.ae-global-header{
+  width:100%;
+  position:sticky;
+  top:0;
+  z-index:99999;
+  background:rgba(5,11,22,.96);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(212,175,55,.16);
+}
+
+.ae-global-inner{
+  max-width:1280px;
+  margin:0 auto;
+  min-height:96px;
+  padding:18px 28px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:28px;
+}
+
+.ae-nav-brand{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  text-decoration:none;
+  flex-shrink:0;
+}
+
+.ae-logo-box{
+  width:64px;
+  height:64px;
+  border-radius:20px;
+  background:linear-gradient(135deg,#f4d96b,#d4af37);
+  color:#050b16;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:36px;
+  font-weight:950;
+  box-shadow:0 12px 35px rgba(212,175,55,.18);
+}
+
+.ae-brand-title{
+  color:#fff;
+  font-size:28px;
+  font-weight:950;
+  letter-spacing:5px;
+  line-height:1;
+}
+
+.ae-brand-subtitle{
+  margin-top:8px;
+  color:#cbd5e1;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:5px;
+}
+
+.ae-nav-menu{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:22px;
+  flex:1;
+}
+
+.ae-nav-menu a{
+  color:#f8fafc;
+  text-decoration:none;
+  font-size:16px;
+  font-weight:900;
+  line-height:1.15;
+  transition:.2s ease;
+  white-space:normal;
+}
+
+.ae-nav-menu a:hover,
+.ae-nav-menu a.active{
+  color:#d4af37;
+}
+
+.ae-menu-toggle{
+  display:none;
+  width:64px;
+  height:64px;
+  border-radius:22px;
+  border:1px solid rgba(212,175,55,.45);
+  background:rgba(255,255,255,.05);
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:7px;
+  cursor:pointer;
+}
+
+.ae-menu-toggle span{
+  width:30px;
+  height:4px;
+  border-radius:99px;
+  background:#fff;
+  transition:.25s ease;
+}
+
+.ae-menu-toggle.open span:nth-child(1){
+  transform:translateY(11px) rotate(45deg);
+}
+
+.ae-menu-toggle.open span:nth-child(2){
+  opacity:0;
+}
+
+.ae-menu-toggle.open span:nth-child(3){
+  transform:translateY(-11px) rotate(-45deg);
+}
+
+@media(max-width:1150px){
+  .ae-global-inner{
+    min-height:88px;
+    padding:16px 22px;
+  }
+
+  .ae-brand-title{
+    font-size:23px;
+    letter-spacing:4px;
+  }
+
+  .ae-brand-subtitle{
+    font-size:10px;
+    letter-spacing:4px;
+  }
+
+  .ae-nav-menu{
+    gap:15px;
+  }
+
+  .ae-nav-menu a{
+    font-size:14px;
+  }
+
+  .ae-logo-box{
+    width:58px;
+    height:58px;
+    font-size:32px;
+  }
+}
+
+@media(max-width:900px){
+  .ae-global-header{
+    position:sticky;
+    top:0;
+  }
+
+  .ae-global-inner{
+    min-height:104px;
+    padding:18px 20px;
+  }
+
+  .ae-logo-box{
+    width:68px;
+    height:68px;
+    border-radius:22px;
+    font-size:38px;
+  }
+
+  .ae-brand-title{
+    font-size:25px;
+    letter-spacing:4px;
+  }
+
+  .ae-brand-subtitle{
+    font-size:11px;
+    letter-spacing:4px;
+  }
+
+  .ae-menu-toggle{
+    display:flex;
+  }
+
+  .ae-nav-menu{
+    position:absolute;
+    left:0;
+    right:0;
+    top:100%;
+    display:none;
+    flex-direction:column;
+    align-items:stretch;
+    gap:14px;
+    padding:22px;
+    background:rgba(5,11,22,.98);
+    border-top:1px solid rgba(212,175,55,.18);
+    max-height:calc(100vh - 104px);
+    overflow-y:auto;
+  }
+
+  .ae-nav-menu.open{
+    display:flex;
+  }
+
+  .ae-nav-menu a{
+    display:block;
+    width:100%;
+    padding:20px 24px;
+    border-radius:22px;
+    background:rgba(255,255,255,.065);
+    color:#fff;
+    font-size:24px;
+    font-weight:950;
+  }
+
+  .ae-nav-menu a.active{
+    color:#d4af37;
+    border:1px solid rgba(212,175,55,.35);
+  }
+}
+
+@media(max-width:520px){
+  .ae-global-inner{
+    min-height:96px;
+    padding:16px;
+  }
+
+  .ae-logo-box{
+    width:58px;
+    height:58px;
+    border-radius:19px;
+    font-size:32px;
+  }
+
+  .ae-brand-title{
+    font-size:18px;
+    letter-spacing:3px;
+  }
+
+  .ae-brand-subtitle{
+    font-size:8px;
+    letter-spacing:3px;
+  }
+
+  .ae-menu-toggle{
+    width:58px;
+    height:58px;
+    border-radius:20px;
+  }
+
+  .ae-nav-menu a{
+    font-size:22px;
+    padding:18px 22px;
+  }
+}
