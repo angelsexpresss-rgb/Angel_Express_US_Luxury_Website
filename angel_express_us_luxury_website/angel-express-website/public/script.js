@@ -676,6 +676,10 @@ function sendChat() {
   chatInput.value = "";
 }
 document.addEventListener("DOMContentLoaded", () => {
+  document
+    .querySelectorAll(".navbar, .mobile-menu, .ae-global-header")
+    .forEach((nav) => nav.remove());
+
   const navItems = [
     { label: "Home", href: "index.html" },
     { label: "Book Ride", href: "book-ride.html" },
@@ -686,7 +690,7 @@ document.addEventListener("DOMContentLoaded", () => {
     { label: "Blog", href: "blog.html" },
     { label: "Angel Merchandise", href: "angel-merchandise.html" },
     { label: "Contact", href: "contact.html" },
-    { label: "Become a Chauffeur", href: "driver.html" },
+    { label: "Become a Chauffeur", href: "driver.html#apply" },
   ];
 
   const currentPage = window.location.pathname.split("/").pop() || "index.html";
@@ -703,7 +707,7 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     </div>
 
-    <button class="ae-menu-toggle" id="aeMenuToggle" type="button">
+    <button class="ae-menu-toggle" id="aeMenuToggle" type="button" aria-label="Open menu">
       <span></span>
       <span></span>
       <span></span>
@@ -713,13 +717,10 @@ document.addEventListener("DOMContentLoaded", () => {
       ${navItems
         .map(
           (item) => `
-          <a 
-            href="${item.href}" 
-            class="${currentPage === item.href ? "active" : ""}"
-          >
-            ${item.label}
-          </a>
-        `
+            <a href="${item.href}" class="${currentPage === item.href ? "active" : ""}">
+              ${item.label}
+            </a>
+          `
         )
         .join("")}
     </nav>
@@ -730,8 +731,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const menuToggle = document.getElementById("aeMenuToggle");
   const navMenu = document.getElementById("aeNavMenu");
 
-  menuToggle.addEventListener("click", () => {
-    navMenu.classList.toggle("open");
+  menuToggle?.addEventListener("click", () => {
+    navMenu?.classList.toggle("open");
     menuToggle.classList.toggle("open");
   });
 });
