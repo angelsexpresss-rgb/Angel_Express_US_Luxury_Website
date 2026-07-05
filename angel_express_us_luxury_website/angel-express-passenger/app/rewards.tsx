@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { ArrowLeft } from "lucide-react-native";
 import { supabase } from "../lib/supabase";
 
 const REFERRAL_DISCOUNT = 10;
@@ -194,6 +195,16 @@ export default function RewardsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+
+      <TouchableOpacity
+        style={styles.backButton}
+        activeOpacity={0.85}
+        onPress={() => router.back()}
+      >
+        <ArrowLeft size={20} color="#D4AF37" />
+        <Text style={styles.backText}>Back</Text>
+      </TouchableOpacity>
+
       <Text style={styles.title}>Angel Rewards</Text>
 
       <Text style={styles.subtitle}>
@@ -409,4 +420,24 @@ const styles = StyleSheet.create({
   },
   activityTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
   activityText: { color: "#C9D0D8", fontSize: 14, marginTop: 4 },
+
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginBottom: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#071426",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.30)",
+  },
+
+  backText: {
+    color: "#D4AF37",
+    fontSize: 16,
+    fontWeight: "900",
+    marginLeft: 8,
+  },
 });

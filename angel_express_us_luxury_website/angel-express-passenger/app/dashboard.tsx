@@ -31,6 +31,7 @@ import {
   Trophy,
   UserRound,
   Users,
+  Gamepad2,
 } from "lucide-react-native";
 
 import { registerForPushNotifications } from "../lib/notifications";
@@ -199,6 +200,12 @@ export default function DashboardScreen() {
               />
 
               <QuickCard
+                title="Angel Entertainment Hub+"
+                icon={<Gamepad2 size={24} color={GOLD} />}
+                onPress={() => router.push("/entertainment-hub" as any)}
+              />
+
+              <QuickCard
                 title="Multi-Language Assistant"
                 icon={<Languages size={24} color={GOLD} />}
                 onPress={() => router.push("/language-assistant" as any)}
@@ -214,24 +221,6 @@ export default function DashboardScreen() {
 
           <Animated.View style={[styles.menuPanel, { opacity: menuFade }]}>
             <Text style={styles.menuTitle}>More Services</Text>
-
-            <AngelDropdown title="Safety & Support">
-              <ListItem
-                title="Angel Safety Share"
-                icon={<ShieldCheck size={20} color={GOLD} />}
-                onPress={() => router.push("/safety-share" as any)}
-              />
-              <ListItem
-                title="Family Check-In+"
-                icon={<Users size={20} color={GOLD} />}
-                onPress={() => router.push("/family-checkin" as any)}
-              />
-              <ListItem
-                title="Support Center"
-                icon={<Headphones size={20} color={GOLD} />}
-                onPress={() => router.push("/support" as any)}
-              />
-            </AngelDropdown>
 
             <AngelDropdown title="Passenger Account">
               <ListItem
@@ -275,36 +264,86 @@ export default function DashboardScreen() {
               />
             </AngelDropdown>
 
+            <AngelDropdown title="Safety & Support">
+              <ListItem
+                title="Angel Safety Share"
+                icon={<ShieldCheck size={20} color={GOLD} />}
+                onPress={() => router.push("/safety-share" as any)}
+              />
+              <ListItem
+                title="Family Check-In+"
+                icon={<Users size={20} color={GOLD} />}
+                onPress={() => router.push("/family-checkin" as any)}
+              />
+              <ListItem
+                title="Support Center"
+                icon={<Headphones size={20} color={GOLD} />}
+                onPress={() => router.push("/support" as any)}
+              />
+            </AngelDropdown>
+
             <AngelDropdown title="Unique Angel Features">
-              <FeatureItem
+              <FeatureButton
                 title="Push Ride Updates"
                 text="Driver assigned, ride confirmed, driver arriving, trip started, arrived safely, and rewards earned."
                 icon={<Bell size={18} color={GOLD} />}
+                onPress={() => router.push("/notification-preferences" as any)}
               />
-              <FeatureItem
+
+              <FeatureButton
                 title="Live GPS Tracking"
                 text="Track your active ride, driver location, ETA, vehicle, and plate number."
                 icon={<Navigation size={18} color={GOLD} />}
+                onPress={() => router.push("/live-trip" as any)}
               />
-              <FeatureItem
-                title="Student Travel Mode"
-                text="Discounted student routes, campus pickup points, and group rides."
+
+              <FeatureButton
+                title="Student Travel Mode+"
+                text="Student discounts, campus pickup points, student pool rides, and verified student badge."
                 icon={<GraduationCap size={18} color={GOLD} />}
+                onPress={() => router.push("/student-travel" as any)}
               />
-              <FeatureItem
-                title="World Cup/Event Mode"
-                text="Hotel pickup, stadium routes, airport transfers, and event support."
+
+              <FeatureButton
+                title="World Cup & Event Mode"
+                text="Hotel pickup, stadium routes, airport transfers, group rides, and event support."
                 icon={<Trophy size={18} color={GOLD} />}
+                onPress={() => router.push("/travel-concierge" as any)}
               />
-              <FeatureItem
+
+              <FeatureButton
                 title="Luxury Ride Prep"
-                text="Luggage, ID, timing, and driver details before pickup."
+                text="Prepare luggage, pickup timing, driver details, preferences, and special ride notes."
                 icon={<BriefcaseBusiness size={18} color={GOLD} />}
+                onPress={() => router.push("/luxury-ride-prep" as any)}
               />
-              <FeatureItem
-                title="Family Check-In"
-                text="Send pickup, halfway, and arrival updates to loved ones."
+
+              <FeatureButton
+                title="Family Check-In+"
+                text="Send pickup, halfway, and arrival updates to loved ones for safer travel."
                 icon={<Users size={18} color={GOLD} />}
+                onPress={() => router.push("/family-checkin" as any)}
+              />
+
+              <FeatureButton
+                title="Angel Entertainment Hub"
+                text="Enjoy music, movies, and in-app games during your ride."
+                icon={<Gamepad2 size={18} color={GOLD} />}
+                onPress={() => router.push("/entertainment-hub" as any)}
+              />
+
+              <FeatureButton
+                title="Angel AI Ride Assistant"
+                text="Ask questions about booking, luggage, airport pickup, route help, pricing, and support."
+                icon={<Sparkles size={18} color={GOLD} />}
+                onPress={() => router.push("/ai-assistant" as any)}
+              />
+
+              <FeatureButton
+                title="Rewards & Referrals"
+                text="Earn ride credits, referral bonuses, reward points, and student savings."
+                icon={<Gift size={18} color={GOLD} />}
+                onPress={() => router.push("/rewards" as any)}
               />
             </AngelDropdown>
           </Animated.View>
@@ -352,23 +391,28 @@ function ListItem({
   );
 }
 
-function FeatureItem({
+function FeatureButton({
   title,
   text,
   icon,
+  onPress,
 }: {
   title: string;
   text: string;
   icon: React.ReactNode;
+  onPress: () => void;
 }) {
   return (
-    <View style={styles.featureItem}>
-      <View style={styles.featureHeader}>
-        <View style={styles.featureIcon}>{icon}</View>
+    <TouchableOpacity style={styles.featureItem} onPress={onPress} activeOpacity={0.85}>
+      <View style={styles.featureIcon}>{icon}</View>
+
+      <View style={{ flex: 1 }}>
         <Text style={styles.featureTitle}>{title}</Text>
+        <Text style={styles.featureText}>{text}</Text>
       </View>
-      <Text style={styles.featureText}>{text}</Text>
-    </View>
+
+      <Text style={styles.featureArrow}>›</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -504,23 +548,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.08)",
-  },
-
-  featureHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 6,
   },
 
   featureIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(212,175,55,0.35)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 10,
+    marginRight: 12,
   },
 
   featureTitle: {
@@ -533,6 +573,14 @@ const styles = StyleSheet.create({
     color: AE_COLORS.muted,
     fontSize: 14.5,
     lineHeight: 22,
+    marginTop: 3,
+  },
+
+  featureArrow: {
+    color: AE_COLORS.gold,
+    fontSize: 28,
+    fontWeight: "900",
+    marginLeft: 12,
   },
 
   dangerIcon: {
