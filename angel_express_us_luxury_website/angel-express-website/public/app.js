@@ -56,6 +56,823 @@ if (typeof supabase !== "undefined") {
 }
 
 /* =========================
+   AI CONFIG
+========================= */
+
+const AE_AI = {
+  welcomeMessage: `
+    Welcome to Angel Express. I can help with booking, fares, airport pickups,
+    luggage, student travel, shared rides, live tracking, driver contact, delays,
+    payments, receipts, hotels, World Cup rides, chauffeur applications,
+    merchandise, safety, and support.
+  `,
+
+  quickPrompts: [
+    "How do I book a ride?",
+    "How much is Dallas to Austin?",
+    "Do you pick up from DFW Airport?",
+    "Do you pick up from Dallas Love Field?",
+    "Can I bring luggage?",
+    "Can I book a round trip?",
+    "Can I book for someone else?",
+    "Can I change my pickup address?",
+    "Can I cancel my ride?",
+    "How does student discount work?",
+    "How do student shared rides work?",
+    "How do I track my driver?",
+    "How do I contact my driver?",
+    "What if my driver is late?",
+    "How do I pay for my ride?",
+    "Can I get a receipt?",
+    "Do you support World Cup rides?",
+    "Can Angel Express help with hotel pickup?",
+    "What if I need emergency help?",
+    "I need support from Angel Express",
+  ],
+
+  knowledge: [
+    {
+      intent: "booking",
+      keywords: [
+        "book",
+        "booking",
+        "reserve",
+        "reservation",
+        "schedule",
+        "request ride",
+        "ride request",
+        "get a ride",
+        "need a ride",
+        "start ride",
+        "private ride",
+      ],
+      answer: `
+        You can book an Angel Express ride by going to
+        <a href="book-ride.html">Book a Ride</a>. Enter your pickup address,
+        drop-off address, ride date, ride time, passenger details, luggage count,
+        and notes. After that, you can review your fare estimate and confirm your booking.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book a Ride</a>
+      `,
+    },
+
+    {
+      intent: "fare",
+      keywords: [
+        "fare",
+        "price",
+        "cost",
+        "estimate",
+        "quote",
+        "how much",
+        "pricing",
+        "rate",
+        "total",
+        "fee",
+        "charge",
+        "expensive",
+        "cheap",
+      ],
+      answer: `
+        Angel Express calculates fares based on distance, trip type, route timing,
+        airport or event demand, student discount eligibility, shared ride savings,
+        referral discounts, luggage, and special notes.
+        <br><br>
+        For the most accurate quote, start with
+        <a href="book-ride.html">Book a Ride</a>. The website will take you through
+        the fare estimate before confirmation.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Get Fare Estimate</a>
+      `,
+    },
+
+    {
+      intent: "dallas-austin",
+      keywords: [
+        "dallas to austin",
+        "austin from dallas",
+        "dfw to austin",
+        "austin ride",
+        "ut austin",
+        "university of texas",
+        "dallas austin",
+      ],
+      answer: `
+        Yes. Angel Express supports Dallas to Austin private rides for students,
+        families, airport travelers, business travelers, and private groups.
+        Pricing depends on pickup point, drop-off point, date, time, luggage,
+        trip type, and eligible discounts.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book Dallas to Austin</a>
+      `,
+    },
+
+    {
+      intent: "dallas-houston",
+      keywords: [
+        "dallas to houston",
+        "houston from dallas",
+        "dfw to houston",
+        "houston ride",
+        "dallas houston",
+      ],
+      answer: `
+        Angel Express supports Dallas to Houston rides, including private
+        long-distance transportation, airport transfers, student travel, and
+        group rides. Your final estimate depends on distance, time, luggage,
+        route, and trip details.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book Dallas to Houston</a>
+      `,
+    },
+
+    {
+      intent: "dallas-san-antonio",
+      keywords: [
+        "san antonio",
+        "dallas to san antonio",
+        "san antonio from dallas",
+        "dfw to san antonio",
+      ],
+      answer: `
+        Yes. Angel Express can support private rides between Dallas and San Antonio.
+        Add your pickup, drop-off, travel date, luggage, and any special notes when booking.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book San Antonio Ride</a>
+      `,
+    },
+
+    {
+      intent: "oklahoma-city",
+      keywords: [
+        "okc",
+        "oklahoma",
+        "oklahoma city",
+        "dallas to okc",
+        "dallas to oklahoma",
+      ],
+      answer: `
+        Angel Express supports Dallas to Oklahoma City and regional private rides.
+        Use the booking form to enter your exact pickup and destination so the team
+        can review your ride request accurately.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book OKC Ride</a>
+      `,
+    },
+
+    {
+      intent: "college-station",
+      keywords: [
+        "college station",
+        "texas a&m",
+        "tamu",
+        "dallas to college station",
+        "aggie",
+      ],
+      answer: `
+        Yes. Angel Express supports student and private rides to College Station
+        and Texas A&M. Students can include campus pickup, dorm pickup, luggage,
+        and family travel notes during booking.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book College Station Ride</a>
+      `,
+    },
+
+    {
+      intent: "airport",
+      keywords: [
+        "airport",
+        "dfw",
+        "love field",
+        "dal airport",
+        "flight",
+        "terminal",
+        "airline",
+        "arrival",
+        "departure",
+        "baggage claim",
+        "airport pickup",
+        "airport dropoff",
+        "airport drop-off",
+      ],
+      answer: `
+        Yes. Angel Express supports airport pickup and drop-off for DFW Airport,
+        Dallas Love Field, Austin, Houston, and other airports. When booking,
+        add your airline, flight number, terminal, arrival or departure time,
+        luggage count, and pickup instructions.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book Airport Ride</a>
+      `,
+    },
+
+    {
+      intent: "dfw-airport",
+      keywords: [
+        "dfw airport",
+        "dfw pickup",
+        "dfw dropoff",
+        "dfw drop-off",
+        "dfw terminal",
+        "dallas fort worth airport",
+      ],
+      answer: `
+        Angel Express supports DFW Airport pickup and drop-off. Please include
+        your airline, flight number, terminal, baggage claim details, luggage count,
+        and whether you need arrival or departure service.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book DFW Airport Ride</a>
+      `,
+    },
+
+    {
+      intent: "love-field",
+      keywords: [
+        "love field",
+        "dallas love field",
+        "dal",
+        "love field pickup",
+        "love field dropoff",
+        "southwest",
+      ],
+      answer: `
+        Yes. Angel Express supports Dallas Love Field pickup and drop-off.
+        Add your flight details, pickup instructions, luggage count, and exact
+        pickup time when booking.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book Love Field Ride</a>
+      `,
+    },
+
+    {
+      intent: "luggage",
+      keywords: [
+        "luggage",
+        "bags",
+        "bag",
+        "suitcase",
+        "suitcases",
+        "boxes",
+        "cargo",
+        "carry on",
+        "carry-on",
+        "large luggage",
+        "moving",
+      ],
+      answer: `
+        Yes. You can bring luggage. Add your luggage count during booking.
+        For large suitcases, boxes, student move-in, airport pickups, or group travel,
+        include details in the notes so Angel Express can prepare properly.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book With Luggage</a>
+      `,
+    },
+
+    {
+      intent: "round-trip",
+      keywords: [
+        "round trip",
+        "return ride",
+        "return trip",
+        "come back",
+        "two way",
+        "2 way",
+        "both ways",
+      ],
+      answer: `
+        Yes. Angel Express supports one-way and round-trip rides. Choose Round Trip
+        during booking or include return trip details in the notes. The team may review
+        timing, wait time, and route details before final confirmation.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book Round Trip</a>
+      `,
+    },
+
+    {
+      intent: "book-for-someone-else",
+      keywords: [
+        "someone else",
+        "book for my friend",
+        "book for my family",
+        "book for my child",
+        "book for my son",
+        "book for my daughter",
+        "parent booking",
+        "family member",
+        "another passenger",
+      ],
+      answer: `
+        Yes. You can book for someone else. Enter the passenger’s name, phone number,
+        pickup details, drop-off details, and emergency or contact notes during booking.
+        For students, parents can include campus, dorm, and luggage information.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book for Someone</a>
+      `,
+    },
+
+    {
+      intent: "changes",
+      keywords: [
+        "change",
+        "edit",
+        "modify",
+        "update booking",
+        "change pickup",
+        "change dropoff",
+        "change drop-off",
+        "pickup address",
+        "dropoff address",
+        "drop-off address",
+        "change time",
+        "change date",
+        "reschedule",
+      ],
+      answer: `
+        For changes to pickup, drop-off, ride time, date, luggage, or notes,
+        contact Angel Express as early as possible. If the ride is close to pickup time,
+        use WhatsApp for the fastest help.
+        <br><br>
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Message Support</a>
+      `,
+    },
+
+    {
+      intent: "cancel",
+      keywords: [
+        "cancel",
+        "cancellation",
+        "cancel ride",
+        "cancel booking",
+        "refund",
+        "no longer need",
+        "reschedule",
+      ],
+      answer: `
+        To cancel or reschedule, contact Angel Express as early as possible.
+        If a chauffeur has already been assigned or is already on the way,
+        support may need to review the trip status.
+        <br><br>
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Cancel or Reschedule</a>
+      `,
+    },
+
+    {
+      intent: "student",
+      keywords: [
+        "student",
+        "college",
+        "campus",
+        "university",
+        "student discount",
+        "student ride",
+        "student travel",
+        "utd",
+        "unt",
+        "smu",
+        "uta",
+        "ut arlington",
+        "texas a&m",
+        "tamu",
+        "ut austin",
+        "dorm",
+        "school",
+      ],
+      answer: `
+        Angel Express supports student travel, campus pickups, verified student discounts,
+        long-distance campus routes, and student shared ride options when available.
+        Students should use the same email connected to their Angel Express profile
+        when booking so eligibility can be checked.
+        <br><br>
+        <a class="chat-action-link" href="passenger.html">Passenger Services</a>
+        <a class="chat-action-dark" href="book-ride.html">Book Student Ride</a>
+      `,
+    },
+
+    {
+      intent: "student-shared-rides",
+      keywords: [
+        "student shared",
+        "student pool",
+        "pool ride",
+        "shared ride",
+        "share ride",
+        "split ride",
+        "ride with other students",
+        "student group",
+        "campus shared",
+      ],
+      answer: `
+        Student shared rides help eligible students lower travel cost by sharing
+        a route with other students when timing and destination match. Shared rides
+        may depend on student verification, campus demand, pickup timing, route,
+        and available seats.
+        <br><br>
+        Start a booking and select the student/shared ride option if available:
+        <a class="chat-action-link" href="book-ride.html">Book Shared Student Ride</a>
+      `,
+    },
+
+    {
+      intent: "referral",
+      keywords: [
+        "referral",
+        "promo",
+        "promo code",
+        "discount code",
+        "coupon",
+        "reward",
+        "rewards",
+        "ride credit",
+        "referrer",
+      ],
+      answer: `
+        Angel Express supports referral and promo codes. Enter your code during
+        booking. Eligible referral savings may apply to the passenger, and the referrer
+        may receive ride credit after the trip is completed, depending on eligibility.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Use Referral Code</a>
+      `,
+    },
+
+    {
+      intent: "tracking",
+      keywords: [
+        "track",
+        "tracking",
+        "live tracking",
+        "driver location",
+        "where is my driver",
+        "gps",
+        "eta",
+        "trip status",
+        "live trip",
+      ],
+      answer: `
+        Angel Express is designed to support live trip tracking through the Passenger App,
+        Driver App, and Owner App. Driver location and ETA are available when the chauffeur
+        is assigned and actively sharing trip status.
+        <br><br>
+        For urgent trip updates, use WhatsApp:
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Get Trip Support</a>
+      `,
+    },
+
+    {
+      intent: "driver-contact",
+      keywords: [
+        "contact my driver",
+        "call driver",
+        "text driver",
+        "driver phone",
+        "chauffeur contact",
+        "message driver",
+        "speak to driver",
+      ],
+      answer: `
+        When your chauffeur is assigned, driver contact details may be shared through
+        trip updates or support. For safety and coordination, Angel Express can help
+        connect you with the chauffeur when appropriate.
+        <br><br>
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Contact Support</a>
+      `,
+    },
+
+    {
+      intent: "driver-late",
+      keywords: [
+        "driver late",
+        "late",
+        "delay",
+        "traffic",
+        "driver delayed",
+        "running late",
+        "not here",
+        "chauffeur late",
+        "waiting",
+      ],
+      answer: `
+        If your driver is delayed, traffic, weather, airport congestion, event routes,
+        road closures, or previous trip timing may be affecting arrival. For urgent delays,
+        contact Angel Express immediately by WhatsApp.
+        <br><br>
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Report Delay</a>
+      `,
+    },
+
+    {
+      intent: "payment",
+      keywords: [
+        "pay",
+        "payment",
+        "card",
+        "credit card",
+        "debit card",
+        "apple pay",
+        "google pay",
+        "stripe",
+        "cash",
+        "zelle",
+        "cash app",
+        "invoice",
+        "receipt",
+        "paid",
+        "balance",
+      ],
+      answer: `
+        Angel Express may support secure payment methods including Stripe, card,
+        Apple Pay, Google Pay, and approved backup payment methods when needed.
+        Receipts and invoices may be sent after booking confirmation or ride completion,
+        depending on the trip flow.
+        <br><br>
+        For payment questions, contact:
+        <a href="mailto:${AE.email}">${AE.email}</a>
+      `,
+    },
+
+    {
+      intent: "receipt",
+      keywords: [
+        "receipt",
+        "invoice",
+        "proof of payment",
+        "email receipt",
+        "billing",
+        "bill",
+        "payment record",
+      ],
+      answer: `
+        Angel Express can provide booking confirmations, invoices, and receipts when available.
+        Check the email used for booking. If you need another copy, contact support with
+        your name, phone number, ride date, and route.
+        <br><br>
+        <a class="chat-action-link" href="mailto:${AE.email}">Request Receipt</a>
+      `,
+    },
+
+    {
+      intent: "world-cup",
+      keywords: [
+        "world cup",
+        "fifa",
+        "soccer",
+        "stadium",
+        "fan",
+        "tournament",
+        "2026",
+        "event transportation",
+        "sports event",
+      ],
+      answer: `
+        Angel Express plans to support World Cup 2026 transportation for airport transfers,
+        hotel pickups, private groups, fans, tourists, students, and regional Texas travel.
+        Early booking is recommended during high-demand event periods.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Reserve World Cup Ride</a>
+      `,
+    },
+
+    {
+      intent: "hotel",
+      keywords: [
+        "hotel",
+        "hotel pickup",
+        "hotel dropoff",
+        "hotel drop-off",
+        "resort",
+        "lobby",
+        "tourist",
+        "visitor",
+        "guest",
+      ],
+      answer: `
+        Yes. Angel Express supports hotel pickup and drop-off. Add the hotel name,
+        lobby or entrance instructions, room contact preference if needed, luggage count,
+        and pickup time during booking.
+        <br><br>
+        <a class="chat-action-link" href="book-ride.html">Book Hotel Pickup</a>
+      `,
+    },
+
+    {
+      intent: "safety",
+      keywords: [
+        "safe",
+        "safety",
+        "emergency",
+        "unsafe",
+        "danger",
+        "accident",
+        "911",
+        "security",
+        "family check",
+        "family tracking",
+        "emergency contact",
+      ],
+      answer: `
+        If this is an emergency or immediate danger, call local emergency services first.
+        For ride-related safety support, Angel Express can help with trip status,
+        emergency contacts, support communication, and operations oversight.
+        <br><br>
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Contact Angel Express Support</a>
+      `,
+    },
+
+    {
+      intent: "support",
+      keywords: [
+        "support",
+        "help",
+        "human",
+        "agent",
+        "representative",
+        "customer service",
+        "phone",
+        "email",
+        "whatsapp",
+        "contact",
+        "talk to someone",
+        "call angel express",
+      ],
+      answer: `
+        You can reach Angel Express support by WhatsApp, phone, or email.
+        <br><br>
+        <div class="chat-mini-card">
+          <strong>Angel Express Support</strong><br>
+          Phone: <a href="tel:+${AE.phoneRaw}">${AE.phoneDisplay}</a><br>
+          Email: <a href="mailto:${AE.email}">${AE.email}</a><br>
+          WhatsApp: <a href="${AE.whatsapp}" target="_blank">Chat With Us</a>
+        </div>
+        <br>
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Open WhatsApp</a>
+      `,
+    },
+
+    {
+      intent: "driver-application",
+      keywords: [
+        "driver",
+        "drive",
+        "chauffeur",
+        "become a driver",
+        "apply to drive",
+        "driver application",
+        "chauffeur application",
+        "driver pay",
+        "payout",
+        "earnings",
+        "70",
+        "70/30",
+        "vehicle requirement",
+      ],
+      answer: `
+        Angel Express works with approved chauffeurs for private rides, airport transfers,
+        student travel, long-distance routes, event transportation, and World Cup travel demand.
+        The standard payout model is 70% driver share and 30% company share for eligible ride revenue.
+        <br><br>
+        <a class="chat-action-link" href="driver.html#apply">Apply to Drive</a>
+        <a class="chat-action-dark" href="driver.html#earnings">View Earnings</a>
+      `,
+    },
+
+    {
+      intent: "merchandise",
+      keywords: [
+        "merch",
+        "merchandise",
+        "shirt",
+        "t-shirt",
+        "tee",
+        "cap",
+        "hat",
+        "candle",
+        "candles",
+        "angel scented",
+        "ocean breeze",
+        "cupid",
+        "valentine",
+        "cart",
+        "checkout",
+        "stripe payment link",
+      ],
+      answer: `
+        You can shop Angel Express merchandise, apparel, caps, and Angels Scented Candle
+        collections on the merchandise page. Checkout uses Stripe Payment Links once
+        your product links are added.
+        <br><br>
+        <a class="chat-action-link" href="angel-merchandise.html">Shop Angel Merchandise</a>
+      `,
+    },
+
+    {
+      intent: "passenger-services",
+      keywords: [
+        "passenger",
+        "passenger services",
+        "services",
+        "private transportation",
+        "long distance",
+        "student travel",
+        "airport transfer",
+        "group ride",
+        "family ride",
+        "tourist",
+      ],
+      answer: `
+        Angel Express passenger services include private rides, airport transfers,
+        student travel, long-distance Texas routes, hotel pickups, event transportation,
+        and World Cup ride support.
+        <br><br>
+        <a class="chat-action-link" href="passenger.html">View Passenger Services</a>
+      `,
+    },
+
+    {
+      intent: "terms-privacy",
+      keywords: [
+        "terms",
+        "privacy",
+        "policy",
+        "data",
+        "personal information",
+        "location data",
+        "gps",
+        "rules",
+        "agreement",
+        "conditions",
+      ],
+      answer: `
+        You can review Angel Express Terms of Service and Privacy Policy on the Terms page.
+        It covers bookings, payments, driver responsibilities, passenger responsibilities,
+        safety, app data, live tracking, and third-party services.
+        <br><br>
+        <a class="chat-action-link" href="terms.html">Read Terms & Privacy</a>
+      `,
+    },
+
+    {
+      intent: "blog",
+      keywords: [
+        "blog",
+        "article",
+        "travel guide",
+        "road travel",
+        "tips",
+        "news",
+        "guide",
+      ],
+      answer: `
+        Angel Express publishes travel articles, transportation guides, and road travel content
+        on the blog page.
+        <br><br>
+        <a class="chat-action-link" href="blog.html">Visit Angel Express Blog</a>
+      `,
+    },
+
+    {
+      intent: "hours",
+      keywords: [
+        "hours",
+        "open",
+        "available",
+        "24/7",
+        "night",
+        "early morning",
+        "late night",
+        "weekend",
+        "holiday",
+      ],
+      answer: `
+        Angel Express is available by reservation. For early morning, late night,
+        airport, holiday, or event rides, book early and include timing details.
+        For urgent requests, contact WhatsApp support.
+        <br><br>
+        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Ask About Availability</a>
+      `,
+    },
+
+    {
+      intent: "greeting",
+      keywords: [
+        "hello",
+        "hi",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "how are you",
+        "start",
+      ],
+      answer: `
+        Hello! Welcome to Angel Express. I can help with booking, fare estimates,
+        airport rides, luggage, student travel, tracking, payments, chauffeur applications,
+        merchandise, safety, and support.
+        <br><br>
+        What would you like help with today?
+      `,
+    },
+  ],
+};
+
+/* =========================
    BOOT
 ========================= */
 
@@ -356,821 +1173,9 @@ function replaceOldEmailsSafely() {
    AI ASSISTANT + WHATSAPP
 ========================= */
 
-const AE_AI = {
-  welcomeMessage: `
-    Welcome to Angel Express. I can help with booking, fares, airport pickups,
-    luggage, student travel, shared rides, live tracking, driver contact, delays,
-    payments, receipts, hotels, World Cup rides, chauffeur applications,
-    merchandise, safety, and support.
-  `,
-
-  quickPrompts: [
-    "How do I book a ride?",
-    "How much is Dallas to Austin?",
-    "Do you pick up from DFW Airport?",
-    "Do you pick up from Dallas Love Field?",
-    "Can I bring luggage?",
-    "Can I book a round trip?",
-    "Can I book for someone else?",
-    "Can I change my pickup address?",
-    "Can I cancel my ride?",
-    "How does student discount work?",
-    "How do student shared rides work?",
-    "How do I track my driver?",
-    "How do I contact my driver?",
-    "What if my driver is late?",
-    "How do I pay for my ride?",
-    "Can I get a receipt?",
-    "Do you support World Cup rides?",
-    "Can Angel Express help with hotel pickup?",
-    "What if I need emergency help?",
-    "I need support from Angel Express"
-  ],
-
-  knowledge: [
-    {
-      intent: "booking",
-      keywords: [
-        "book",
-        "booking",
-        "reserve",
-        "reservation",
-        "schedule",
-        "request ride",
-        "ride request",
-        "get a ride",
-        "need a ride",
-        "start ride",
-        "private ride"
-      ],
-      answer: `
-        You can book an Angel Express ride by going to
-        <a href="book-ride.html">Book a Ride</a>. Enter your pickup address,
-        drop-off address, ride date, ride time, passenger details, luggage count,
-        and notes. After that, you can review your fare estimate and confirm your booking.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book a Ride</a>
-      `
-    },
-
-    {
-      intent: "fare",
-      keywords: [
-        "fare",
-        "price",
-        "cost",
-        "estimate",
-        "quote",
-        "how much",
-        "pricing",
-        "rate",
-        "total",
-        "fee",
-        "charge",
-        "expensive",
-        "cheap"
-      ],
-      answer: `
-        Angel Express calculates fares based on distance, trip type, route timing,
-        airport or event demand, student discount eligibility, shared ride savings,
-        referral discounts, luggage, and special notes.
-        <br><br>
-        For the most accurate quote, start with
-        <a href="book-ride.html">Book a Ride</a>. The website will take you through
-        the fare estimate before confirmation.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Get Fare Estimate</a>
-      `
-    },
-
-    {
-      intent: "dallas-austin",
-      keywords: [
-        "dallas to austin",
-        "austin from dallas",
-        "dfw to austin",
-        "austin ride",
-        "ut austin",
-        "university of texas",
-        "dallas austin"
-      ],
-      answer: `
-        Yes. Angel Express supports Dallas to Austin private rides for students,
-        families, airport travelers, business travelers, and private groups.
-        Pricing depends on pickup point, drop-off point, date, time, luggage,
-        trip type, and eligible discounts.
-        <br><br>
-        Start here:
-        <a class="chat-action-link" href="book-ride.html">Book Dallas to Austin</a>
-      `
-    },
-
-    {
-      intent: "dallas-houston",
-      keywords: [
-        "dallas to houston",
-        "houston from dallas",
-        "dfw to houston",
-        "houston ride",
-        "dallas houston"
-      ],
-      answer: `
-        Angel Express supports Dallas to Houston rides, including private
-        long-distance transportation, airport transfers, student travel, and
-        group rides. Your final estimate depends on distance, time, luggage,
-        route, and trip details.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book Dallas to Houston</a>
-      `
-    },
-
-    {
-      intent: "dallas-san-antonio",
-      keywords: [
-        "san antonio",
-        "dallas to san antonio",
-        "san antonio from dallas",
-        "dfw to san antonio"
-      ],
-      answer: `
-        Yes. Angel Express can support private rides between Dallas and San Antonio.
-        Add your pickup, drop-off, travel date, luggage, and any special notes when booking.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book San Antonio Ride</a>
-      `
-    },
-
-    {
-      intent: "oklahoma-city",
-      keywords: [
-        "okc",
-        "oklahoma",
-        "oklahoma city",
-        "dallas to okc",
-        "dallas to oklahoma"
-      ],
-      answer: `
-        Angel Express supports Dallas to Oklahoma City and regional private rides.
-        Use the booking form to enter your exact pickup and destination so the team
-        can review your ride request accurately.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book OKC Ride</a>
-      `
-    },
-
-    {
-      intent: "college-station",
-      keywords: [
-        "college station",
-        "texas a&m",
-        "tamu",
-        "dallas to college station",
-        "aggie"
-      ],
-      answer: `
-        Yes. Angel Express supports student and private rides to College Station
-        and Texas A&M. Students can include campus pickup, dorm pickup, luggage,
-        and family travel notes during booking.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book College Station Ride</a>
-      `
-    },
-
-    {
-      intent: "airport",
-      keywords: [
-        "airport",
-        "dfw",
-        "love field",
-        "dal airport",
-        "flight",
-        "terminal",
-        "airline",
-        "arrival",
-        "departure",
-        "baggage claim",
-        "airport pickup",
-        "airport dropoff",
-        "airport drop-off"
-      ],
-      answer: `
-        Yes. Angel Express supports airport pickup and drop-off for DFW Airport,
-        Dallas Love Field, Austin, Houston, and other airports. When booking,
-        add your airline, flight number, terminal, arrival or departure time,
-        luggage count, and pickup instructions.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book Airport Ride</a>
-      `
-    },
-
-    {
-      intent: "dfw-airport",
-      keywords: [
-        "dfw airport",
-        "dfw pickup",
-        "dfw dropoff",
-        "dfw drop-off",
-        "dfw terminal",
-        "dallas fort worth airport"
-      ],
-      answer: `
-        Angel Express supports DFW Airport pickup and drop-off. Please include
-        your airline, flight number, terminal, baggage claim details, luggage count,
-        and whether you need arrival or departure service.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book DFW Airport Ride</a>
-      `
-    },
-
-    {
-      intent: "love-field",
-      keywords: [
-        "love field",
-        "dallas love field",
-        "dal",
-        "love field pickup",
-        "love field dropoff",
-        "southwest"
-      ],
-      answer: `
-        Yes. Angel Express supports Dallas Love Field pickup and drop-off.
-        Add your flight details, pickup instructions, luggage count, and exact
-        pickup time when booking.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book Love Field Ride</a>
-      `
-    },
-
-    {
-      intent: "luggage",
-      keywords: [
-        "luggage",
-        "bags",
-        "bag",
-        "suitcase",
-        "suitcases",
-        "boxes",
-        "cargo",
-        "carry on",
-        "carry-on",
-        "large luggage",
-        "moving"
-      ],
-      answer: `
-        Yes. You can bring luggage. Add your luggage count during booking.
-        For large suitcases, boxes, student move-in, airport pickups, or group travel,
-        include details in the notes so Angel Express can prepare properly.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book With Luggage</a>
-      `
-    },
-
-    {
-      intent: "round-trip",
-      keywords: [
-        "round trip",
-        "return ride",
-        "return trip",
-        "come back",
-        "two way",
-        "2 way",
-        "both ways"
-      ],
-      answer: `
-        Yes. Angel Express supports one-way and round-trip rides. Choose Round Trip
-        during booking or include return trip details in the notes. The team may review
-        timing, wait time, and route details before final confirmation.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book Round Trip</a>
-      `
-    },
-
-    {
-      intent: "book-for-someone-else",
-      keywords: [
-        "someone else",
-        "book for my friend",
-        "book for my family",
-        "book for my child",
-        "book for my son",
-        "book for my daughter",
-        "parent booking",
-        "family member",
-        "another passenger"
-      ],
-      answer: `
-        Yes. You can book for someone else. Enter the passenger’s name, phone number,
-        pickup details, drop-off details, and emergency or contact notes during booking.
-        For students, parents can include campus, dorm, and luggage information.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book for Someone</a>
-      `
-    },
-
-    {
-      intent: "changes",
-      keywords: [
-        "change",
-        "edit",
-        "modify",
-        "update booking",
-        "change pickup",
-        "change dropoff",
-        "change drop-off",
-        "pickup address",
-        "dropoff address",
-        "drop-off address",
-        "change time",
-        "change date",
-        "reschedule"
-      ],
-      answer: `
-        For changes to pickup, drop-off, ride time, date, luggage, or notes,
-        contact Angel Express as early as possible. If the ride is close to pickup time,
-        use WhatsApp for the fastest help.
-        <br><br>
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Message Support</a>
-      `
-    },
-
-    {
-      intent: "cancel",
-      keywords: [
-        "cancel",
-        "cancellation",
-        "cancel ride",
-        "cancel booking",
-        "refund",
-        "no longer need",
-        "reschedule"
-      ],
-      answer: `
-        To cancel or reschedule, contact Angel Express as early as possible.
-        If a chauffeur has already been assigned or is already on the way,
-        support may need to review the trip status.
-        <br><br>
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Cancel or Reschedule</a>
-      `
-    },
-
-    {
-      intent: "student",
-      keywords: [
-        "student",
-        "college",
-        "campus",
-        "university",
-        "student discount",
-        "student ride",
-        "student travel",
-        "utd",
-        "unt",
-        "smu",
-        "uta",
-        "ut arlington",
-        "texas a&m",
-        "tamu",
-        "ut austin",
-        "dorm",
-        "school"
-      ],
-      answer: `
-        Angel Express supports student travel, campus pickups, verified student discounts,
-        long-distance campus routes, and student shared ride options when available.
-        Students should use the same email connected to their Angel Express profile
-        when booking so eligibility can be checked.
-        <br><br>
-        <a class="chat-action-link" href="passenger.html">Passenger Services</a>
-        <a class="chat-action-dark" href="book-ride.html">Book Student Ride</a>
-      `
-    },
-
-    {
-      intent: "student-shared-rides",
-      keywords: [
-        "student shared",
-        "student pool",
-        "pool ride",
-        "shared ride",
-        "share ride",
-        "split ride",
-        "ride with other students",
-        "student group",
-        "campus shared"
-      ],
-      answer: `
-        Student shared rides help eligible students lower travel cost by sharing
-        a route with other students when timing and destination match. Shared rides
-        may depend on student verification, campus demand, pickup timing, route,
-        and available seats.
-        <br><br>
-        Start a booking and select the student/shared ride option if available:
-        <a class="chat-action-link" href="book-ride.html">Book Shared Student Ride</a>
-      `
-    },
-
-    {
-      intent: "referral",
-      keywords: [
-        "referral",
-        "promo",
-        "promo code",
-        "discount code",
-        "coupon",
-        "reward",
-        "rewards",
-        "ride credit",
-        "referrer"
-      ],
-      answer: `
-        Angel Express supports referral and promo codes. Enter your code during
-        booking. Eligible referral savings may apply to the passenger, and the referrer
-        may receive ride credit after the trip is completed, depending on eligibility.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Use Referral Code</a>
-      `
-    },
-
-    {
-      intent: "tracking",
-      keywords: [
-        "track",
-        "tracking",
-        "live tracking",
-        "driver location",
-        "where is my driver",
-        "gps",
-        "eta",
-        "trip status",
-        "live trip"
-      ],
-      answer: `
-        Angel Express is designed to support live trip tracking through the Passenger App,
-        Driver App, and Owner App. Driver location and ETA are available when the chauffeur
-        is assigned and actively sharing trip status.
-        <br><br>
-        For urgent trip updates, use WhatsApp:
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Get Trip Support</a>
-      `
-    },
-
-    {
-      intent: "driver-contact",
-      keywords: [
-        "contact my driver",
-        "call driver",
-        "text driver",
-        "driver phone",
-        "chauffeur contact",
-        "message driver",
-        "speak to driver"
-      ],
-      answer: `
-        When your chauffeur is assigned, driver contact details may be shared through
-        trip updates or support. For safety and coordination, Angel Express can help
-        connect you with the chauffeur when appropriate.
-        <br><br>
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Contact Support</a>
-      `
-    },
-
-    {
-      intent: "driver-late",
-      keywords: [
-        "driver late",
-        "late",
-        "delay",
-        "traffic",
-        "driver delayed",
-        "running late",
-        "not here",
-        "chauffeur late",
-        "waiting"
-      ],
-      answer: `
-        If your driver is delayed, traffic, weather, airport congestion, event routes,
-        road closures, or previous trip timing may be affecting arrival. For urgent delays,
-        contact Angel Express immediately by WhatsApp.
-        <br><br>
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Report Delay</a>
-      `
-    },
-
-    {
-      intent: "payment",
-      keywords: [
-        "pay",
-        "payment",
-        "card",
-        "credit card",
-        "debit card",
-        "apple pay",
-        "google pay",
-        "stripe",
-        "cash",
-        "zelle",
-        "cash app",
-        "invoice",
-        "receipt",
-        "paid",
-        "balance"
-      ],
-      answer: `
-        Angel Express may support secure payment methods including Stripe, card,
-        Apple Pay, Google Pay, and approved backup payment methods when needed.
-        Receipts and invoices may be sent after booking confirmation or ride completion,
-        depending on the trip flow.
-        <br><br>
-        For payment questions, contact:
-        <a href="mailto:${AE.email}">${AE.email}</a>
-      `
-    },
-
-    {
-      intent: "receipt",
-      keywords: [
-        "receipt",
-        "invoice",
-        "proof of payment",
-        "email receipt",
-        "billing",
-        "bill",
-        "payment record"
-      ],
-      answer: `
-        Angel Express can provide booking confirmations, invoices, and receipts when available.
-        Check the email used for booking. If you need another copy, contact support with
-        your name, phone number, ride date, and route.
-        <br><br>
-        <a class="chat-action-link" href="mailto:${AE.email}">Request Receipt</a>
-      `
-    },
-
-    {
-      intent: "world-cup",
-      keywords: [
-        "world cup",
-        "fifa",
-        "soccer",
-        "stadium",
-        "fan",
-        "tournament",
-        "2026",
-        "event transportation",
-        "sports event"
-      ],
-      answer: `
-        Angel Express plans to support World Cup 2026 transportation for airport transfers,
-        hotel pickups, private groups, fans, tourists, students, and regional Texas travel.
-        Early booking is recommended during high-demand event periods.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Reserve World Cup Ride</a>
-      `
-    },
-
-    {
-      intent: "hotel",
-      keywords: [
-        "hotel",
-        "hotel pickup",
-        "hotel dropoff",
-        "hotel drop-off",
-        "resort",
-        "lobby",
-        "tourist",
-        "visitor",
-        "guest"
-      ],
-      answer: `
-        Yes. Angel Express supports hotel pickup and drop-off. Add the hotel name,
-        lobby or entrance instructions, room contact preference if needed, luggage count,
-        and pickup time during booking.
-        <br><br>
-        <a class="chat-action-link" href="book-ride.html">Book Hotel Pickup</a>
-      `
-    },
-
-    {
-      intent: "safety",
-      keywords: [
-        "safe",
-        "safety",
-        "emergency",
-        "unsafe",
-        "danger",
-        "accident",
-        "911",
-        "security",
-        "family check",
-        "family tracking",
-        "emergency contact"
-      ],
-      answer: `
-        If this is an emergency or immediate danger, call local emergency services first.
-        For ride-related safety support, Angel Express can help with trip status,
-        emergency contacts, support communication, and operations oversight.
-        <br><br>
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Contact Angel Express Support</a>
-      `
-    },
-
-    {
-      intent: "support",
-      keywords: [
-        "support",
-        "help",
-        "human",
-        "agent",
-        "representative",
-        "customer service",
-        "phone",
-        "email",
-        "whatsapp",
-        "contact",
-        "talk to someone",
-        "call angel express"
-      ],
-      answer: `
-        You can reach Angel Express support by WhatsApp, phone, or email.
-        <br><br>
-        <div class="chat-mini-card">
-          <strong>Angel Express Support</strong><br>
-          Phone: <a href="tel:+${AE.phoneRaw}">${AE.phoneDisplay}</a><br>
-          Email: <a href="mailto:${AE.email}">${AE.email}</a><br>
-          WhatsApp: <a href="${AE.whatsapp}" target="_blank">Chat With Us</a>
-        </div>
-        <br>
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Open WhatsApp</a>
-      `
-    },
-
-    {
-      intent: "driver-application",
-      keywords: [
-        "driver",
-        "drive",
-        "chauffeur",
-        "become a driver",
-        "apply to drive",
-        "driver application",
-        "chauffeur application",
-        "driver pay",
-        "payout",
-        "earnings",
-        "70",
-        "70/30",
-        "vehicle requirement"
-      ],
-      answer: `
-        Angel Express works with approved chauffeurs for private rides, airport transfers,
-        student travel, long-distance routes, event transportation, and World Cup travel demand.
-        The standard payout model is 70% driver share and 30% company share for eligible ride revenue.
-        <br><br>
-        <a class="chat-action-link" href="driver.html#apply">Apply to Drive</a>
-        <a class="chat-action-dark" href="driver.html#earnings">View Earnings</a>
-      `
-    },
-
-    {
-      intent: "merchandise",
-      keywords: [
-        "merch",
-        "merchandise",
-        "shirt",
-        "t-shirt",
-        "tee",
-        "cap",
-        "hat",
-        "candle",
-        "candles",
-        "angel scented",
-        "ocean breeze",
-        "cupid",
-        "valentine",
-        "cart",
-        "checkout",
-        "stripe payment link"
-      ],
-      answer: `
-        You can shop Angel Express merchandise, apparel, caps, and Angels Scented Candle
-        collections on the merchandise page. Checkout uses Stripe Payment Links once
-        your product links are added.
-        <br><br>
-        <a class="chat-action-link" href="angel-merchandise.html">Shop Angel Merchandise</a>
-      `
-    },
-
-    {
-      intent: "passenger-services",
-      keywords: [
-        "passenger",
-        "passenger services",
-        "services",
-        "private transportation",
-        "long distance",
-        "student travel",
-        "airport transfer",
-        "group ride",
-        "family ride",
-        "tourist"
-      ],
-      answer: `
-        Angel Express passenger services include private rides, airport transfers,
-        student travel, long-distance Texas routes, hotel pickups, event transportation,
-        and World Cup ride support.
-        <br><br>
-        <a class="chat-action-link" href="passenger.html">View Passenger Services</a>
-      `
-    },
-
-    {
-      intent: "terms-privacy",
-      keywords: [
-        "terms",
-        "privacy",
-        "policy",
-        "data",
-        "personal information",
-        "location data",
-        "gps",
-        "rules",
-        "agreement",
-        "conditions"
-      ],
-      answer: `
-        You can review Angel Express Terms of Service and Privacy Policy on the Terms page.
-        It covers bookings, payments, driver responsibilities, passenger responsibilities,
-        safety, app data, live tracking, and third-party services.
-        <br><br>
-        <a class="chat-action-link" href="terms.html">Read Terms & Privacy</a>
-      `
-    },
-
-    {
-      intent: "blog",
-      keywords: [
-        "blog",
-        "article",
-        "travel guide",
-        "road travel",
-        "tips",
-        "news",
-        "guide"
-      ],
-      answer: `
-        Angel Express publishes travel articles, transportation guides, and road travel content
-        on the blog page.
-        <br><br>
-        <a class="chat-action-link" href="blog.html">Visit Angel Express Blog</a>
-      `
-    },
-
-    {
-      intent: "hours",
-      keywords: [
-        "hours",
-        "open",
-        "available",
-        "24/7",
-        "night",
-        "early morning",
-        "late night",
-        "weekend",
-        "holiday"
-      ],
-      answer: `
-        Angel Express is available by reservation. For early morning, late night,
-        airport, holiday, or event rides, book early and include timing details.
-        For urgent requests, contact WhatsApp support.
-        <br><br>
-        <a class="chat-action-link" href="${AE.whatsapp}" target="_blank">Ask About Availability</a>
-      `
-    },
-
-    {
-      intent: "greeting",
-      keywords: [
-        "hello",
-        "hi",
-        "hey",
-        "good morning",
-        "good afternoon",
-        "good evening",
-        "how are you",
-        "start"
-      ],
-      answer: `
-        Hello! Welcome to Angel Express. I can help with booking, fare estimates,
-        airport rides, luggage, student travel, tracking, payments, chauffeur applications,
-        merchandise, safety, and support.
-        <br><br>
-        What would you like help with today?
-      `
-    }
-  ]
-};
-
 function buildSupportWidgets() {
+  injectAdaptiveAIStyles();
+
   document
     .querySelectorAll(
       "#chatToggle, .chat-toggle, .whatsapp-float, #chatbotBox, .chatbot-box, .mobile-support-dock"
@@ -1180,17 +1185,17 @@ function buildSupportWidgets() {
   document.body.insertAdjacentHTML(
     "beforeend",
     `
-      <button id="chatToggle" class="chat-toggle" type="button">
+      <button id="chatToggle" class="chat-toggle" type="button" aria-label="Open Angel Express AI Assistant">
         <i class="fa-solid fa-robot"></i>
-        AI Assistant
+        <span>AI Assistant</span>
       </button>
 
-      <a class="whatsapp-float" href="${AE.whatsapp}" target="_blank">
+      <a class="whatsapp-float" href="${AE.whatsapp}" target="_blank" aria-label="Chat with Angel Express on WhatsApp">
         <i class="fab fa-whatsapp"></i>
-        Chat With Us
+        <span>Chat With Us</span>
       </a>
 
-      <div id="chatbotBox" class="chatbot-box">
+      <div id="chatbotBox" class="chatbot-box" role="dialog" aria-label="Angel Express AI Assistant">
         <div class="chatbot-header">
           <div class="chatbot-brand">
             <div class="chatbot-logo">A</div>
@@ -1200,13 +1205,14 @@ function buildSupportWidgets() {
             </div>
           </div>
 
-          <button type="button" class="chat-close" id="chatCloseBtn">×</button>
+          <button type="button" class="chat-close" id="chatCloseBtn" aria-label="Close chat">×</button>
         </div>
 
         <div class="chatbot-messages" id="chatbotMessages"></div>
 
         <div class="quick-prompts" id="chatQuickPrompts">
           ${AE_AI.quickPrompts
+            .slice(0, 8)
             .map(
               (prompt) => `
                 <button type="button" data-prompt="${escapeAttribute(prompt)}">
@@ -1217,8 +1223,12 @@ function buildSupportWidgets() {
             .join("")}
         </div>
 
+        <button type="button" class="show-more-prompts" id="showMorePromptsBtn">
+          More questions
+        </button>
+
         <div class="chatbot-input">
-          <input id="chatInput" placeholder="Ask Angel Express anything..." />
+          <input id="chatInput" placeholder="Ask Angel Express anything..." autocomplete="off" />
           <button id="chatSendBtn" type="button">Send</button>
         </div>
       </div>
@@ -1320,6 +1330,14 @@ function setupChatLogic() {
     }, 350);
   }
 
+  function bindQuickPromptButtons(scope = document) {
+    scope.querySelectorAll(".quick-prompts button").forEach((button) => {
+      button.addEventListener("click", () => {
+        sendMessage(button.dataset.prompt);
+      });
+    });
+  }
+
   chatToggle?.addEventListener("click", () => {
     if (box.classList.contains("open")) {
       closeChat();
@@ -1338,10 +1356,26 @@ function setupChatLogic() {
     }
   });
 
-  document.querySelectorAll(".quick-prompts button").forEach((button) => {
-    button.addEventListener("click", () => {
-      sendMessage(button.dataset.prompt);
-    });
+  bindQuickPromptButtons();
+
+  const showMorePromptsBtn = document.getElementById("showMorePromptsBtn");
+  const quickPromptsBox = document.getElementById("chatQuickPrompts");
+
+  showMorePromptsBtn?.addEventListener("click", () => {
+    if (!quickPromptsBox) return;
+
+    quickPromptsBox.innerHTML = AE_AI.quickPrompts
+      .map(
+        (prompt) => `
+          <button type="button" data-prompt="${escapeAttribute(prompt)}">
+            ${escapeHtml(prompt)}
+          </button>
+        `
+      )
+      .join("");
+
+    bindQuickPromptButtons(quickPromptsBox);
+    showMorePromptsBtn.remove();
   });
 
   window.sendChat = function sendChat() {
@@ -1399,44 +1433,44 @@ function getRouteSpecificAnswer(q) {
       names: ["austin", "ut austin", "university of texas"],
       label: "Austin",
       note:
-        "Angel Express supports Dallas to Austin rides for students, families, airport travelers, business travelers, and private groups."
+        "Angel Express supports Dallas to Austin rides for students, families, airport travelers, business travelers, and private groups.",
     },
     {
       names: ["houston"],
       label: "Houston",
       note:
-        "Angel Express supports Dallas to Houston private rides, student travel, airport transfers, and group transportation."
+        "Angel Express supports Dallas to Houston private rides, student travel, airport transfers, and group transportation.",
     },
     {
       names: ["san antonio"],
       label: "San Antonio",
       note:
-        "Angel Express can support Dallas to San Antonio private rides and custom long-distance travel."
+        "Angel Express can support Dallas to San Antonio private rides and custom long-distance travel.",
     },
     {
       names: ["okc", "oklahoma", "oklahoma city"],
       label: "Oklahoma City",
       note:
-        "Angel Express supports Dallas to Oklahoma City and regional private rides."
+        "Angel Express supports Dallas to Oklahoma City and regional private rides.",
     },
     {
       names: ["college station", "texas a&m", "tamu"],
       label: "College Station",
       note:
-        "Angel Express supports College Station and Texas A&M student rides, family travel, and campus transportation."
+        "Angel Express supports College Station and Texas A&M student rides, family travel, and campus transportation.",
     },
     {
       names: ["dfw", "dfw airport", "dallas fort worth"],
       label: "DFW Airport",
       note:
-        "Angel Express supports DFW Airport pickup and drop-off. Add airline, terminal, flight number, and luggage details."
+        "Angel Express supports DFW Airport pickup and drop-off. Add airline, terminal, flight number, and luggage details.",
     },
     {
       names: ["love field", "dallas love field", "dal"],
       label: "Dallas Love Field",
       note:
-        "Angel Express supports Dallas Love Field pickup and drop-off. Add flight details and pickup instructions."
-    }
+        "Angel Express supports Dallas Love Field pickup and drop-off. Add flight details and pickup instructions.",
+    },
   ];
 
   const isRouteQuestion =
@@ -1495,7 +1529,7 @@ function getFallbackAnswer(question) {
 function getSmartSuggestions() {
   return `
     <div class="chat-mini-card">
-      <strong>Popular questions I can answer:</strong>
+      <strong>Popular topics:</strong>
       <div class="chat-grid">
         <span class="chat-pill">Booking</span>
         <span class="chat-pill">Fare estimate</span>
@@ -1529,6 +1563,471 @@ function escapeHtml(text) {
 
 function escapeAttribute(text) {
   return escapeHtml(text).replaceAll("`", "&#096;");
+}
+
+function injectAdaptiveAIStyles() {
+  if (document.getElementById("angelAiAdaptiveStyle")) return;
+
+  const style = document.createElement("style");
+  style.id = "angelAiAdaptiveStyle";
+
+  style.textContent = `
+    /* =========================
+       ANGEL EXPRESS ADAPTIVE AI BOT
+    ========================= */
+
+    .chat-toggle,
+    .whatsapp-float{
+      position:fixed;
+      right:22px;
+      z-index:99990;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      min-height:54px;
+      padding:0 22px;
+      border-radius:999px;
+      border:1px solid rgba(212,175,55,.42);
+      font-weight:950;
+      text-decoration:none;
+      box-shadow:0 18px 55px rgba(0,0,0,.36);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+    }
+
+    .chat-toggle{
+      bottom:94px;
+      background:linear-gradient(135deg,#F4D96B,#D4AF37);
+      color:#050b16;
+      cursor:pointer;
+    }
+
+    .whatsapp-float{
+      bottom:28px;
+      background:rgba(5,11,22,.92);
+      color:white;
+    }
+
+    .chatbot-box{
+      position:fixed;
+      right:22px;
+      bottom:164px;
+      width:min(420px, calc(100vw - 44px));
+      max-height:72vh;
+      z-index:99991;
+      display:none;
+      overflow:hidden;
+      border-radius:28px;
+      background:rgba(5,11,22,.97);
+      border:1px solid rgba(212,175,55,.34);
+      box-shadow:0 28px 90px rgba(0,0,0,.52);
+      backdrop-filter:blur(22px);
+      -webkit-backdrop-filter:blur(22px);
+    }
+
+    .chatbot-box.open{
+      display:flex;
+      flex-direction:column;
+    }
+
+    .chatbot-header{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      padding:17px 18px 15px;
+      border-bottom:1px solid rgba(212,175,55,.18);
+      background:
+        radial-gradient(circle at top left,rgba(212,175,55,.16),transparent 38%),
+        rgba(255,255,255,.035);
+    }
+
+    .chatbot-brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    .chatbot-logo{
+      width:42px;
+      height:42px;
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+      border-radius:15px;
+      background:linear-gradient(135deg,#F4D96B,#D4AF37);
+      color:#050b16;
+      font-weight:950;
+      font-size:20px;
+      box-shadow:0 14px 35px rgba(212,175,55,.22);
+    }
+
+    .chatbot-title{
+      color:white;
+      font-size:15px;
+      font-weight:950;
+      line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .chatbot-subtitle{
+      margin-top:3px;
+      font-size:11px;
+      color:rgba(255,255,255,.58);
+      font-weight:800;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .chat-close{
+      flex:0 0 auto;
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      border:1px solid rgba(212,175,55,.24);
+      background:rgba(255,255,255,.06);
+      color:white;
+      font-size:24px;
+      line-height:1;
+      cursor:pointer;
+    }
+
+    .chatbot-messages{
+      flex:1 1 auto;
+      min-height:160px;
+      max-height:280px;
+      padding:16px;
+      overflow-y:auto;
+      overscroll-behavior:contain;
+      scrollbar-width:thin;
+    }
+
+    .chat-msg{
+      width:fit-content;
+      max-width:92%;
+      font-size:13.5px;
+      line-height:1.58;
+      border-radius:18px;
+      padding:12px 13px;
+      margin-bottom:10px;
+      color:#edf3fb;
+      word-wrap:break-word;
+      overflow-wrap:anywhere;
+    }
+
+    .chat-msg.bot{
+      background:rgba(255,255,255,.065);
+      border:1px solid rgba(212,175,55,.14);
+      border-bottom-left-radius:7px;
+    }
+
+    .chat-msg.user{
+      margin-left:auto;
+      background:rgba(212,175,55,.16);
+      border:1px solid rgba(212,175,55,.24);
+      border-bottom-right-radius:7px;
+    }
+
+    .chat-msg a{
+      color:#F4D96B;
+      font-weight:900;
+    }
+
+    .chat-time{
+      display:block;
+      margin-top:7px;
+      font-size:10px;
+      color:rgba(255,255,255,.45);
+    }
+
+    .quick-prompts{
+      flex:0 0 auto;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      padding:12px 14px 10px;
+      max-height:138px;
+      overflow-y:auto;
+      border-top:1px solid rgba(255,255,255,.06);
+      background:rgba(255,255,255,.025);
+      scrollbar-width:thin;
+    }
+
+    .quick-prompts button{
+      width:auto;
+      min-height:34px;
+      padding:7px 11px;
+      border-radius:999px;
+      border:1px solid rgba(212,175,55,.28);
+      background:rgba(255,255,255,.055);
+      color:#D4AF37;
+      font-size:12px;
+      font-weight:850;
+      line-height:1.25;
+      box-shadow:none;
+      white-space:normal;
+      text-align:left;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+
+    .quick-prompts button:hover{
+      background:rgba(212,175,55,.14);
+      border-color:rgba(212,175,55,.55);
+      transform:none;
+    }
+
+    .show-more-prompts{
+      flex:0 0 auto;
+      align-self:flex-start;
+      margin:0 14px 12px;
+      min-height:34px;
+      padding:0 12px;
+      border-radius:999px;
+      border:1px solid rgba(212,175,55,.35);
+      background:transparent;
+      color:#D4AF37;
+      font-size:12px;
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    .chatbot-input{
+      flex:0 0 auto;
+      display:grid;
+      grid-template-columns:1fr auto;
+      border-top:1px solid rgba(212,175,55,.16);
+      background:rgba(255,255,255,.055);
+    }
+
+    .chatbot-input input{
+      width:100%;
+      min-height:58px;
+      padding:0 15px;
+      border:none;
+      outline:none;
+      background:transparent;
+      color:white;
+      font-size:14px;
+    }
+
+    .chatbot-input input::placeholder{
+      color:rgba(255,255,255,.46);
+    }
+
+    .chatbot-input button{
+      min-width:88px;
+      border:none;
+      background:linear-gradient(135deg,#F4D96B,#D4AF37);
+      color:#050b16;
+      font-weight:950;
+      font-size:14px;
+      cursor:pointer;
+    }
+
+    .chat-action-link,
+    .chat-action-dark,
+    .chat-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:32px;
+      padding:7px 11px;
+      margin:5px 5px 0 0;
+      border-radius:999px;
+      text-decoration:none;
+      font-size:12px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .chat-action-link{
+      background:#D4AF37;
+      color:#050b16 !important;
+    }
+
+    .chat-action-dark{
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(212,175,55,.24);
+      color:white !important;
+    }
+
+    .chat-mini-card{
+      padding:12px;
+      border-radius:16px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(212,175,55,.16);
+    }
+
+    .chat-grid{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      margin-top:9px;
+    }
+
+    .chat-pill{
+      background:rgba(255,255,255,.07);
+      border:1px solid rgba(212,175,55,.2);
+      color:#D4AF37 !important;
+    }
+
+    .mobile-support-dock{
+      display:none;
+    }
+
+    @media(max-width:1024px){
+      .chatbot-box{
+        right:18px;
+        bottom:150px;
+        width:min(440px, calc(100vw - 36px));
+        max-height:70vh;
+      }
+
+      .chat-toggle,
+      .whatsapp-float{
+        right:18px;
+      }
+
+      .chatbot-messages{
+        max-height:270px;
+      }
+    }
+
+    @media(max-width:760px){
+      .chat-toggle,
+      .whatsapp-float{
+        display:none !important;
+      }
+
+      .mobile-support-dock{
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:calc(env(safe-area-inset-bottom) + 14px);
+        z-index:99990;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+      }
+
+      .mobile-support-btn{
+        min-height:50px;
+        border-radius:999px;
+        border:none;
+        font-weight:950;
+        font-size:13px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        text-decoration:none;
+        box-shadow:0 14px 35px rgba(0,0,0,.35);
+      }
+
+      .mobile-support-btn.ai{
+        background:linear-gradient(135deg,#F4D96B,#D4AF37);
+        color:#050b16;
+      }
+
+      .mobile-support-btn.whatsapp{
+        background:#25D366;
+        color:#050b16;
+      }
+
+      .chatbot-box{
+        left:12px;
+        right:12px;
+        bottom:calc(env(safe-area-inset-bottom) + 82px);
+        width:auto;
+        max-height:calc(100vh - 120px);
+        border-radius:24px;
+      }
+
+      .chatbot-header{
+        padding:15px 15px 13px;
+      }
+
+      .chatbot-logo{
+        width:38px;
+        height:38px;
+        border-radius:14px;
+        font-size:18px;
+      }
+
+      .chatbot-title{
+        font-size:14px;
+      }
+
+      .chatbot-subtitle{
+        font-size:10px;
+      }
+
+      .chatbot-messages{
+        max-height:34vh;
+        padding:14px;
+      }
+
+      .chat-msg{
+        max-width:96%;
+        font-size:13px;
+        padding:11px 12px;
+      }
+
+      .quick-prompts{
+        max-height:116px;
+        padding:10px 12px 9px;
+        gap:7px;
+      }
+
+      .quick-prompts button{
+        font-size:11.5px;
+        min-height:32px;
+        padding:7px 10px;
+      }
+
+      .show-more-prompts{
+        margin:0 12px 10px;
+      }
+
+      .chatbot-input input{
+        min-height:54px;
+        font-size:13px;
+      }
+
+      .chatbot-input button{
+        min-width:78px;
+        font-size:13px;
+      }
+    }
+
+    @media(max-width:390px){
+      .mobile-support-dock{
+        grid-template-columns:1fr;
+      }
+
+      .chatbot-box{
+        bottom:calc(env(safe-area-inset-bottom) + 132px);
+        max-height:calc(100vh - 160px);
+      }
+
+      .quick-prompts{
+        max-height:96px;
+      }
+
+      .chatbot-messages{
+        max-height:30vh;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
 }
 
 /* =========================
