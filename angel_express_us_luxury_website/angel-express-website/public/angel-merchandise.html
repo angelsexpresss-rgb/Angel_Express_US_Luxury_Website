@@ -1,1 +1,438 @@
-<!DOCTYPE html><html lang="en"><head><title>Angel Merchandise | Angel Express</title><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" /><script defer src="app.js"></script></head><body style="--page-bg:url('images/hero/10-dallas-night.jpg')"><div id="siteHeader"></div><div class="ae-page-bg"></div><main class="page-shell"><div class="page-wrap"><section class="reveal"><p class="kicker"><i class="fa-solid fa-shirt"></i> Angel Merchandise</p><h1 class="page-title">Wear the brand. <span>Carry the comfort.</span></h1><p class="page-subtitle">Angel Express merchandise brings together apparel, caps, lifestyle items, and Angels Scented Candle collections.</p><div class="actions"><a class="btn btn-primary" href="#shop">Browse Merchandise</a><a class="btn btn-secondary" href="contact.html">Ask About Orders</a></div></section><section class="section" id="shop"><div class="grid-3"><article class="card reveal"><div class="icon"><i class="fa-solid fa-candle-holder"></i></div><h3>Angels Scented Candles</h3><p>Juliana, ACE, Audrey, seasonal gifts, and lifestyle scent collections.</p></article><article class="card reveal"><div class="icon"><i class="fa-solid fa-shirt"></i></div><h3>Angel Express Apparel</h3><p>Premium branded shirts and future chauffeur/passenger lifestyle pieces.</p></article><article class="card reveal"><div class="icon"><i class="fa-solid fa-hat-cowboy"></i></div><h3>Caps & Gifts</h3><p>Caps, branded accessories, and future gift drops for the Angel Express community.</p></article></div><div class="product-grid" style="margin-top:26px"><article class="product-card reveal"><div class="product-media"><img src="images/hero/angel-logo-transparent.png" alt="Angel Express shirt"></div><div class="product-body"><h3>Angel Express Tee</h3><p class="price">Coming Soon</p><p class="muted">White, black, and green concepts.</p></div></article><article class="product-card reveal"><div class="product-media"><img src="images/hero/angel-logo-transparent.png" alt="Angel Express cap"></div><div class="product-body"><h3>Angel Express Cap</h3><p class="price">Coming Soon</p><p class="muted">Premium branded cap concept.</p></div></article><article class="product-card reveal"><div class="product-media"><img src="images/hero/angel-logo-transparent.png" alt="Candles"></div><div class="product-body"><h3>Juliana Candle</h3><p class="price">Coming Soon</p><p class="muted">Soft, elegant candle collection.</p></div></article><article class="product-card reveal"><div class="product-media"><img src="images/hero/angel-logo-transparent.png" alt="Candles"></div><div class="product-body"><h3>ACE Candle</h3><p class="price">Coming Soon</p><p class="muted">Bold, clean candle collection.</p></div></article></div></section></div></main><div id="siteFooter"></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Angel Merchandise | Angel Express</title>
+<link rel="stylesheet" href="style.css" />
+
+<style>
+:root{
+  --navy:#050b16; --card:#111827; --gold:#d4af37; --gold2:#f4d96b;
+  --soft:#dbe3ee; --muted:#9aa4b2; --green:#0f5132; --danger:#ff6b6b;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  background:radial-gradient(circle at top left,rgba(212,175,55,.13),transparent 35%),
+  radial-gradient(circle at bottom right,rgba(15,81,50,.16),transparent 36%),var(--navy);
+  color:white;font-family:Arial,sans-serif;overflow-x:hidden;
+}
+img,video{max-width:100%}
+.container{width:100%;max-width:1200px;margin:auto}
+.section{padding:80px 22px}
+.center{text-align:center}
+.merch-hero{position:relative;min-height:92vh;display:flex;align-items:center;padding:120px 22px 80px;isolation:isolate}
+.hero-slider{position:absolute;inset:0;z-index:-3}
+.hero-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transform:scale(1.08);transition:opacity 1.1s ease,transform 6s ease}
+.hero-slide.active{opacity:1;transform:scale(1)}
+.hero-overlay{position:absolute;inset:0;z-index:-2;background:linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.74),rgba(5,11,22,.96)),linear-gradient(180deg,rgba(5,11,22,.2),rgba(5,11,22,.96))}
+.logo-lockup{display:flex;align-items:center;gap:18px;margin-bottom:28px;animation:fadeUp .9s ease both}
+.logo-box{width:100px;height:100px;border-radius:28px;background:rgba(255,255,255,.04);border:1px solid rgba(212,175,55,.28);display:grid;place-items:center;padding:10px;box-shadow:0 25px 70px rgba(0,0,0,.35)}
+.logo-box img{width:100%;height:100%;object-fit:contain}
+.brand-title{font-size:34px;font-weight:950;letter-spacing:4px;line-height:1}
+.brand-subtitle{color:var(--gold);font-size:12px;font-weight:900;letter-spacing:4px;margin-top:8px}
+.badge{display:inline-block;border:1px solid rgba(212,175,55,.38);color:var(--gold);padding:10px 18px;border-radius:999px;font-weight:900;letter-spacing:2px;margin-bottom:22px;background:rgba(5,11,22,.62)}
+.hero-title{font-size:clamp(46px,8vw,96px);line-height:.95;margin:0;font-weight:950;max-width:900px}
+.hero-title span,.section-title span{color:var(--gold)}
+.hero-text{max-width:790px;color:var(--soft);font-size:20px;line-height:1.7;margin:26px 0}
+.hero-actions{display:flex;gap:16px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 24px;border-radius:999px;text-decoration:none;font-weight:950;transition:.25s ease;cursor:pointer;border:none}
+.btn.gold{background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--navy)}
+.btn.outline{border:1px solid rgba(212,175,55,.7);color:var(--gold);background:rgba(5,11,22,.5)}
+.btn.dark{background:rgba(255,255,255,.07);color:white;border:1px solid rgba(212,175,55,.25)}
+.btn:hover{transform:translateY(-4px);box-shadow:0 18px 45px rgba(212,175,55,.24)}
+.section-kicker{color:var(--gold);font-size:12px;font-weight:950;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+.section-title{color:white;font-size:clamp(34px,5vw,56px);margin:0 0 14px;line-height:1.05}
+.section-sub{color:var(--soft);max-width:760px;line-height:1.7;margin:0 auto 36px;font-size:17px}
+.collection-grid,.apparel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.collection-card,.apparel-card,.product,.checkout-panel{
+  background:rgba(17,24,39,.92);border:1px solid rgba(212,175,55,.24);border-radius:32px;overflow:hidden;transition:.35s ease;box-shadow:0 28px 80px rgba(0,0,0,.24)
+}
+.collection-card:hover,.apparel-card:hover,.product:hover{transform:translateY(-8px);border-color:rgba(212,175,55,.65)}
+.collection-media{height:260px;background:#000;overflow:hidden}
+.collection-media img,.collection-media video,.product img,.product video{width:100%;height:100%;object-fit:cover;display:block}
+.collection-body,.product-body,.mockup-name{padding:22px}
+.collection-icon{width:50px;height:50px;border-radius:18px;display:grid;place-items:center;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.25);color:var(--gold);font-size:26px;margin-bottom:14px}
+.collection-card h3,.product h3,.mockup-name h3{color:white;font-size:24px;margin:0 0 8px}
+.collection-card p,.collection-card li{color:var(--soft);line-height:1.7}
+.price{color:var(--gold);font-weight:950;font-size:22px;margin:10px 0}
+.note{color:var(--muted);font-size:14px;line-height:1.6}
+.product{position:relative}
+.product-tag{position:absolute;top:14px;left:14px;z-index:2;background:var(--gold);color:var(--navy);border-radius:999px;padding:7px 11px;font-weight:950;font-size:11px}
+.product img,.product video{height:250px;background:#000}
+.filter-tabs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:30px}
+.filter-btn{border:1px solid rgba(212,175,55,.35);background:rgba(255,255,255,.06);color:white;padding:12px 20px;border-radius:999px;font-weight:900;cursor:pointer}
+.filter-btn.active{background:var(--gold);color:var(--navy)}
+.mockup-stage{min-height:340px;display:grid;place-items:center;background:radial-gradient(circle at center,rgba(212,175,55,.14),transparent 42%),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.02))}
+.shirt{width:230px;height:260px;position:relative;clip-path:polygon(25% 0,38% 8%,62% 8%,75% 0,100% 20%,85% 42%,78% 33%,78% 100%,22% 100%,22% 33%,15% 42%,0 20%);display:grid;place-items:center;box-shadow:inset 0 -20px 50px rgba(0,0,0,.18)}
+.cap{width:240px;height:145px;border-radius:120px 120px 48px 48px;position:relative;display:grid;place-items:center;box-shadow:inset 0 -22px 44px rgba(0,0,0,.2)}
+.cap:after{content:"";position:absolute;width:150px;height:38px;bottom:-16px;right:18px;border-radius:0 0 80px 80px;background:inherit;filter:brightness(.88)}
+.white{background:#f7f7f2}.black{background:#050505}.green{background:#0f5132}
+.mock-logo{width:132px;height:92px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.28));position:relative;z-index:2}
+.cap .mock-logo{width:96px;height:70px}
+.gallery-track{display:flex;gap:18px;overflow-x:auto;padding:10px 0 20px;scroll-snap-type:x mandatory}
+.gallery-item{flex:0 0 320px;height:380px;border-radius:28px;overflow:hidden;border:1px solid rgba(212,175,55,.25);scroll-snap-align:start;background:#000}
+.gallery-item img,.gallery-item video{width:100%;height:100%;object-fit:cover}
+.checkout-panel{padding:24px}
+.cart-items{display:grid;gap:14px;margin-bottom:20px}
+.cart-item{display:flex;justify-content:space-between;gap:14px;align-items:center;background:rgba(255,255,255,.06);border:1px solid rgba(212,175,55,.16);border-radius:20px;padding:14px}
+.cart-item strong{color:white}.cart-item span{color:var(--muted);font-size:13px}
+.qty-controls{display:flex;align-items:center;gap:8px}
+.qty-controls button,.remove-btn{border:none;border-radius:999px;background:var(--gold);color:var(--navy);font-weight:900;cursor:pointer;padding:7px 10px}
+.remove-btn{background:rgba(255,107,107,.15);color:#ff9b9b;border:1px solid rgba(255,107,107,.25)}
+.cart-summary{border-top:1px solid rgba(212,175,55,.2);padding-top:20px;display:grid;gap:10px}
+.summary-row{display:flex;justify-content:space-between;color:var(--soft);font-weight:800}
+.summary-row.total{font-size:24px;color:white}
+.stripe-note{color:var(--muted);line-height:1.7;font-size:14px;margin-top:14px}
+.merch-cart{position:fixed;left:22px;bottom:28px;z-index:9999;background:rgba(5,11,22,.94);border:1px solid rgba(212,175,55,.4);color:white;padding:14px 18px;border-radius:999px;display:flex;align-items:center;gap:10px;box-shadow:0 20px 50px rgba(0,0,0,.35);cursor:pointer}
+.cart-count{background:var(--gold);color:var(--navy);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:950}
+.footer{padding:70px 5.5% 30px;background:#030712;border-top:1px solid rgba(255,255,255,.08)}
+.footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:34px}
+.footer h3,.footer h4{color:white}.footer p,.footer a{color:var(--muted);line-height:1.7}.footer a:hover{color:var(--gold)}
+.footer-bottom{margin-top:40px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08);color:var(--muted);text-align:center}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.reveal{opacity:0;transform:translateY(30px);transition:.8s ease}.reveal.visible{opacity:1;transform:translateY(0)}
+@media(max-width:1000px){.collection-grid,.apparel-grid{grid-template-columns:1fr}.product-grid{grid-template-columns:repeat(2,1fr)}.footer-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.logo-lockup{flex-direction:column;align-items:flex-start}.brand-title{font-size:25px}.hero-actions{flex-direction:column}.btn{width:100%}.product-grid,.footer-grid{grid-template-columns:1fr}.gallery-item{flex-basis:82vw}.merch-cart{left:14px;right:14px;justify-content:center}}
+</style>
+</head>
+
+<body>
+<div class="merch-page">
+
+<section class="merch-hero">
+  <div class="hero-slider" id="heroSlider"></div>
+  <div class="hero-overlay"></div>
+  <div class="container">
+    <div class="logo-lockup">
+      <div class="logo-box"><img src="images/hero/angel-logo-transparent.png" alt="Angel Express Logo"></div>
+      <div><div class="brand-title">ANGEL EXPRESS</div><div class="brand-subtitle">MERCHANDISE SHOP</div></div>
+    </div>
+
+    <div class="badge">ANGEL EXPRESS MERCHANDISE</div>
+    <h1 class="hero-title">Candles That Inspire. <span>Style That Speaks.</span></h1>
+    <p class="hero-text">Shop Angels Scented Candle collections, Angel Express apparel, caps, seasonal gifts, and branded lifestyle pieces.</p>
+    <div class="hero-actions">
+      <a href="#collections" class="btn gold">Browse Collections</a>
+      <a href="#apparel" class="btn outline">Shop Shirts & Caps</a>
+      <a href="#checkout" class="btn outline">View Cart</a>
+    </div>
+  </div>
+</section>
+
+<section class="section reveal" id="collections">
+  <div class="container">
+    <div class="center">
+      <div class="section-kicker">Premium Collections</div>
+      <h2 class="section-title">Angels Scented <span>Candle Collections</span></h2>
+      <p class="section-sub">Each collection is built around emotion, personality, season, beauty, and memory.</p>
+    </div>
+
+    <div class="collection-grid">
+      <div class="collection-card"><div class="collection-media slideshow" data-set="juliana"></div><div class="collection-body"><div class="collection-icon">🌸</div><h3>Juliana Collection</h3><p>Feminine, soft, elegant, comforting scents.</p><ul><li>Ocean Breeze</li><li>Bumblebee</li><li>Hot Chocolate</li><li>Strawberry Cheesecake</li><li>Naija Forest</li></ul></div></div>
+      <div class="collection-card"><div class="collection-media slideshow" data-set="ace"></div><div class="collection-body"><div class="collection-icon">🛡️</div><h3>ACE Collection</h3><p>Masculine-inspired candles with bold, clean energy.</p><ul><li>Hero</li><li>Chocolate Chips</li><li>White Sand</li><li>Hope</li></ul></div></div>
+      <div class="collection-card"><div class="collection-media slideshow" data-set="audrey"></div><div class="collection-body"><div class="collection-icon">❤️</div><h3>Audrey Collection</h3><p>Seasonal, romantic, devotional, and decorative candle pieces.</p><ul><li>Valentine Red</li><li>Cupid</li><li>Easter Egg</li><li>4th July</li><li>Turkey</li><li>Snow Balls</li></ul></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section reveal" id="apparel">
+  <div class="container">
+    <div class="center">
+      <div class="section-kicker">Angel Express Apparel</div>
+      <h2 class="section-title">Wear The <span>Angel Express Brand</span></h2>
+      <p class="section-sub">White, black, and green tees and caps featuring the official Angel Express winged logo.</p>
+    </div>
+
+    <div class="filter-tabs">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="shirt">T-Shirts</button>
+      <button class="filter-btn" data-filter="cap">Caps</button>
+    </div>
+
+    <div class="apparel-grid">
+      <div class="apparel-card apparel-item" data-category="shirt"><div class="mockup-stage"><div class="shirt white"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div><div class="mockup-name"><h3>Angel Express Tee — White</h3><p class="note">Premium logo t-shirt.</p><p class="price">$50.00</p><button class="btn gold add-cart" data-id="shirt-white" data-name="Angel Express Tee — White" data-price="50">Add to Cart</button></div></div>
+      <div class="apparel-card apparel-item" data-category="shirt"><div class="mockup-stage"><div class="shirt black"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div><div class="mockup-name"><h3>Angel Express Tee — Black</h3><p class="note">Luxury dark tee.</p><p class="price">$50.00</p><button class="btn gold add-cart" data-id="shirt-black" data-name="Angel Express Tee — Black" data-price="50">Add to Cart</button></div></div>
+      <div class="apparel-card apparel-item" data-category="shirt"><div class="mockup-stage"><div class="shirt green"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div><div class="mockup-name"><h3>Angel Express Tee — Green</h3><p class="note">Bold green tee.</p><p class="price">$50.00</p><button class="btn gold add-cart" data-id="shirt-green" data-name="Angel Express Tee — Green" data-price="50">Add to Cart</button></div></div>
+      <div class="apparel-card apparel-item" data-category="cap"><div class="mockup-stage"><div class="cap white"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div><div class="mockup-name"><h3>Angel Express Cap — White</h3><p class="note">Clean cap with logo.</p><p class="price">$20.00</p><button class="btn gold add-cart" data-id="cap-white" data-name="Angel Express Cap — White" data-price="20">Add to Cart</button></div></div>
+      <div class="apparel-card apparel-item" data-category="cap"><div class="mockup-stage"><div class="cap black"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div><div class="mockup-name"><h3>Angel Express Cap — Black</h3><p class="note">Premium black cap.</p><p class="price">$20.00</p><button class="btn gold add-cart" data-id="cap-black" data-name="Angel Express Cap — Black" data-price="20">Add to Cart</button></div></div>
+      <div class="apparel-card apparel-item" data-category="cap"><div class="mockup-stage"><div class="cap green"><img class="mock-logo" src="images/hero/angel-logo-transparent.png"></div></div><div class="mockup-name"><h3>Angel Express Cap — Green</h3><p class="note">Green cap with logo.</p><p class="price">$20.00</p><button class="btn gold add-cart" data-id="cap-green" data-name="Angel Express Cap — Green" data-price="20">Add to Cart</button></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section reveal" id="candles">
+  <div class="container">
+    <div class="center">
+      <div class="section-kicker">Featured Candles</div>
+      <h2 class="section-title">Shop <span>Signature Candles</span></h2>
+      <p class="section-sub">A curated selection from Angels Scented Candle.</p>
+    </div>
+
+    <div class="product-grid">
+      <div class="product"><span class="product-tag">JULIANA</span><img src="images/hero/imagesocean-breeze3.jpg" alt="Ocean Breeze Candle"><div class="product-body"><h3>Ocean Breeze</h3><p class="note">Lavender + Eucalyptus.</p><p class="price">$24.99</p><button class="btn gold add-cart" data-id="ocean-breeze" data-name="Ocean Breeze Candle" data-price="24.99">Add to Cart</button></div></div>
+      <div class="product"><span class="product-tag">JULIANA</span><img src="images/hero/imagescheesecake.jpg" alt="Cheesecake Candle"><div class="product-body"><h3>Cheesecake</h3><p class="note">Warm dessert-inspired candle.</p><p class="price">$24.99</p><button class="btn gold add-cart" data-id="cheesecake" data-name="Cheesecake Candle" data-price="24.99">Add to Cart</button></div></div>
+      <div class="product"><span class="product-tag">AUDREY</span><video src="images/hero/imagesvalentine-red.MOV" muted autoplay loop playsinline></video><div class="product-body"><h3>Valentine Red</h3><p class="note">Romantic seasonal candle.</p><p class="price">$29.99</p><button class="btn gold add-cart" data-id="valentine-red" data-name="Valentine Red Candle" data-price="29.99">Add to Cart</button></div></div>
+      <div class="product"><span class="product-tag">AUDREY</span><img src="images/hero/imagescupid.JPG" alt="Cupid Candle"><div class="product-body"><h3>Cupid</h3><p class="note">Cute pink angel decorative candle.</p><p class="price">$18.99</p><button class="btn gold add-cart" data-id="cupid" data-name="Cupid Candle" data-price="18.99">Add to Cart</button></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="section reveal">
+  <div class="container">
+    <div class="center">
+      <div class="section-kicker">Luxury Gallery</div>
+      <h2 class="section-title">Angel <span>Visual Story</span></h2>
+      <p class="section-sub">Swipe through Angel candle visuals and seasonal launches.</p>
+    </div>
+    <div class="gallery-track" id="galleryTrack"></div>
+  </div>
+</section>
+
+<section class="section reveal" id="checkout">
+  <div class="container">
+    <div class="center">
+      <div class="section-kicker">Secure Checkout</div>
+      <h2 class="section-title">Your <span>Cart</span></h2>
+      <p class="section-sub">Checkout is powered by Stripe Payment Links. Apple Pay, Google Pay, and card payment are handled by Stripe when enabled in your Stripe dashboard.</p>
+    </div>
+
+    <div class="checkout-panel">
+      <div id="cartItems" class="cart-items"></div>
+      <div class="cart-summary">
+        <div class="summary-row"><span>Subtotal</span><strong id="subtotal">$0.00</strong></div>
+        <div class="summary-row"><span>Estimated tax/shipping</span><strong>Calculated by Stripe</strong></div>
+        <div class="summary-row total"><span>Total</span><strong id="cartTotal">$0.00</strong></div>
+        <button class="btn gold" id="checkoutBtn">Checkout with Apple Pay, Google Pay, or Card</button>
+        <button class="btn dark" id="clearCartBtn">Clear Cart</button>
+        <p class="stripe-note">
+          Replace the Stripe Payment Link placeholders inside the JavaScript with your real Stripe links.
+          For mixed carts, create a general Stripe checkout link or use WhatsApp checkout until a backend Stripe Checkout Session is added.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="merch-cart" onclick="location.href='#checkout'">🛒 Cart <span class="cart-count" id="cartCount">0</span></div>
+
+</div>
+
+<footer class="footer">
+    <div class="footer-grid">
+      <div>
+        <h3>Angel Express Mobility (AEM)</h3>
+        <p>
+          Private long-distance transportation across Texas for students,
+          travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
+        </p>
+        <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
+      </div>
+
+    <div>
+        <h4>Contact Information</h4>
+        <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+        <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+        <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+        <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
+      </div>
+
+      <div>
+        <h4>Quick Links</h4>
+        <p><a href="index.html">Home</a></p>
+        <p><a href="book-ride.html">Book a Ride</a></p>
+        <p><a href="passenger.html">Passenger Services</a></p>
+        <p><a href="driver.html#apply">Become a Chauffeur</a></p>
+        <p><a href="terms.html">Terms & Privacy</a></p>
+      </div>
+
+      <div>
+        <h4>Follow Us</h4>
+        <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
+        <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+        <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
+        <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      © 2026 Angel Express Mobility. All rights reserved.
+    </div>
+  </footer>
+
+  <button id="chatToggle" class="chat-toggle">
+    💬 AI Assistant
+  </button>
+
+  <div class="chatbot-box" id="chatbotBox">
+    <div class="chatbot-header">Angel Express Assistant</div>
+
+    <div class="chatbot-messages" id="chatbotMessages">
+      <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
+    </div>
+
+    <div class="chatbot-input">
+      <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
+      <button onclick="sendChat()">Send</button>
+    </div>
+  </div>
+
+  <a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
+    💬 Chat With Us
+  </a>
+
+<script>
+const STRIPE_PAYMENT_LINKS = {
+  "shirt-white": "PASTE_STRIPE_LINK_HERE",
+  "shirt-black": "PASTE_STRIPE_LINK_HERE",
+  "shirt-green": "PASTE_STRIPE_LINK_HERE",
+  "cap-white": "PASTE_STRIPE_LINK_HERE",
+  "cap-black": "PASTE_STRIPE_LINK_HERE",
+  "cap-green": "PASTE_STRIPE_LINK_HERE",
+  "ocean-breeze": "PASTE_STRIPE_LINK_HERE",
+  "cheesecake": "PASTE_STRIPE_LINK_HERE",
+  "valentine-red": "PASTE_STRIPE_LINK_HERE",
+  "cupid": "PASTE_STRIPE_LINK_HERE",
+  "mixed-cart": "PASTE_STRIPE_LINK_HERE"
+};
+
+const HERO_IMAGES = [
+  "images/hero/imagesangel-candles-hero.JPG",
+  "images/hero/imagesangel-candles-hero (2).JPG",
+  "images/hero/imagesangel-candles-hero3.JPG",
+  "images/hero/imagesangel-candles-hero4.jpg",
+  "images/hero/imagescupid.JPG",
+  "images/hero/imagesocean-breeze3.jpg",
+  "images/hero/imagescheesecake.jpg"
+];
+
+const COLLECTIONS = {
+  juliana:["images/hero/imagesocean-breeze.jpg","images/hero/imagesocean-breeze (2).jpg","images/hero/imagesocean-breeze3.jpg","images/hero/imagescheesecake.jpg","images/hero/imagescheesecake (2).jpg","images/hero/imagescheesecake3.jpg","images/hero/imagescheesecake4.jpg"],
+  ace:["images/hero/imagesangel-candles-hero.JPG","images/hero/imagesangel-candles-hero (2).JPG","images/hero/imagesangel-candles-hero3.JPG","images/hero/imagesangel-candles-hero4.jpg"],
+  audrey:["images/hero/imagescupid.JPG","images/hero/imagesvalentine-red.MOV","images/hero/imagesvalentine-red2.jpg","images/hero/imagesvalentine-red3.jpg","images/hero/imagesvalentine-red4.MOV","images/hero/imagesvalentine-red5.jpg","images/hero/imagesvalentine-red6.jpg","images/hero/imagesvalentine-red7.MOV"]
+};
+
+const GALLERY = [...HERO_IMAGES,...COLLECTIONS.juliana,...COLLECTIONS.ace,...COLLECTIONS.audrey];
+let cart = JSON.parse(localStorage.getItem("angelMerchCart") || "[]");
+
+function money(n){ return "$" + Number(n || 0).toFixed(2); }
+function saveCart(){ localStorage.setItem("angelMerchCart", JSON.stringify(cart)); renderCart(); }
+function isVideo(path){ return path.toLowerCase().endsWith(".mov") || path.toLowerCase().endsWith(".mp4"); }
+
+function createMedia(path, alt="Angel Merchandise"){
+  if(isVideo(path)){ const v=document.createElement("video"); v.src=path; v.muted=true; v.autoplay=true; v.loop=true; v.playsInline=true; return v; }
+  const img=document.createElement("img"); img.src=path; img.alt=alt; return img;
+}
+
+function addToCart(product){
+  const existing = cart.find(i => i.id === product.id);
+  if(existing) existing.qty += 1; else cart.push({...product, qty:1});
+  saveCart();
+}
+
+function updateQty(id, delta){
+  const item = cart.find(i => i.id === id);
+  if(!item) return;
+  item.qty += delta;
+  if(item.qty <= 0) cart = cart.filter(i => i.id !== id);
+  saveCart();
+}
+
+function removeItem(id){ cart = cart.filter(i => i.id !== id); saveCart(); }
+
+function renderCart(){
+  const cartItems=document.getElementById("cartItems");
+  const cartCount=document.getElementById("cartCount");
+  const subtotalEl=document.getElementById("subtotal");
+  const totalEl=document.getElementById("cartTotal");
+
+  const count = cart.reduce((s,i)=>s+i.qty,0);
+  const subtotal = cart.reduce((s,i)=>s+(i.price*i.qty),0);
+
+  cartCount.textContent = count;
+  subtotalEl.textContent = money(subtotal);
+  totalEl.textContent = money(subtotal);
+
+  if(!cart.length){
+    cartItems.innerHTML = `<div class="cart-item"><strong>Your cart is empty.</strong><span>Add products above to begin checkout.</span></div>`;
+    return;
+  }
+
+  cartItems.innerHTML = cart.map(item => `
+    <div class="cart-item">
+      <div>
+        <strong>${item.name}</strong><br>
+        <span>${money(item.price)} each</span>
+      </div>
+      <div class="qty-controls">
+        <button onclick="updateQty('${item.id}',-1)">−</button>
+        <strong>${item.qty}</strong>
+        <button onclick="updateQty('${item.id}',1)">+</button>
+        <button class="remove-btn" onclick="removeItem('${item.id}')">Remove</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+document.querySelectorAll(".add-cart").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    addToCart({id:btn.dataset.id,name:btn.dataset.name,price:Number(btn.dataset.price)});
+    btn.textContent="Added ✓";
+    setTimeout(()=>btn.textContent="Add to Cart",1100);
+  });
+});
+
+document.getElementById("checkoutBtn").addEventListener("click",()=>{
+  if(!cart.length){ alert("Your cart is empty."); return; }
+
+  let link = "";
+  if(cart.length === 1 && cart[0].qty === 1) link = STRIPE_PAYMENT_LINKS[cart[0].id];
+  else link = STRIPE_PAYMENT_LINKS["mixed-cart"];
+
+  if(!link || link === "PASTE_STRIPE_LINK_HERE"){
+    alert("Stripe Payment Link is not added yet. Create Payment Links in Stripe, then paste them into STRIPE_PAYMENT_LINKS.");
+    return;
+  }
+
+  window.location.href = link;
+});
+
+document.getElementById("clearCartBtn").addEventListener("click",()=>{
+  cart=[]; saveCart();
+});
+
+const heroSlider=document.getElementById("heroSlider");
+HERO_IMAGES.forEach((src,i)=>{const div=document.createElement("div");div.className="hero-slide"+(i===0?" active":"");div.style.backgroundImage=`url("${src}")`;heroSlider.appendChild(div);});
+let heroIndex=0;
+setInterval(()=>{const slides=document.querySelectorAll(".hero-slide");slides[heroIndex].classList.remove("active");heroIndex=(heroIndex+1)%slides.length;slides[heroIndex].classList.add("active");},4200);
+
+document.querySelectorAll(".slideshow").forEach(box=>{
+  const files=COLLECTIONS[box.dataset.set]; let index=0;
+  function render(){box.innerHTML="";box.appendChild(createMedia(files[index],box.dataset.set));}
+  render(); setInterval(()=>{index=(index+1)%files.length;render();},3600);
+});
+
+const galleryTrack=document.getElementById("galleryTrack");
+GALLERY.forEach(src=>{const item=document.createElement("div");item.className="gallery-item";item.appendChild(createMedia(src,"Angel Merchandise Gallery"));galleryTrack.appendChild(item);});
+
+document.querySelectorAll(".filter-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".filter-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const filter=btn.dataset.filter;
+    document.querySelectorAll(".apparel-item").forEach(item=>{item.style.display=filter==="all"||item.dataset.category===filter?"block":"none";});
+  });
+});
+
+const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting)entry.target.classList.add("visible");});},{threshold:.15});
+document.querySelectorAll(".reveal").forEach(el=>observer.observe(el));
+renderCart();
+</script>
+
+<script src="floating-support.js?v=20260704-nav-final"></script>
+<script src="script.js?v=20260704-nav-final"></script>
+</body>
+</html>

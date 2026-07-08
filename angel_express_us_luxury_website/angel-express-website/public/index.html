@@ -1,1 +1,1889 @@
-<!DOCTYPE html><html lang="en"><head><title>Angel Express Mobility | Premium Private Rides Across Texas</title><meta name="description" content="Angel Express Mobility provides premium private rides, airport transfers, student transportation, long-distance travel, and chauffeur opportunities across Texas."><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" /><script defer src="app.js"></script></head><body><div class="luxury-loader"><div class="loader-mark">A</div></div><div id="siteHeader"></div><main><section class="hero-v5"><div class="hero-bg"><div class="hero-slide active"><img src="images/hero/10-dallas-night.jpg" alt="Dallas skyline"></div><div class="hero-slide"><img src="images/hero/07-texas-highway.jpg" alt="Texas highway"></div><div class="hero-slide"><img src="images/hero/06-airport-pickup.jpg" alt="Airport pickup"></div></div><div class="hero-overlay"></div><div class="hero-layout"><div class="hero-content reveal"><p class="kicker"><i class="fa-solid fa-car-side"></i> Premium Texas Mobility Ecosystem</p><h1 class="hero-title">Private rides with <span>comfort, safety, and class.</span></h1><p class="hero-sub">Angel Express Mobility connects passengers, students, travelers, event guests, and approved chauffeurs through a clean, reliable transportation experience across Texas and beyond.</p><div class="actions"><a class="btn btn-primary" href="book-ride.html"><i class="fa-solid fa-route"></i> Book a Ride</a><a class="btn btn-secondary" href="passenger.html"><i class="fa-solid fa-user"></i> Passenger Services</a><a class="btn btn-outline" href="driver.html"><i class="fa-solid fa-id-card"></i> Drive With Us</a></div><div class="hero-stats"><div class="card stat-card"><strong>24/7</strong><span>Reservation support</span></div><div class="card stat-card"><strong>Texas</strong><span>Regional coverage</span></div><div class="card stat-card"><strong>70%</strong><span>Driver payout model</span></div><div class="card stat-card"><strong>COR</strong><span>Comfort, reliability, security, cleanliness</span></div></div></div><aside class="hero-card reveal"><b>Built for passengers and chauffeurs.</b><p>One organized mobility ecosystem: website booking, passenger app, driver app, owner monitoring, support, rewards, and future merchandise.</p></aside></div></section><section class="section page-wrap"><div class="section-top reveal"><p class="kicker"><i class="fa-solid fa-layer-group"></i> One Ecosystem</p><h2 class="section-title">Designed to move people <span>better.</span></h2><p class="section-sub">Every part of Angel Express is built around clean operations, easy communication, reliable drivers, and premium customer experience.</p></div><div class="grid-3"><article class="card reveal"><div class="icon"><i class="fa-solid fa-calendar-check"></i></div><h3>Book Private Rides</h3><p>Request airport transfers, campus rides, long-distance travel, and event transportation.</p></article><article class="card reveal"><div class="icon"><i class="fa-solid fa-location-dot"></i></div><h3>Track Trips</h3><p>Passenger and driver apps support live trip status, communication, and ride updates.</p></article><article class="card reveal"><div class="icon"><i class="fa-solid fa-shield-halved"></i></div><h3>Safety Focused</h3><p>Built around professional standards, support, trip records, and operational oversight.</p></article></div></section><section class="section page-wrap"><div class="card reveal center"><p class="kicker"><i class="fa-solid fa-mobile-screen-button"></i> Apps Coming Soon</p><h2 class="section-title">Passenger and Driver apps are <span>coming soon.</span></h2><p class="section-sub" style="margin:auto">Book, track, accept, manage, and communicate in one premium Angel Express experience.</p><div class="actions" style="justify-content:center"><a class="btn btn-primary" href="book-ride.html">Reserve a Ride</a><a class="btn btn-secondary" href="driver.html#apply">Become a Chauffeur</a></div></div></section></main><div id="siteFooter"></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Angel Express Mobility | Premium Private Rides Across Texas</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <style>
+    :root {
+      --ae-navy: #050b16;
+      --ae-navy-2: #081426;
+      --ae-gold: #D4AF37;
+      --ae-white: #ffffff;
+      --ae-muted: #B8C1CC;
+      --ae-border: rgba(212,175,55,.28);
+      --ae-glass: rgba(13,20,34,.76);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background: var(--ae-navy);
+      color: var(--ae-white);
+      overflow-x: hidden;
+    }
+
+    a { text-decoration: none; }
+
+    .luxury-loader {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      background: radial-gradient(circle at center, #10213b, #050b16 65%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .8s ease, visibility .8s ease;
+    }
+
+    .luxury-loader.hide {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-mark {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      border: 1px solid rgba(212,175,55,.35);
+      display: grid;
+      place-items: center;
+      color: var(--ae-gold);
+      font-size: 42px;
+      font-weight: 900;
+      box-shadow: 0 0 80px rgba(212,175,55,.25);
+      animation: loaderPulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes loaderPulse {
+      0%,100% { transform: scale(1); opacity: .7; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    .navbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 9999;
+      min-height: 86px;
+      padding: 16px 5.5%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      background: rgba(5,11,22,.88);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: white;
+      min-width: max-content;
+    }
+
+    .logo-mark {
+      width: 58px;
+      height: 58px;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #f1d35c, var(--ae-gold));
+      color: #06111f;
+      font-size: 32px;
+      font-weight: 900;
+    }
+
+    .logo h1 {
+      margin: 0;
+      font-size: clamp(18px, 2vw, 28px);
+      letter-spacing: 4px;
+      line-height: 1;
+    }
+
+    .logo span {
+      display: block;
+      margin-top: 8px;
+      color: rgba(255,255,255,.75);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 5px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 26px;
+      flex: 1;
+    }
+
+    .nav-links a {
+      color: rgba(255,255,255,.78);
+      font-weight: 800;
+      font-size: 16px;
+      white-space: nowrap;
+      transition: color .25s ease;
+    }
+
+    .nav-links a:hover { color: var(--ae-gold); }
+
+    .nav-actions {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      min-width: max-content;
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 15px 26px;
+      border-radius: 999px;
+      background: var(--ae-gold);
+      color: #06111f;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .nav-cta-secondary {
+      background: rgba(255,255,255,.05);
+      color: var(--ae-gold);
+      border: 1px solid rgba(212,175,55,.35);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      border: 1px solid rgba(212,175,55,.35);
+      background: rgba(255,255,255,.06);
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      top: 86px;
+      left: 0;
+      right: 0;
+      z-index: 9998;
+      padding: 18px 5.5% 24px;
+      background: rgba(5,11,22,.96);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(212,175,55,.25);
+    }
+
+    .mobile-menu.open {
+      display: grid;
+      gap: 12px;
+    }
+
+    .mobile-menu a {
+      color: white;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.06);
+      font-weight: 800;
+    }
+
+    .hero-v4 {
+      position: relative;
+      min-height: 100vh;
+      padding: 150px 5.5% 70px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .hero-v4-bg {
+      position: absolute;
+      inset: 0;
+      z-index: -5;
+      background: #050b16;
+      will-change: transform;
+    }
+
+    .hero-v4-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 2.4s ease-in-out;
+      transform: scale(1.08);
+      overflow: hidden;
+    }
+
+    .hero-v4-slide.active {
+      opacity: 1;
+      animation: kenBurns 11s ease-in-out forwards;
+    }
+
+    .hero-v4-slide img,
+    .hero-v4-slide video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: saturate(1.08) contrast(1.06);
+    }
+
+    @keyframes kenBurns {
+      from { transform: scale(1.08); }
+      to { transform: scale(1.17); }
+    }
+
+    .hero-v4-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: -3;
+      background:
+        radial-gradient(circle at 78% 30%, rgba(212,175,55,.2), transparent 30%),
+        linear-gradient(90deg, rgba(5,11,22,.97), rgba(5,11,22,.80), rgba(5,11,22,.44)),
+        linear-gradient(180deg, rgba(5,11,22,.18), rgba(5,11,22,.98));
+    }
+
+    .hero-v4-gold-light {
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      right: -180px;
+      top: 16%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212,175,55,.23), transparent 68%);
+      filter: blur(10px);
+      animation: goldFloat 7s infinite alternate ease-in-out;
+      z-index: -2;
+    }
+
+    @keyframes goldFloat {
+      from { transform: translateY(-20px); opacity: .55; }
+      to { transform: translateY(40px); opacity: .95; }
+    }
+
+    .hero-v4-layout {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 36px;
+      align-items: end;
+    }
+
+    .hero-v4-content {
+      max-width: 860px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .hero-v4-kicker {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--ae-gold);
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(212,175,55,.3);
+      backdrop-filter: blur(14px);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-weight: 900;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
+
+    .hero-v4 h1 {
+      font-size: clamp(48px, 7vw, 104px);
+      line-height: .92;
+      margin: 24px 0 18px;
+      letter-spacing: -2.8px;
+    }
+
+    .hero-v4 h1 span { color: var(--ae-gold); }
+
+    .hero-v4-sub {
+      max-width: 720px;
+      font-size: clamp(17px, 1.6vw, 21px);
+      line-height: 1.7;
+      color: #dce5ee;
+    }
+
+    .hero-v4-actions,
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 32px;
+    }
+
+    .hero-v4-btn {
+      position: relative;
+      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 23px;
+      border-radius: 999px;
+      font-weight: 900;
+      transition: transform .28s ease, box-shadow .28s ease, border-color .28s ease;
+    }
+
+    .hero-v4-btn::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -80%;
+      width: 55%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+      transform: skewX(-20deg);
+      transition: left .55s ease;
+    }
+
+    .hero-v4-btn:hover::after { left: 130%; }
+    .hero-v4-btn:hover { transform: translateY(-4px); }
+
+    .hero-v4-primary {
+      background: var(--ae-gold);
+      color: #06111f;
+      box-shadow: 0 20px 55px rgba(212,175,55,.32);
+    }
+
+    .hero-v4-secondary {
+      background: rgba(255,255,255,.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,.22);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero-v4-secondary:hover { border-color: var(--ae-gold); }
+
+    .hero-v4-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 14px;
+      max-width: 900px;
+      margin-top: 40px;
+    }
+
+    .hero-v4-stat,
+    .hero-v4-caption {
+      background: rgba(13,20,34,.76);
+      border: 1px solid rgba(212,175,55,.26);
+      border-radius: 24px;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 24px 70px rgba(0,0,0,.25);
+    }
+
+    .hero-v4-stat {
+      min-width: 0;
+      padding: 20px;
+      transition: transform .3s ease, border-color .3s ease, box-shadow .3s ease;
+    }
+
+    .hero-v4-stat:hover {
+      transform: translateY(-7px);
+      border-color: rgba(212,175,55,.7);
+      box-shadow: 0 30px 80px rgba(0,0,0,.35);
+    }
+
+    .hero-v4-stat strong {
+      display: block;
+      font-size: clamp(22px, 2.2vw, 32px);
+      color: white;
+      line-height: 1.1;
+    }
+
+    .hero-v4-stat span {
+      display: block;
+      margin-top: 7px;
+      color: var(--ae-muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .hero-v4-caption {
+      position: relative;
+      z-index: 4;
+      padding: 24px;
+      align-self: end;
+      color: #dce5ee;
+      font-size: 15px;
+      line-height: 1.65;
+      max-width: 100%;
+    }
+
+    .hero-v4-caption b {
+      display: block;
+      color: var(--ae-gold);
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .section {
+      padding: 95px 5.5%;
+    }
+
+    .section-top {
+      max-width: 760px;
+      margin-bottom: 38px;
+    }
+
+    .kicker {
+      color: var(--ae-gold);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .section-top h3,
+    .route-copy h3 {
+      font-size: clamp(34px, 5vw, 60px);
+      line-height: 1;
+      margin: 14px 0;
+    }
+
+    .section-top p,
+    .route-copy p {
+      color: var(--ae-muted);
+      line-height: 1.8;
+      font-size: 18px;
+    }
+
+    .ecosystem-grid,
+    .promise-grid,
+    .route-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .promise-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .ecosystem-grid article,
+    .promise-grid article,
+    .route-card {
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(212,175,55,.18);
+      border-radius: 26px;
+      padding: 28px;
+      transition: transform .28s ease, border-color .28s ease;
+    }
+
+    .ecosystem-grid article:hover,
+    .promise-grid article:hover,
+    .route-card:hover {
+      transform: translateY(-7px);
+      border-color: var(--ae-gold);
+    }
+
+    .ecosystem-grid i,
+    .promise-grid i {
+      color: var(--ae-gold);
+      font-size: 30px;
+      margin-bottom: 16px;
+    }
+
+    .ecosystem-grid h4,
+    .promise-grid h4 {
+      font-size: 23px;
+      margin: 0 0 12px;
+    }
+
+    .ecosystem-grid p,
+    .promise-grid p,
+    .route-card p {
+      color: var(--ae-muted);
+      line-height: 1.7;
+    }
+
+    .ecosystem-grid a {
+      color: var(--ae-gold);
+      font-weight: 900;
+    }
+
+    .routes-showcase {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 38px;
+      align-items: center;
+    }
+
+    .route-card span {
+      color: var(--ae-gold);
+      font-weight: 900;
+    }
+
+    .route-card b {
+      display: block;
+      color: white;
+      font-size: 21px;
+      margin: 11px 0;
+    }
+
+    .worldcup-banner {
+      margin: 70px 5.5%;
+      padding: 64px;
+      border-radius: 36px;
+      background:
+        linear-gradient(90deg, rgba(5,11,22,.96), rgba(5,11,22,.58)),
+        url("images/hero/08-worldcup.jpg");
+      background-size: cover;
+      background-position: center;
+      border: 1px solid rgba(212,175,55,.25);
+      box-shadow: 0 28px 80px rgba(0,0,0,.32);
+    }
+
+    .worldcup-banner h2 {
+      font-size: clamp(34px, 5vw, 64px);
+      line-height: 1;
+      max-width: 930px;
+    }
+
+    .worldcup-banner p {
+      color: #dce5ee;
+      max-width: 760px;
+      line-height: 1.8;
+      font-size: 18px;
+    }
+
+    .faq-accordion {
+      display: grid;
+      gap: 16px;
+      margin-top: 35px;
+    }
+
+    .faq-accordion details {
+      background: rgba(16, 24, 39, .82);
+      border: 1px solid rgba(212, 175, 55, .25);
+      border-radius: 20px;
+      padding: 0;
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+    }
+
+    .faq-accordion summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 22px 26px;
+      font-size: 20px;
+      font-weight: 900;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .faq-accordion summary::-webkit-details-marker { display: none; }
+
+    .faq-accordion summary::after {
+      content: "+";
+      color: var(--ae-gold);
+      font-size: 28px;
+      font-weight: 900;
+    }
+
+    .faq-accordion details[open] summary::after { content: "−"; }
+
+    .faq-accordion details p {
+      padding: 0 26px 24px;
+      color: var(--ae-muted);
+      line-height: 1.7;
+    }
+
+    .testimonial-img {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(212,175,55,.55);
+      margin-bottom: 16px;
+    }
+
+    .stars {
+      color: var(--ae-gold);
+      font-weight: 900;
+      margin: 8px 0;
+    }
+
+    .cta-section {
+      margin: 70px 5.5% 100px;
+      padding: 70px 30px;
+      border-radius: 36px;
+      text-align: center;
+      background: radial-gradient(circle at 50% 0%, rgba(212,175,55,.22), rgba(255,255,255,.06));
+      border: 1px solid rgba(212,175,55,.25);
+    }
+
+    .cta-section h2 {
+      font-size: clamp(34px, 5vw, 64px);
+      max-width: 900px;
+      margin: 18px auto;
+      line-height: 1;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px 24px;
+      border-radius: 999px;
+      font-weight: 900;
+      transition: transform .25s ease;
+    }
+
+    .btn:hover { transform: translateY(-4px); }
+
+    .btn-primary {
+      background: var(--ae-gold);
+      color: #06111f;
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.18);
+      color: white;
+    }
+
+    .footer {
+      padding: 70px 5.5% 30px;
+      background: #030712;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr;
+      gap: 34px;
+    }
+
+    .footer h3,
+    .footer h4 {
+      color: white;
+    }
+
+    .footer p,
+    .footer a {
+      color: var(--ae-muted);
+      line-height: 1.7;
+    }
+
+    .footer a:hover { color: var(--ae-gold); }
+
+    .footer-bottom {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      color: var(--ae-muted);
+      text-align: center;
+    }
+
+    .chat-toggle,
+    .whatsapp-float {
+      position: fixed;
+      right: 22px;
+      z-index: 1001;
+      border: none;
+      border-radius: 999px;
+      padding: 14px 20px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 16px 42px rgba(0,0,0,.28);
+    }
+
+    .chat-toggle {
+      bottom: 88px;
+      background: var(--ae-gold);
+      color: var(--ae-navy);
+    }
+
+    .whatsapp-float {
+      bottom: 24px;
+      background: #25d366;
+      color: #06111f;
+    }
+
+    .chatbot-box {
+      position: fixed;
+      right: 22px;
+      bottom: 145px;
+      width: 340px;
+      max-width: calc(100vw - 44px);
+      background: rgba(5,11,22,.94);
+      border: 1px solid rgba(212,175,55,.35);
+      border-radius: 24px;
+      overflow: hidden;
+      z-index: 1002;
+      display: none;
+      box-shadow: 0 30px 90px rgba(0,0,0,.45);
+    }
+
+    .chatbot-header {
+      padding: 16px;
+      background: var(--ae-gold);
+      color: var(--ae-navy);
+      font-weight: 900;
+    }
+
+    .chatbot-messages {
+      height: 220px;
+      overflow-y: auto;
+      padding: 16px;
+      color: white;
+    }
+
+    .chatbot-input {
+      display: flex;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+    .chatbot-input input {
+      flex: 1;
+      border: none;
+      padding: 14px;
+      background: rgba(255,255,255,.08);
+      color: white;
+      outline: none;
+    }
+
+    .chatbot-input button {
+      border: none;
+      padding: 14px 18px;
+      background: var(--ae-gold);
+      color: var(--ae-navy);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(34px);
+      filter: blur(8px);
+      transition: opacity .85s ease, transform .85s ease, filter .85s ease;
+    }
+
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+
+    @media (max-width: 1280px) {
+      .navbar { gap: 14px; }
+      .nav-links { gap: 17px; }
+      .nav-links a { font-size: 14px; }
+      .nav-cta { padding: 13px 20px; }
+
+      .hero-v4-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-v4-caption {
+        max-width: 720px;
+      }
+
+      .promise-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .navbar { min-height: 78px; }
+
+      .logo-mark {
+        width: 50px;
+        height: 50px;
+        border-radius: 17px;
+        font-size: 28px;
+      }
+
+      .logo h1 {
+        font-size: 20px;
+        letter-spacing: 3px;
+      }
+
+      .logo span {
+        font-size: 11px;
+        letter-spacing: 3px;
+      }
+
+      .nav-links,
+      .nav-actions {
+        display: none;
+      }
+
+      .mobile-menu-btn {
+        display: grid;
+        place-items: center;
+      }
+
+      .mobile-menu { top: 78px; }
+
+      .hero-v4 {
+        padding: 120px 5.5% 64px;
+        align-items: flex-end;
+      }
+
+      .hero-v4 h1 {
+        letter-spacing: -1.5px;
+      }
+
+      .hero-v4-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .ecosystem-grid,
+      .routes-showcase,
+      .route-cards,
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .navbar { padding: 13px 4.5%; }
+
+      .logo { gap: 10px; }
+
+      .logo-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 15px;
+        font-size: 24px;
+      }
+
+      .logo h1 {
+        font-size: 15px;
+        letter-spacing: 2px;
+      }
+
+      .logo span {
+        font-size: 9px;
+        letter-spacing: 2px;
+      }
+
+      .hero-v4 {
+        min-height: 100svh;
+        padding: 110px 4.5% 42px;
+      }
+
+      .hero-v4-overlay {
+        background:
+          linear-gradient(180deg, rgba(5,11,22,.72), rgba(5,11,22,.92)),
+          linear-gradient(90deg, rgba(5,11,22,.96), rgba(5,11,22,.55));
+      }
+
+      .hero-v4-kicker {
+        font-size: 10px;
+        letter-spacing: 1px;
+        padding: 9px 12px;
+      }
+
+      .hero-v4 h1 {
+        font-size: clamp(42px, 14vw, 62px);
+        margin: 18px 0 14px;
+      }
+
+      .hero-v4-sub {
+        font-size: 16px;
+        line-height: 1.65;
+      }
+
+      .hero-v4-actions,
+      .hero-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .hero-v4-btn,
+      .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 15px 18px;
+      }
+
+      .hero-v4-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 26px;
+      }
+
+      .hero-v4-stat {
+        padding: 16px;
+        border-radius: 18px;
+      }
+
+      .hero-v4-stat strong {
+        font-size: 22px;
+      }
+
+      .hero-v4-stat span {
+        font-size: 12px;
+      }
+
+      .hero-v4-caption {
+        padding: 18px;
+        border-radius: 20px;
+        font-size: 14px;
+        margin-top: 22px;
+      }
+
+      .section {
+        padding: 70px 4.5%;
+      }
+
+      .promise-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .worldcup-banner {
+        margin: 50px 4.5%;
+        padding: 38px 22px;
+      }
+
+      .cta-section {
+        margin: 55px 4.5% 80px;
+        padding: 48px 20px;
+      }
+
+      .chat-toggle,
+      .whatsapp-float {
+        right: 14px;
+        padding: 12px 15px;
+        font-size: 13px;
+      }
+
+      .chatbot-box {
+        right: 14px;
+        width: calc(100vw - 28px);
+      }
+    }
+
+    @media (max-width: 390px) {
+      .hero-v4-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .logo span { display: none; }
+    }
+
+    /* ANGEL EXPRESS V4 CLEAN RESPONSIVE OVERRIDE */
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(14px, 1.4vw, 26px);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .desktop-nav a {
+      color: rgba(255,255,255,.78);
+      font-weight: 800;
+      font-size: clamp(13px, 1vw, 16px);
+      white-space: nowrap;
+      transition: color .25s ease;
+    }
+
+    .desktop-nav a:hover {
+      color: var(--ae-gold);
+    }
+
+    .desktop-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .desktop-actions .nav-cta-secondary {
+      min-width: 98px;
+    }
+
+    @media (max-width: 1220px) {
+      .navbar {
+        padding: 14px 4%;
+        gap: 14px;
+      }
+
+      .logo-mark {
+        width: 52px;
+        height: 52px;
+        border-radius: 18px;
+        font-size: 28px;
+      }
+
+      .logo h1 {
+        font-size: 22px;
+        letter-spacing: 3px;
+      }
+
+      .logo span {
+        font-size: 10px;
+        letter-spacing: 3px;
+      }
+
+      .desktop-nav {
+        gap: 14px;
+      }
+
+      .desktop-nav a {
+        font-size: 13px;
+      }
+
+      .nav-cta {
+        padding: 12px 18px;
+      }
+
+      .desktop-actions .nav-cta-secondary {
+        display: none;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .navbar {
+        min-height: 76px;
+        padding: 12px 5%;
+        flex-direction: row;
+        justify-content: space-between;
+      }
+
+      .desktop-nav,
+      .desktop-actions {
+        display: none !important;
+      }
+
+      .mobile-menu-btn {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        border: 1px solid rgba(212,175,55,.4);
+        background: rgba(255,255,255,.06);
+        color: #fff;
+        font-size: 22px;
+        cursor: pointer;
+      }
+
+      .mobile-menu {
+        display: none;
+        position: fixed;
+        top: 76px;
+        left: 0;
+        right: 0;
+        z-index: 9998;
+        padding: 12px 5% 16px;
+        background: rgba(5,11,22,.97);
+        backdrop-filter: blur(18px);
+        border-bottom: 1px solid rgba(212,175,55,.22);
+      }
+
+      .mobile-menu.open {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .mobile-menu a {
+        padding: 12px 15px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.07);
+        color: white;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 15px;
+      }
+
+      .hero-v4 {
+        min-height: auto;
+        padding: 120px 5% 80px;
+        align-items: flex-start;
+      }
+
+      .hero-v4-layout {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+
+      .hero-v4 h1 {
+        font-size: clamp(46px, 10vw, 76px);
+        letter-spacing: -1.2px;
+        line-height: .98;
+      }
+
+      .hero-v4-sub {
+        max-width: 680px;
+      }
+
+      .hero-v4-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hero-v4-caption {
+        max-width: 680px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .navbar {
+        min-height: 72px;
+        padding: 12px 4.5%;
+      }
+
+      .logo {
+        gap: 10px;
+      }
+
+      .logo-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 15px;
+        font-size: 24px;
+      }
+
+      .logo h1 {
+        font-size: 16px;
+        letter-spacing: 2px;
+      }
+
+      .logo span {
+        display: none;
+      }
+
+      .mobile-menu {
+        top: 72px;
+      }
+
+      .hero-v4 {
+        min-height: auto;
+        padding: 108px 4.5% 76px;
+      }
+
+      .hero-v4-overlay {
+        background:
+          linear-gradient(180deg, rgba(5,11,22,.68), rgba(5,11,22,.94)),
+          linear-gradient(90deg, rgba(5,11,22,.96), rgba(5,11,22,.62));
+      }
+
+      .hero-v4-kicker {
+        font-size: 10px;
+        letter-spacing: .9px;
+        padding: 8px 11px;
+        max-width: 100%;
+      }
+
+      .hero-v4 h1 {
+        font-size: clamp(40px, 12.5vw, 54px);
+        line-height: 1;
+        margin: 16px 0 12px;
+      }
+
+      .hero-v4-sub {
+        font-size: 16px;
+        line-height: 1.62;
+      }
+
+      .hero-v4-actions,
+      .hero-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .hero-v4-btn,
+      .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 15px 16px;
+        font-size: 15px;
+      }
+
+      .hero-v4-stats {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .hero-v4-stat {
+        padding: 15px;
+        border-radius: 18px;
+      }
+
+      .hero-v4-stat strong {
+        font-size: 21px;
+      }
+
+      .hero-v4-stat span {
+        font-size: 12px;
+      }
+
+      .hero-v4-caption {
+        padding: 17px;
+        border-radius: 20px;
+        font-size: 14px;
+        margin-top: 0;
+      }
+
+      .chat-toggle,
+      .whatsapp-float {
+        display: none !important;
+      }
+
+      .chatbot-box {
+        right: 14px;
+        width: calc(100vw - 28px);
+      }
+    }
+
+    @media (max-width: 390px) {
+      .logo h1 {
+        font-size: 14px;
+        letter-spacing: 1.5px;
+      }
+
+      .hero-v4-stats {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ===== FINAL MOBILE FIX: LOGO SUBTITLE + MOBILE SUPPORT DOCK ===== */
+    .logo-text{
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      min-width:0;
+    }
+
+    @media (max-width: 640px){
+      .logo span,
+      .logo-text span{
+        display:block !important;
+        font-size:8px !important;
+        letter-spacing:2px !important;
+        color:rgba(255,255,255,.75) !important;
+        margin-top:3px !important;
+        line-height:1.1 !important;
+        white-space:nowrap !important;
+      }
+
+      .logo h1{
+        font-size:15px !important;
+        letter-spacing:1.8px !important;
+      }
+
+      .navbar{
+        overflow:visible !important;
+      }
+
+      .chat-toggle,
+      .whatsapp-float{
+        display:none !important;
+      }
+
+      .mobile-support-dock{
+        position:fixed !important;
+        left:12px !important;
+        right:12px !important;
+        bottom:calc(env(safe-area-inset-bottom) + 14px) !important;
+        z-index:2147483647 !important;
+        display:grid !important;
+        grid-template-columns:1fr 1fr !important;
+        gap:10px !important;
+        pointer-events:auto !important;
+      }
+
+      .mobile-support-btn{
+        min-height:48px !important;
+        border-radius:999px !important;
+        border:none !important;
+        font-weight:900 !important;
+        font-size:13px !important;
+        display:flex !important;
+        align-items:center !important;
+        justify-content:center !important;
+        text-decoration:none !important;
+        box-shadow:0 14px 35px rgba(0,0,0,.45) !important;
+        color:#050b16 !important;
+        padding:0 12px !important;
+        white-space:nowrap !important;
+      }
+
+      .mobile-support-btn.ai{
+        background:#D4AF37 !important;
+      }
+
+      .mobile-support-btn.whatsapp{
+        background:#25D366 !important;
+      }
+
+      body{
+        padding-bottom:86px !important;
+      }
+
+      .chatbot-box{
+        z-index:2147483646 !important;
+        bottom:82px !important;
+        right:12px !important;
+        width:calc(100vw - 24px) !important;
+        max-width:calc(100vw - 24px) !important;
+      }
+    }
+
+    @media (max-width: 390px){
+      .logo span,
+      .logo-text span{
+        display:block !important;
+        font-size:7.5px !important;
+        letter-spacing:1.5px !important;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="luxury-loader" id="luxuryLoader">
+    <div class="loader-mark">A</div>
+  </div>
+
+ <header class="navbar">
+ <a href="index.html" class="logo">
+
+    <div class="logo-mark">A</div>
+
+    <div class="logo-text">
+
+        <h1>ANGEL EXPRESS</h1>
+
+        <span>MOBILITY ECOSYSTEM</span>
+
+    </div>
+
+</a>
+
+  <nav class="desktop-nav">
+    <a href="index.html">Home</a>
+    <a href="book-ride.html">Book Ride</a>
+    <a href="passenger.html">Passengers</a>
+    <a href="driver.html">Drivers</a>
+    <a href="terms.html">Terms</a>
+    <a href="blog.html">Blog</a>
+    <a href="angel-merchandise.html">Angel Merchandise</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <div class="desktop-actions">
+    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
+  </div>
+
+  <button class="mobile-menu-btn" id="mobileMenuBtn">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="angel-merchandise.html">Angel Merchandise</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
+</div>
+
+  <main>
+    <section class="hero-v4">
+      <div class="hero-v4-bg" id="heroV4Bg">
+        <div class="hero-v4-slide active">
+          <img src="images/hero/01-dfw-airport.jpg" alt="Mercedes SUV arriving at DFW airport">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/02-utd-campus.jpg" alt="Luxury SUV outside UTD campus">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/03-dallas-sunset.jpg" alt="Dallas skyline at sunset">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/04-chauffeur-door.jpg" alt="Chauffeur opening the rear door">
+        </div>
+
+        <div class="hero-v4-slide">
+          <img src="images/hero/05-passenger-entering.jpg" alt="Passenger entering the SUV">
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/06-airport-pickup.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/07-texas-highway.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/08-worldcup.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/09-business-executive.mp4" type="video/mp4">
+          </video>
+        </div>
+
+        <div class="hero-v4-slide">
+          <video autoplay muted loop playsinline preload="metadata">
+            <source src="images/hero/10-dallas-night.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+
+      <div class="hero-v4-overlay"></div>
+      <div class="hero-v4-gold-light"></div>
+
+      <div class="hero-v4-layout">
+        <div class="hero-v4-content reveal">
+          <p class="hero-v4-kicker">
+            <i class="fa-solid fa-crown"></i>
+            Dallas-based private transportation
+          </p>
+
+          <h1>Travel Texas in <span>Comfort.</span></h1>
+
+          <p class="hero-v4-sub">
+            Premium private rides for students, airport travelers, business trips,
+            long-distance routes, events, and World Cup visitors — connected through
+            one Angel Express mobility ecosystem.
+          </p>
+
+          <div class="hero-v4-actions">
+            <a href="book-ride.html" class="hero-v4-btn hero-v4-primary">
+              <i class="fa-solid fa-route"></i>
+              Book Your Ride
+            </a>
+
+            <a href="fare-estimate.html" class="hero-v4-btn hero-v4-secondary">
+              <i class="fa-solid fa-calculator"></i>
+              Get Fare Estimate
+            </a>
+
+            <a href="driver.html#apply" class="hero-v4-btn hero-v4-secondary">
+              <i class="fa-solid fa-car"></i>
+              Become a Chauffeur
+            </a>
+          </div>
+
+          <div class="hero-v4-stats">
+            <div class="hero-v4-stat">
+              <strong>Private</strong>
+              <span>Whole-car rides</span>
+            </div>
+
+            <div class="hero-v4-stat">
+              <strong>Texas</strong>
+              <span>Regional routes</span>
+            </div>
+
+            <div class="hero-v4-stat">
+              <strong>24/7</strong>
+              <span>By reservation</span>
+            </div>
+
+            <div class="hero-v4-stat">
+              <strong>70%</strong>
+              <span>Chauffeur payout</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-v4-caption reveal">
+          <b>Angel Express Live Experience</b>
+          Smooth airport pickups, campus travel, city-to-city rides, event movement,
+          and professionally managed private transportation.
+        </div>
+      </div>
+    </section>
+
+    <section class="section ecosystem-section">
+      <div class="section-top reveal">
+        <p class="kicker">One connected platform</p>
+        <h3>A complete Angel Express ecosystem.</h3>
+        <p>
+          The website, passenger app, driver app, and owner app are designed to work together with one shared booking, trip, safety, and payment flow.
+        </p>
+      </div>
+
+      <div class="ecosystem-grid reveal">
+        <article>
+          <i class="fa-solid fa-user"></i>
+          <h4>Passenger Experience</h4>
+          <p>Book rides, estimate fares, confirm trips, track rides, and receive support.</p>
+          <a href="passenger.html">View passenger page</a>
+        </article>
+
+        <article>
+          <i class="fa-solid fa-car"></i>
+          <h4>Chauffeur Network</h4>
+          <p>Approved drivers accept rides, manage trips, track earnings, and serve passengers professionally.</p>
+          <a href="driver.html#apply">Become a Chauffeur</a>
+        </article>
+
+        <article>
+          <i class="fa-solid fa-map-location-dot"></i>
+          <h4>Owner Operations</h4>
+          <p>Live trip oversight, driver management, passenger management, and payment visibility.</p>
+          <a href="contact.html">Contact operations</a>
+        </article>
+      </div>
+    </section>
+
+    <section class="section routes-showcase">
+      <div class="route-copy reveal">
+        <p class="kicker">Where we go</p>
+        <h3>Private rides across Texas and nearby cities.</h3>
+        <p>
+          Built for students, airport travelers, tourists, private groups, long-distance passengers, event visitors, and chauffeurs seeking premium rides.
+        </p>
+
+        <div class="hero-actions">
+          <a href="book-ride.html" class="btn btn-primary">Start Booking</a>
+          <a href="driver.html#apply" class="btn btn-secondary">Become a Chauffeur</a>
+        </div>
+      </div>
+
+      <div class="route-cards reveal">
+        <div class="route-card"><span>01</span><b>Dallas → Austin</b><p>Student and weekend travel.</p></div>
+        <div class="route-card"><span>02</span><b>Dallas → Houston</b><p>Airport, business, and family trips.</p></div>
+        <div class="route-card"><span>03</span><b>Dallas → San Antonio</b><p>Tourism and long-distance rides.</p></div>
+        <div class="route-card"><span>04</span><b>Dallas → Oklahoma City</b><p>Regional interstate travel.</p></div>
+        <div class="route-card"><span>05</span><b>Dallas → College Station</b><p>Campus and student movement.</p></div>
+        <div class="route-card"><span>06</span><b>Custom Routes</b><p>Airport, hotel, event, and private destinations.</p></div>
+      </div>
+    </section>
+
+    <section class="worldcup-banner reveal">
+      <div>
+        <p class="kicker">World Cup 2026</p>
+        <h2>Private transportation for fans, tourists, groups, and chauffeurs during major Texas travel demand.</h2>
+        <p>
+          Plan airport transfers, city-to-city travel, hotel pickups, game-day movement, and premium chauffeur opportunities with Angel Express.
+        </p>
+
+        <div class="hero-actions">
+          <a href="book-ride.html" class="btn btn-primary">Reserve World Cup Ride</a>
+          <a href="driver.html#apply" class="btn btn-secondary">Drive World Cup Routes</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section safety-section">
+      <div class="section-top reveal">
+        <p class="kicker">Safety Promise</p>
+        <h3>Simple, clean, and professionally managed.</h3>
+      </div>
+
+      <div class="promise-grid reveal">
+        <article>
+          <i class="fa-solid fa-shield-heart"></i>
+          <h4>Safe Ride Flow</h4>
+          <p>Passenger information, emergency contacts, trip records, and live ride updates are part of the ecosystem.</p>
+        </article>
+
+        <article>
+          <i class="fa-solid fa-calendar-check"></i>
+          <h4>Confirmed Scheduling</h4>
+          <p>Bookings are saved, reviewed, confirmed, and connected to Angel Express operations.</p>
+        </article>
+
+        <article>
+          <i class="fa-solid fa-comments"></i>
+          <h4>Direct Communication</h4>
+          <p>Passengers and chauffeurs can reach Angel Express by WhatsApp, email, and app support.</p>
+        </article>
+
+        <article>
+          <i class="fa-solid fa-credit-card"></i>
+          <h4>Connected Payments</h4>
+          <p>Designed around the payment model used across the Passenger, Driver, and Owner apps.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="faq" class="section faq-section">
+      <div class="section-top reveal">
+        <p class="kicker">FAQ</p>
+        <h3>Frequently Asked Questions</h3>
+        <p>Quick answers about booking, routes, payments, and ride preparation.</p>
+      </div>
+
+      <div class="faq-accordion reveal">
+        <details>
+          <summary>How do I book a ride?</summary>
+          <p>Fill out the booking form with your trip details. Once submitted, Angel Express will receive your booking and follow up for confirmation.</p>
+        </details>
+
+        <details>
+          <summary>What routes do you cover?</summary>
+          <p>We currently cover Dallas to Austin, Houston, San Antonio, College Station, Oklahoma City, airport trips, events, and custom routes by request.</p>
+        </details>
+
+        <details>
+          <summary>How much does a ride cost?</summary>
+          <p>Pricing is based on distance, route, trip type, and special requests. You can review the fare estimate before confirming your booking.</p>
+        </details>
+
+        <details>
+          <summary>Can I book airport pickup or drop-off?</summary>
+          <p>Yes. Angel Express provides airport pickup and drop-off services. Please include your airport, terminal, flight time, and pickup instructions when booking.</p>
+        </details>
+
+        <details>
+          <summary>Can I book for a group?</summary>
+          <p>Yes. Group and private car bookings are available. Include the number of passengers and luggage details in your booking.</p>
+        </details>
+
+        <details>
+          <summary>How do I confirm my booking?</summary>
+          <p>After submitting the form, you will receive confirmation by email. Angel Express may also contact you on WhatsApp for additional trip details.</p>
+        </details>
+      </div>
+    </section>
+
+    <section id="testimonials" class="section">
+      <div class="section-top reveal">
+        <p class="kicker">Rider Experience</p>
+        <h3>Built for different types of travelers.</h3>
+        <p>Angel Express is designed for students, business travelers, airport passengers, and weekend riders who want a cleaner, safer, private ride experience.</p>
+      </div>
+
+      <div class="faq-accordion reveal">
+        <details>
+          <summary>UTD Student</summary>
+          <p>
+            <img src="https://images.unsplash.com/photo-1590650046871-92c887180603?auto=format&fit=crop&w=400&q=80" alt="Student rider" class="testimonial-img"><br>
+            <span class="stars">★★★★★</span><br>
+            “The student discount makes long-distance travel easier, and the ride feels safer than waiting around for random options.”
+          </p>
+        </details>
+
+        <details>
+          <summary>Business Traveler</summary>
+          <p>
+            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80" alt="Business traveler" class="testimonial-img"><br>
+            <span class="stars">★★★★★</span><br>
+            “Private booking gives me flexibility, comfort, and a cleaner travel experience between cities.”
+          </p>
+        </details>
+
+        <details>
+          <summary>Airport Passenger</summary>
+          <p>
+            <img src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&fit=crop&w=400&q=80" alt="Airport passenger" class="testimonial-img"><br>
+            <span class="stars">★★★★★</span><br>
+            “Airport pickup is easier when I can plan ahead, confirm my ride, and communicate directly on WhatsApp.”
+          </p>
+        </details>
+
+        <details>
+          <summary>Weekend Traveler</summary>
+          <p>
+            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80" alt="Weekend traveler" class="testimonial-img"><br>
+            <span class="stars">★★★★★</span><br>
+            “For weekend trips, Angel Express feels more personal, comfortable, and reliable than crowded transport.”
+          </p>
+        </details>
+      </div>
+    </section>
+
+    <section class="cta-section reveal">
+      <p class="kicker">Ready to move with Angel Express?</p>
+      <h2>Book your ride or apply to become an Angel Express Chauffeur.</h2>
+
+      <div class="hero-actions" style="justify-content:center;">
+        <a href="book-ride.html" class="btn btn-primary">
+          <i class="fa-solid fa-route"></i>
+          Book a Ride
+        </a>
+
+        <a href="driver.html#apply" class="btn btn-secondary">
+          <i class="fa-solid fa-car"></i>
+          Become a Chauffeur
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-grid">
+      <div>
+        <h3>Angel Express Mobility (AEM)</h3>
+        <p>
+          Private long-distance transportation across Texas for students,
+          travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
+        </p>
+        <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
+      </div>
+
+    <div>
+        <h4>Contact Information</h4>
+        <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+        <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+        <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+        <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
+      </div>
+
+      <div>
+        <h4>Quick Links</h4>
+        <p><a href="index.html">Home</a></p>
+        <p><a href="book-ride.html">Book a Ride</a></p>
+        <p><a href="passenger.html">Passenger Services</a></p>
+        <p><a href="driver.html#apply">Become a Chauffeur</a></p>
+        <p><a href="terms.html">Terms & Privacy</a></p>
+      </div>
+
+      <div>
+        <h4>Follow Us</h4>
+        <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
+        <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+        <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
+        <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      © 2026 Angel Express Mobility. All rights reserved.
+    </div>
+  </footer>
+
+  <button id="chatToggle" class="chat-toggle">
+    💬 AI Assistant
+  </button>
+
+  <div class="chatbot-box" id="chatbotBox">
+    <div class="chatbot-header">Angel Express Assistant</div>
+
+    <div class="chatbot-messages" id="chatbotMessages">
+      <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
+    </div>
+
+    <div class="chatbot-input">
+      <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
+      <button onclick="sendChat()">Send</button>
+    </div>
+  </div>
+
+  <a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
+    💬 Chat With Us
+  </a>
+
+  <script>
+    window.addEventListener("load", () => {
+      const loader = document.getElementById("luxuryLoader");
+      setTimeout(() => {
+        if (loader) loader.classList.add("hide");
+      }, 700);
+    });
+
+    const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+    const mobileMenu = document.getElementById("mobileMenu");
+
+    if (mobileMenuBtn && mobileMenu) {
+      mobileMenuBtn.addEventListener("click", () => {
+        mobileMenu.classList.toggle("open");
+      });
+
+      mobileMenu.querySelectorAll("a").forEach(link => {
+        link.addEventListener("click", () => {
+          mobileMenu.classList.remove("open");
+        });
+      });
+    }
+
+    const heroSlides = document.querySelectorAll(".hero-v4-slide");
+    let heroIndex = 0;
+
+    function showNextHeroSlide() {
+      if (!heroSlides.length) return;
+
+      heroSlides[heroIndex].classList.remove("active");
+      heroIndex = (heroIndex + 1) % heroSlides.length;
+      heroSlides[heroIndex].classList.add("active");
+
+      const video = heroSlides[heroIndex].querySelector("video");
+      if (video) {
+        video.currentTime = 0;
+        video.play().catch(() => {});
+      }
+    }
+
+    setInterval(showNextHeroSlide, 9000);
+
+    const revealElements = document.querySelectorAll(".reveal");
+
+    const revealObserver = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("active");
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    revealElements.forEach(element => revealObserver.observe(element));
+
+    window.addEventListener("scroll", () => {
+      const bg = document.getElementById("heroV4Bg");
+      const scrollY = window.scrollY;
+      if (bg && window.innerWidth > 768) {
+        bg.style.transform = `translateY(${scrollY * 0.12}px)`;
+      }
+    });
+  </script>
+
+
+  <script>
+    const mobileChatBtn = document.getElementById("mobileChatBtn");
+    const chatbotBoxMobile = document.getElementById("chatbotBox");
+
+    mobileChatBtn?.addEventListener("click", () => {
+      chatbotBoxMobile?.classList.toggle("open");
+    });
+  </script>
+<script src="floating-support.js?v=20260704-nav-final"></script>
+<script src="script.js?v=20260704-nav-final"></script>
+</body>
+</html>

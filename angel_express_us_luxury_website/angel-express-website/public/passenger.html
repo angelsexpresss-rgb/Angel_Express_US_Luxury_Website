@@ -1,1 +1,816 @@
-<!DOCTYPE html><html lang="en"><head><title>Passenger Services | Angel Express</title><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" /><script defer src="app.js"></script></head><body style="--page-bg:url('images/hero/05-passenger-entering.jpg')"><div id="siteHeader"></div><div class="ae-page-bg"></div><main class="page-shell"><div class="page-wrap"><section class="grid-2" style="align-items:center"><div class="reveal"><p class="kicker"><i class="fa-solid fa-user"></i> Passenger Services</p><h1 class="page-title">Ride private. <span>Arrive prepared.</span></h1><p class="page-subtitle">Angel Express gives passengers a premium ride experience for campus travel, airport transfers, regional trips, tourism, events, and family transportation.</p><div class="actions"><a class="btn btn-primary" href="book-ride.html">Book a Ride</a><a class="btn btn-secondary" href="contact.html">Contact Support</a></div></div><div class="card reveal"><h3>Passenger App Coming Soon</h3><p>Manage rides, track drivers, view trips, use rewards, and communicate with Angel Express support.</p></div></section><section class="section"><div class="grid-3"><article class="card reveal"><div class="icon"><i class="fa-solid fa-plane"></i></div><h3>Airport Transfers</h3><p>DFW, Love Field, Austin, Houston, and other regional airport rides by reservation.</p></article><article class="card reveal"><div class="icon"><i class="fa-solid fa-graduation-cap"></i></div><h3>Student Travel</h3><p>Student-focused transportation with verification, savings, and campus-friendly options.</p></article><article class="card reveal"><div class="icon"><i class="fa-solid fa-road"></i></div><h3>Long Distance</h3><p>Private Texas regional rides for passengers who want comfort and direct service.</p></article></div></section></div></main><div id="siteFooter"></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Passenger Services | Angel Express</title>
+
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <style>
+    :root{
+      --ae-navy:#050b16;
+      --ae-gold:#D4AF37;
+      --ae-muted:#B8C1CC;
+      --ae-border:rgba(212,175,55,.28);
+    }
+
+    body{
+      margin:0;
+      background:#050b16;
+      color:white;
+      overflow-x:hidden;
+    }
+
+    .mobile-menu{display:none!important;}
+    .mobile-menu.open{
+      display:grid!important;
+      grid-template-columns:1fr;
+      gap:9px;
+    }
+
+    .passenger-bg{
+      position:fixed;
+      inset:0;
+      z-index:-3;
+      background:
+        linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.72)),
+        url("images/hero/05-passenger-entering.jpg");
+      background-size:cover;
+      background-position:center;
+    }
+
+    .passenger-bg::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at 78% 22%,rgba(212,175,55,.22),transparent 30%),
+        linear-gradient(180deg,rgba(5,11,22,.1),#050b16 96%);
+    }
+
+    .passenger-shell{
+      min-height:100vh;
+      padding:125px 5.5% 90px;
+    }
+
+    .passenger-wrap{
+      max-width:1180px;
+      margin:0 auto;
+    }
+
+    .passenger-hero{
+      display:grid;
+      grid-template-columns:1.05fr .95fr;
+      gap:44px;
+      align-items:center;
+      margin-bottom:90px;
+    }
+
+    .passenger-kicker{
+      display:inline-flex;
+      gap:10px;
+      align-items:center;
+      color:var(--ae-gold);
+      border:1px solid rgba(212,175,55,.35);
+      border-radius:999px;
+      padding:9px 14px;
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:1.5px;
+      text-transform:uppercase;
+      background:rgba(255,255,255,.07);
+      backdrop-filter:blur(14px);
+    }
+
+    .passenger-hero h1{
+      font-size:clamp(44px,7vw,84px);
+      line-height:.95;
+      margin:22px 0 16px;
+      letter-spacing:-2px;
+    }
+
+    .passenger-hero h1 span{
+      color:var(--ae-gold);
+    }
+
+    .passenger-hero p{
+      color:#dce5ee;
+      font-size:18px;
+      line-height:1.7;
+      max-width:760px;
+    }
+
+    .passenger-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:14px;
+      margin-top:30px;
+    }
+
+    .passenger-stats{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:14px;
+      margin-top:34px;
+    }
+
+    .passenger-stats div,
+    .media-card-v4,
+    .service-card-v4,
+    .step-card-v4,
+    .promise-card-v4{
+      background:rgba(13,20,34,.78);
+      border:1px solid var(--ae-border);
+      border-radius:26px;
+      backdrop-filter:blur(20px);
+      box-shadow:0 26px 75px rgba(0,0,0,.34);
+    }
+
+    .passenger-stats div{
+      padding:22px;
+    }
+
+    .passenger-stats strong{
+      display:block;
+      font-size:24px;
+      color:white;
+    }
+
+    .passenger-stats span{
+      display:block;
+      margin-top:6px;
+      color:var(--ae-muted);
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .media-card-v4{
+      position:relative;
+      min-height:560px;
+      overflow:hidden;
+    }
+
+    .media-card-v4 img{
+      width:100%;
+      height:100%;
+      min-height:560px;
+      object-fit:cover;
+      display:block;
+      filter:saturate(1.08) contrast(1.06);
+    }
+
+    .media-card-v4::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        linear-gradient(to top,rgba(5,11,22,.95),rgba(5,11,22,.12) 58%),
+        radial-gradient(circle at top right,rgba(212,175,55,.22),transparent 42%);
+    }
+
+    .media-overlay-v4{
+      position:absolute;
+      left:30px;
+      right:30px;
+      bottom:30px;
+      z-index:2;
+    }
+
+    .media-overlay-v4 span{
+      color:var(--ae-gold);
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:2px;
+      font-weight:900;
+    }
+
+    .media-overlay-v4 h3{
+      font-size:clamp(30px,4vw,44px);
+      line-height:1;
+      margin:12px 0 10px;
+    }
+
+    .media-overlay-v4 p{
+      color:#dce5ee;
+      line-height:1.6;
+    }
+
+    .section-v4{
+      margin-top:80px;
+    }
+
+    .section-top-v4{
+      max-width:840px;
+      margin-bottom:34px;
+    }
+
+    .section-top-v4 h2{
+      font-size:clamp(36px,5vw,64px);
+      line-height:1;
+      margin:14px 0;
+      letter-spacing:-1.5px;
+    }
+
+    .section-top-v4 p{
+      color:var(--ae-muted);
+      font-size:18px;
+      line-height:1.75;
+    }
+
+    .service-grid-v4{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:22px;
+    }
+
+    .steps-grid-v4,
+    .promise-grid-v4{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:22px;
+    }
+
+    .service-card-v4,
+    .step-card-v4,
+    .promise-card-v4{
+      padding:28px;
+      transition:.25s ease;
+    }
+
+    .service-card-v4:hover,
+    .step-card-v4:hover,
+    .promise-card-v4:hover{
+      transform:translateY(-7px);
+      border-color:var(--ae-gold);
+    }
+
+    .service-card-v4 i,
+    .promise-card-v4 i{
+      width:54px;
+      height:54px;
+      display:grid;
+      place-items:center;
+      border-radius:18px;
+      background:rgba(212,175,55,.12);
+      border:1px solid var(--ae-border);
+      color:var(--ae-gold);
+      font-size:24px;
+      margin-bottom:18px;
+    }
+
+    .service-card-v4 h3,
+    .promise-card-v4 h3{
+      font-size:23px;
+      margin:0 0 12px;
+    }
+
+    .service-card-v4 p,
+    .step-card-v4 p,
+    .promise-card-v4 p{
+      color:var(--ae-muted);
+      line-height:1.7;
+      margin:0;
+    }
+
+    .step-card-v4 span{
+      color:var(--ae-gold);
+      font-size:13px;
+      font-weight:900;
+      letter-spacing:1.5px;
+    }
+
+    .step-card-v4 h3{
+      font-size:22px;
+      margin:12px 0;
+    }
+
+    .worldcup-v4{
+      margin-top:90px;
+      padding:60px;
+      border-radius:34px;
+      background:
+        linear-gradient(90deg,rgba(5,11,22,.96),rgba(5,11,22,.58)),
+        url("images/hero/08-worldcup.mp4");
+      border:1px solid var(--ae-border);
+      box-shadow:0 30px 90px rgba(0,0,0,.35);
+    }
+
+    .worldcup-v4 h2,
+    .cta-v4 h2{
+      font-size:clamp(34px,5vw,62px);
+      line-height:1;
+      margin:16px 0;
+      max-width:850px;
+    }
+
+    .worldcup-v4 p,
+    .cta-v4 p{
+      color:#dce5ee;
+      line-height:1.75;
+      max-width:760px;
+      font-size:18px;
+    }
+
+    .cta-v4{
+      margin-top:80px;
+      padding:60px 30px;
+      border-radius:34px;
+      text-align:center;
+      background:
+        radial-gradient(circle at 50% 0%,rgba(212,175,55,.22),rgba(255,255,255,.06)),
+        rgba(13,20,34,.78);
+      border:1px solid var(--ae-border);
+      box-shadow:0 30px 90px rgba(0,0,0,.35);
+      backdrop-filter:blur(18px);
+    }
+
+    .cta-v4 h2,
+    .cta-v4 p{
+      margin-left:auto;
+      margin-right:auto;
+    }
+
+    .mobile-support-dock{display:none;}
+
+    @media(max-width:980px){
+      .passenger-shell{
+        padding-top:112px;
+      }
+
+      .passenger-hero{
+        grid-template-columns:1fr;
+      }
+
+      .service-grid-v4,
+      .steps-grid-v4,
+      .promise-grid-v4{
+        grid-template-columns:repeat(2,1fr);
+      }
+    }
+
+    @media(max-width:640px){
+      .passenger-shell{
+        padding:100px 4.5% 120px;
+      }
+
+      .passenger-hero h1{
+        font-size:42px;
+      }
+
+      .passenger-hero p,
+      .section-top-v4 p{
+        font-size:16px;
+      }
+
+      .passenger-actions{
+        display:grid;
+        grid-template-columns:1fr;
+      }
+
+      .passenger-stats,
+      .service-grid-v4,
+      .steps-grid-v4,
+      .promise-grid-v4{
+        grid-template-columns:1fr;
+      }
+
+      .media-card-v4,
+      .media-card-v4 img{
+        min-height:420px;
+      }
+
+      .worldcup-v4{
+        padding:38px 22px;
+      }
+
+      .chat-toggle,
+      .whatsapp-float{
+        display:none!important;
+      }
+
+      .mobile-support-dock{
+        position:fixed;
+        left:12px;
+        right:12px;
+        bottom:calc(env(safe-area-inset-bottom) + 14px);
+        z-index:999999;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:10px;
+      }
+
+      .mobile-support-btn{
+        min-height:48px;
+        border-radius:999px;
+        border:none;
+        font-weight:900;
+        font-size:13px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+        text-decoration:none;
+        box-shadow:0 14px 35px rgba(0,0,0,.35);
+      }
+
+      .mobile-support-btn.ai{
+        background:#D4AF37;
+        color:#050A14;
+      }
+
+      .mobile-support-btn.whatsapp{
+        background:#25D366;
+        color:#050A14;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<header class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">A</div>
+    <div class="logo-text">
+      <h1>ANGEL EXPRESS</h1>
+      <span>MOBILITY ECOSYSTEM</span>
+    </div>
+  </a>
+
+  <nav class="desktop-nav">
+    <a href="index.html">Home</a>
+    <a href="book-ride.html">Book Ride</a>
+    <a href="passenger.html">Passengers</a>
+    <a href="driver.html">Drivers</a>
+    <a href="terms.html">Terms</a>
+    <a href="blog.html">Blog</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <div class="desktop-actions">
+    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
+  </div>
+
+  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="fare-estimate.html">Fare Estimate</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
+</div>
+
+<div class="passenger-bg"></div>
+
+<main class="passenger-shell">
+  <div class="passenger-wrap">
+
+    <section class="passenger-hero">
+      <div class="reveal">
+        <p class="passenger-kicker">
+          <i class="fa-solid fa-user"></i>
+          Passenger Services
+        </p>
+
+        <h1>Travel Smarter <span>Across Texas.</span></h1>
+
+        <p>
+          Angel Express gives passengers a cleaner, safer, and more organized private ride experience for student travel,
+          airport transfers, long-distance trips, events, and World Cup transportation.
+        </p>
+
+        <div class="passenger-actions">
+          <a href="book-ride.html" class="btn btn-primary">
+            <i class="fa-solid fa-route"></i>
+            Book Your Ride
+          </a>
+
+          <a href="#how-it-works" class="btn btn-secondary">
+            <i class="fa-solid fa-circle-info"></i>
+            How It Works
+          </a>
+        </div>
+
+        <div class="passenger-stats">
+          <div>
+            <strong>Private</strong>
+            <span>Whole-car rides</span>
+          </div>
+
+          <div>
+            <strong>Safe</strong>
+            <span>Trip monitoring</span>
+          </div>
+
+          <div>
+            <strong>Easy</strong>
+            <span>Booking flow</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="media-card-v4 reveal">
+        <img src="images/hero/05-passenger-entering.jpg" alt="Passenger entering Angel Express vehicle">
+        <div class="media-overlay-v4">
+          <span>Passenger Journey</span>
+          <h3>Book. Track. Arrive.</h3>
+          <p>
+            Start with a fare estimate, confirm your booking, receive updates, and travel with confidence.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-v4">
+      <div class="section-top-v4 reveal">
+        <p class="passenger-kicker">
+          <i class="fa-solid fa-star"></i>
+          Services
+        </p>
+
+        <h2>Built for the way passengers travel.</h2>
+
+        <p>
+          Angel Express supports everyday travelers, students, airport passengers, families, tourists,
+          and event visitors who need reliable private transportation.
+        </p>
+      </div>
+
+      <div class="service-grid-v4">
+        <article class="service-card-v4 reveal">
+          <i class="fa-solid fa-graduation-cap"></i>
+          <h3>Student Travel</h3>
+          <p>Travel between campuses, apartments, airports, and cities with organized private rides and student-friendly support.</p>
+        </article>
+
+        <article class="service-card-v4 reveal">
+          <i class="fa-solid fa-plane-departure"></i>
+          <h3>Airport Transfers</h3>
+          <p>Schedule airport pickups and drop-offs for DFW, Dallas Love Field, and regional airport connections.</p>
+        </article>
+
+        <article class="service-card-v4 reveal">
+          <i class="fa-solid fa-road"></i>
+          <h3>Long Distance Rides</h3>
+          <p>Private trips from Dallas to Austin, Houston, San Antonio, Oklahoma City, College Station, and custom destinations.</p>
+        </article>
+
+        <article class="service-card-v4 reveal">
+          <i class="fa-solid fa-user-tie"></i>
+          <h3>Private Chauffeur</h3>
+          <p>Enjoy direct communication, clean vehicle standards, and professional service.</p>
+        </article>
+
+        <article class="service-card-v4 reveal">
+          <i class="fa-solid fa-futbol"></i>
+          <h3>World Cup Transportation</h3>
+          <p>Support for fans, tourists, and groups visiting Texas for World Cup 2026 events and regional travel.</p>
+        </article>
+
+        <article class="service-card-v4 reveal">
+          <i class="fa-solid fa-shield-heart"></i>
+          <h3>Safety Support</h3>
+          <p>Trip records, support access, emergency contacts, and connected app features help keep rides organized.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="section-v4">
+      <div class="section-top-v4 reveal">
+        <p class="passenger-kicker">
+          <i class="fa-solid fa-list-check"></i>
+          How It Works
+        </p>
+
+        <h2>A simple booking journey from request to arrival.</h2>
+      </div>
+
+      <div class="steps-grid-v4">
+        <div class="step-card-v4 reveal">
+          <span>01</span>
+          <h3>Estimate Fare</h3>
+          <p>Enter your pickup, drop-off, trip type, date, time, passengers, and luggage.</p>
+        </div>
+
+        <div class="step-card-v4 reveal">
+          <span>02</span>
+          <h3>Confirm Booking</h3>
+          <p>Review your trip details and submit the booking request to Angel Express operations.</p>
+        </div>
+
+        <div class="step-card-v4 reveal">
+          <span>03</span>
+          <h3>Driver Assigned</h3>
+          <p>Angel Express reviews the ride and assigns a chauffeur when the trip is confirmed.</p>
+        </div>
+
+        <div class="step-card-v4 reveal">
+          <span>04</span>
+          <h3>Ride Tracking</h3>
+          <p>Use the passenger app to follow ride updates, chauffeur status, and trip progress.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-v4">
+      <div class="section-top-v4 reveal">
+        <p class="passenger-kicker">
+          <i class="fa-solid fa-shield"></i>
+          Safety Promise
+        </p>
+
+        <h2>Passenger safety is built into the Angel Express ecosystem.</h2>
+
+        <p>
+          The website, passenger app, driver app, and owner app are designed to keep trip details visible,
+          organized, and connected from booking to completion.
+        </p>
+      </div>
+
+      <div class="promise-grid-v4">
+        <article class="promise-card-v4 reveal">
+          <i class="fa-solid fa-address-book"></i>
+          <h3>Emergency Contacts</h3>
+          <p>Passenger profiles can include emergency contacts for family check-ins and safety sharing.</p>
+        </article>
+
+        <article class="promise-card-v4 reveal">
+          <i class="fa-solid fa-location-dot"></i>
+          <h3>Live Tracking</h3>
+          <p>Live trip updates help passengers follow the ride, chauffeur movement, and trip phase.</p>
+        </article>
+
+        <article class="promise-card-v4 reveal">
+          <i class="fa-solid fa-id-badge"></i>
+          <h3>Verified Chauffeurs</h3>
+          <p>Drivers go through approval before accessing Angel Express ride opportunities.</p>
+        </article>
+
+        <article class="promise-card-v4 reveal">
+          <i class="fa-solid fa-desktop"></i>
+          <h3>Owner Monitoring</h3>
+          <p>Angel Express operations can oversee current trips, driver activity, and passenger support needs.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="worldcup-v4 reveal">
+      <p class="passenger-kicker">
+        <i class="fa-solid fa-futbol"></i>
+        World Cup 2026
+      </p>
+
+      <h2>Private travel support for visitors, fans, students, and groups.</h2>
+
+      <p>
+        Plan hotel pickups, airport transfers, city-to-city rides, campus travel, and event movement with Angel Express.
+      </p>
+
+      <a href="book-ride.html" class="btn btn-primary">
+        <i class="fa-solid fa-route"></i>
+        Reserve a Ride
+      </a>
+    </section>
+
+    <section class="cta-v4 reveal">
+      <p class="passenger-kicker">
+        <i class="fa-solid fa-car-side"></i>
+        Start Your Trip
+      </p>
+
+      <h2>Book your Angel Express ride and travel smarter across Texas.</h2>
+
+      <p>
+        Start with your pickup and drop-off address, review your fare estimate, and confirm your ride request.
+      </p>
+
+      <div class="passenger-actions" style="justify-content:center;">
+        <a href="book-ride.html" class="btn btn-primary">
+          <i class="fa-solid fa-route"></i>
+          Book Your Ride
+        </a>
+
+        <a href="fare-estimate.html" class="btn btn-secondary">
+          <i class="fa-solid fa-calculator"></i>
+          Fare Estimate
+        </a>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <h3>Angel Express Mobility (AEM)</h3>
+      <p>
+        Private long-distance transportation across Texas for students,
+        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
+      </p>
+      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
+    </div>
+
+    <div>
+      <h4>Contact Information</h4>
+      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
+    </div>
+
+    <div>
+      <h4>Quick Links</h4>
+      <p><a href="index.html">Home</a></p>
+      <p><a href="book-ride.html">Book a Ride</a></p>
+      <p><a href="passenger.html">Passenger Services</a></p>
+      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
+      <p><a href="terms.html">Terms & Privacy</a></p>
+    </div>
+
+    <div>
+      <h4>Follow Us</h4>
+      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
+      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
+      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    © 2026 Angel Express Mobility. All rights reserved.
+  </div>
+</footer>
+
+<button id="chatToggle" class="chat-toggle" type="button">
+  💬 AI Assistant
+</button>
+
+<div class="chatbot-box" id="chatbotBox">
+  <div class="chatbot-header">Angel Express Assistant</div>
+
+  <div class="chatbot-messages" id="chatbotMessages">
+    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
+  </div>
+
+  <div class="chatbot-input">
+    <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
+    <button type="button" onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
+  💬 Chat With Us
+</a>
+
+<div class="mobile-support-dock">
+  <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">
+    💬 AI Assistant
+  </button>
+
+  <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">
+    💬 Chat With Us
+  </a>
+</div>
+
+<script>
+  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+  const mobileMenu = document.getElementById("mobileMenu");
+
+  mobileMenuBtn?.addEventListener("click", () => {
+    mobileMenu?.classList.toggle("open");
+  });
+
+  mobileMenu?.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => {
+      mobileMenu.classList.remove("open");
+    });
+  });
+
+  const chatToggle = document.getElementById("chatToggle");
+  const mobileChatBtn = document.getElementById("mobileChatBtn");
+  const chatbotBox = document.getElementById("chatbotBox");
+
+  function toggleAngelChat(){
+    chatbotBox?.classList.toggle("open");
+  }
+
+  chatToggle?.addEventListener("click", toggleAngelChat);
+  mobileChatBtn?.addEventListener("click", toggleAngelChat);
+</script>
+
+<script src="floating-support.js?v=20260704-nav-final"></script>
+<script src="script.js?v=20260704-nav-final"></script>
+</body>
+</html>

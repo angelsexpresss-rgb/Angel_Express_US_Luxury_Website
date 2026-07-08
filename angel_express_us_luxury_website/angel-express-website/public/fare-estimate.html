@@ -1,1 +1,1031 @@
-<!DOCTYPE html><html lang="en"><head><title>Fare Estimate | Angel Express</title><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" /><script defer src="app.js"></script></head><body style="--page-bg:url('images/hero/07-texas-highway.jpg')"><div id="siteHeader"></div><div class="ae-page-bg"></div><main class="page-shell"><div class="narrow-wrap"><a class="btn btn-secondary" href="book-ride.html"><i class="fa-solid fa-arrow-left"></i> Back to Booking Form</a><section class="form-card reveal" style="margin-top:24px"><p class="kicker"><i class="fa-solid fa-calculator"></i> Angel Express Fare Estimate</p><h1 class="page-title">Fare <span>Estimate.</span></h1><p class="page-subtitle">Review your estimated trip distance, discounts, and ride details before confirming your booking.</p><div class="form-section"><h2>Trip Route</h2><p class="helper-note">Pickup</p><p id="pickupText">Loading...</p><p class="helper-note">Drop-off</p><p id="dropoffText">Loading...</p><p class="helper-note">Date & Time</p><p id="dateTimeText">Loading...</p></div><div class="form-section"><h2>Estimate Summary</h2><div class="summary-row"><span>Pricing Tier</span><strong id="pricingTierText">Loading...</strong></div><div class="summary-row"><span>Distance</span><strong id="distanceText">Loading...</strong></div><div class="summary-row"><span>Fare Method</span><strong id="fareMethodText">Loading...</strong></div><div class="summary-row"><span>Trip Type</span><strong id="tripTypeText">One Way</strong></div><div class="summary-row"><span>Ride Category</span><strong id="rideCategoryText">Standard Ride</strong></div><div class="summary-row"><span>Mileage Fare</span><strong id="mileageFareText">$0.00</strong></div><div class="summary-row"><span>Base + Mileage</span><strong id="baseMileageText">$0.00</strong></div><div class="summary-row"><span>Student Discount</span><strong id="studentDiscountText">-$0.00</strong></div><div class="summary-row"><span>Referral Discount</span><strong id="referralDiscountText">-$0.00</strong></div><div class="summary-row"><span>Shared Ride Discount</span><strong id="sharedRideDiscountText">-$0.00</strong></div><div class="summary-row"><span>Total Savings</span><strong id="totalSavingsText">-$0.00</strong></div><div class="final-row"><span>Final Price</span><strong id="finalPriceText">$0.00</strong></div></div><p class="notice" style="margin-top:28px">This is an estimate. Angel Express may review and confirm final fare based on route, wait time, airport pickup, event traffic, and special requests.</p><button class="btn btn-primary full" style="margin-top:26px" onclick="continueToConfirm()">Continue to Confirm Booking</button></section></div></main><div id="siteFooter"></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>Fare Estimate | Angel Express</title>
+
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root{
+  --ae-navy:#050b16;
+  --ae-gold:#D4AF37;
+  --ae-muted:#B8C1CC;
+  --ae-border:rgba(212,175,55,.28);
+}
+
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  background:#050b16;
+  color:white;
+  overflow-x:hidden;
+}
+
+.mobile-menu{
+  display:none!important;
+}
+
+.mobile-menu.open{
+  display:grid!important;
+  grid-template-columns:1fr;
+  gap:9px;
+}
+
+.fare-bg{
+  position:fixed;
+  inset:0;
+  z-index:-3;
+  background:
+    linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.72)),
+    url("images/hero/07-texas-highway.jpg");
+  background-size:cover;
+  background-position:center;
+}
+
+.fare-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 75% 20%,rgba(212,175,55,.22),transparent 30%),
+    linear-gradient(180deg,rgba(5,11,22,.1),#050b16 95%);
+}
+
+.fare-shell{
+  min-height:100vh;
+  padding:125px 5.5% 90px;
+}
+
+.fare-wrap{
+  max-width:980px;
+  margin:0 auto;
+}
+
+.back-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:13px 20px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  border:1px solid var(--ae-border);
+  color:white;
+  font-weight:900;
+  margin-bottom:24px;
+  backdrop-filter:blur(14px);
+  text-decoration:none;
+  transition:.25s ease;
+}
+
+.back-btn:hover{
+  transform:translateY(-3px);
+  border-color:var(--ae-gold);
+}
+
+.fare-card{
+  background:rgba(13,20,34,.78);
+  border:1px solid var(--ae-border);
+  border-radius:34px;
+  padding:clamp(24px,5vw,46px);
+  backdrop-filter:blur(20px);
+  box-shadow:0 30px 90px rgba(0,0,0,.38);
+}
+
+.fare-kicker{
+  display:inline-flex;
+  gap:10px;
+  align-items:center;
+  color:var(--ae-gold);
+  border:1px solid rgba(212,175,55,.35);
+  border-radius:999px;
+  padding:9px 14px;
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:1.5px;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.07);
+}
+
+.fare-title{
+  font-size:clamp(44px,7vw,82px);
+  line-height:.95;
+  margin:22px 0 14px;
+  letter-spacing:-2px;
+}
+
+.fare-title span{
+  color:var(--ae-gold);
+}
+
+.fare-subtitle{
+  color:#dce5ee;
+  font-size:18px;
+  line-height:1.7;
+  max-width:720px;
+  margin-bottom:36px;
+}
+
+.fare-box{
+  margin-top:26px;
+  padding:28px;
+  border-radius:28px;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+  box-shadow:0 20px 60px rgba(0,0,0,.22);
+}
+
+.fare-box h2{
+  color:var(--ae-gold);
+  font-size:26px;
+  margin:0 0 20px;
+}
+
+.fare-label{
+  margin:18px 0 7px;
+  color:var(--ae-gold);
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1.4px;
+}
+
+.fare-box p{
+  color:#dce5ee;
+  line-height:1.7;
+  margin-top:0;
+}
+
+.gps-note{
+  margin-top:20px!important;
+  padding:14px 16px;
+  border-radius:16px;
+  background:rgba(37,211,102,.1);
+  border:1px solid rgba(37,211,102,.25);
+  color:#8ff5b6!important;
+  font-weight:800;
+}
+
+.summary-row,
+.final-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:16px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.summary-row span,
+.final-row span{
+  color:var(--ae-muted);
+  font-weight:800;
+}
+
+.summary-row strong{
+  color:white;
+  text-align:right;
+}
+
+.discount-good{
+  color:#22c55e!important;
+}
+
+.discount-bad{
+  color:#FF6B6B!important;
+}
+
+.fare-divider{
+  border:none;
+  border-top:1px solid rgba(212,175,55,.35);
+  margin:18px 0;
+}
+
+.final-row{
+  border-bottom:none;
+  padding-top:20px;
+}
+
+.final-row strong{
+  color:var(--ae-gold);
+  font-size:clamp(30px,5vw,48px);
+  text-align:right;
+}
+
+.estimate-disclaimer{
+  margin:28px 0 0;
+  color:var(--ae-muted);
+  line-height:1.75;
+  font-size:15px;
+}
+
+.continue-btn{
+  width:100%;
+  min-height:64px;
+  margin-top:34px;
+  border:none;
+  border-radius:999px;
+  background:var(--ae-gold);
+  color:#050b16;
+  font-size:19px;
+  font-weight:950;
+  cursor:pointer;
+  box-shadow:0 20px 55px rgba(212,175,55,.28);
+  transition:.25s ease;
+}
+
+.continue-btn:hover{
+  transform:translateY(-4px);
+}
+
+.continue-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+  transform:none;
+}
+
+.back-link{
+  display:block;
+  margin-top:22px;
+  color:var(--ae-gold);
+  text-align:center;
+  font-weight:900;
+  text-decoration:none;
+}
+
+@media(max-width:980px){
+  .fare-shell{
+    padding-top:112px;
+  }
+}
+
+@media(max-width:640px){
+  .fare-shell{
+    padding:100px 4.5% 120px;
+  }
+
+  .fare-card{
+    border-radius:26px;
+  }
+
+  .fare-title{
+    font-size:42px;
+  }
+
+  .fare-subtitle{
+    font-size:16px;
+  }
+
+  .fare-box{
+    padding:22px;
+    border-radius:24px;
+  }
+
+  .summary-row,
+  .final-row{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:7px;
+  }
+
+  .summary-row strong,
+  .final-row strong{
+    text-align:left;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header class="navbar">
+  <a href="index.html" class="logo">
+    <div class="logo-mark">A</div>
+    <div class="logo-text">
+      <h1>ANGEL EXPRESS</h1>
+      <span>MOBILITY ECOSYSTEM</span>
+    </div>
+  </a>
+
+  <nav class="desktop-nav">
+    <a href="index.html">Home</a>
+    <a href="book-ride.html">Book Ride</a>
+    <a href="passenger.html">Passengers</a>
+    <a href="driver.html">Drivers</a>
+    <a href="terms.html">Terms</a>
+    <a href="blog.html">Blog</a>
+    <a href="contact.html">Contact</a>
+  </nav>
+
+  <div class="desktop-actions">
+    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
+    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
+  </div>
+
+  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
+    <i class="fa-solid fa-bars"></i>
+  </button>
+</header>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="book-ride.html">Book Ride</a>
+  <a href="fare-estimate.html">Fare Estimate</a>
+  <a href="passenger.html">Passengers</a>
+  <a href="driver.html">Drivers</a>
+  <a href="terms.html">Terms</a>
+  <a href="blog.html">Blog</a>
+  <a href="contact.html">Contact</a>
+  <a href="driver.html#apply">Become a Chauffeur</a>
+</div>
+
+<div class="fare-bg"></div>
+
+<main class="fare-shell">
+  <div class="fare-wrap">
+
+    <a href="book-ride.html" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i>
+      Back to Booking Form
+    </a>
+
+    <section class="fare-card reveal">
+      <p class="fare-kicker">
+        <i class="fa-solid fa-calculator"></i>
+        Angel Express Fare Estimate
+      </p>
+
+      <h1 class="fare-title">Fare <span>Estimate.</span></h1>
+
+      <p class="fare-subtitle">
+        Review your estimated trip distance, rewards discounts, and ride details before confirming your Angel Express booking.
+      </p>
+
+      <div class="fare-box">
+        <h2>Trip Route</h2>
+
+        <p class="fare-label">Pickup</p>
+        <p id="pickupText">Loading...</p>
+
+        <p class="fare-label">Drop-off</p>
+        <p id="dropoffText">Loading...</p>
+
+        <p class="fare-label">Date & Time</p>
+        <p id="dateTimeText">Loading...</p>
+
+        <p class="gps-note">
+          <i class="fa-solid fa-location-dot"></i>
+          GPS coordinates saved for chauffeur navigation
+        </p>
+      </div>
+
+      <div class="fare-box">
+        <h2>Estimate Summary</h2>
+
+        <div class="summary-row">
+          <span>Pricing Tier</span>
+          <strong id="pricingTier">Long Distance Trip</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Distance</span>
+          <strong id="distanceText">Calculating...</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Estimated Drive Time</span>
+          <strong id="driveTimeText">Calculating...</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Fare Method</span>
+          <strong>$35.00 base + $1.10/mile</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Trip Type</span>
+          <strong id="tripTypeText">One Way</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Ride Category</span>
+          <strong id="rideCategoryText">Standard Ride</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Mileage Fare</span>
+          <strong id="mileageFareText">$0.00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Base + Mileage</span>
+          <strong id="baseMileageText">$0.00</strong>
+        </div>
+
+        <div class="summary-row" id="sharedRideRow">
+          <span>Shared Ride Pricing</span>
+          <strong id="sharedRideText">Not selected</strong>
+        </div>
+
+        <div class="summary-row" id="roundTripRow">
+          <span>Round-trip Adjustment</span>
+          <strong id="roundTripText">$0.00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Student Verification</span>
+          <strong id="studentStatusText">Checking...</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Student Discount</span>
+          <strong id="studentDiscountText">-$0.00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Referral Discount</span>
+          <strong id="referralDiscountText">-$0.00</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Total Savings</span>
+          <strong id="totalSavingsText">-$0.00</strong>
+        </div>
+
+        <hr class="fare-divider" />
+
+        <div class="final-row">
+          <span>Final Price</span>
+          <strong id="finalPriceText">$0.00</strong>
+        </div>
+      </div>
+
+      <p class="estimate-disclaimer">
+        This is an estimate. Angel Express may review and confirm the final fare based on route,
+        wait time, airport pickup, event traffic, and special requests. Referral credits are awarded only after the referred ride is completed.
+      </p>
+
+      <button id="continueBtn" class="continue-btn" type="button" onclick="continueToConfirm()">
+        Continue to Confirm Booking
+      </button>
+
+      <a href="book-ride.html" class="back-link">
+        ← Back to Booking Form
+      </a>
+    </section>
+
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <h3>Angel Express Mobility (AEM)</h3>
+      <p>
+        Private long-distance transportation across Texas for students,
+        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
+      </p>
+      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
+    </div>
+
+    <div>
+      <h4>Contact Information</h4>
+      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
+      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
+      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
+      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
+    </div>
+
+    <div>
+      <h4>Quick Links</h4>
+      <p><a href="index.html">Home</a></p>
+      <p><a href="book-ride.html">Book a Ride</a></p>
+      <p><a href="passenger.html">Passenger Services</a></p>
+      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
+      <p><a href="terms.html">Terms & Privacy</a></p>
+    </div>
+
+    <div>
+      <h4>Follow Us</h4>
+      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
+      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
+      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
+      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    © 2026 Angel Express Mobility. All rights reserved.
+  </div>
+</footer>
+
+<script>
+const AE_FARE_SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
+const AE_FARE_SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
+
+const aeFareSupabaseClient = supabase.createClient(
+  AE_FARE_SUPABASE_URL,
+  AE_FARE_SUPABASE_ANON_KEY
+);
+
+let booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
+
+const BASE_FARE = 35;
+const RATE_PER_MILE = 1.10;
+const STUDENT_DISCOUNT_RATE = 0.20;
+const REFERRAL_DISCOUNT_DEFAULT = 10;
+
+/*
+  Shared Ride Pricing:
+  - Applies when Book Ride sends one of these:
+    booking.sharedRide === true
+    booking.shared_ride === true
+    booking.studentSharedRide === true
+    booking.rideCategory includes "Student Group Ride" or "Shared"
+  - It reduces the fare by 15% after round-trip adjustment and before student/referral discounts.
+*/
+const SHARED_RIDE_DISCOUNT_RATE = 0.15;
+
+function money(value) {
+  return "$" + Number(value || 0).toFixed(2);
+}
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
+}
+
+function normalizeCode(code) {
+  return String(code || "").trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function isSharedRideSelected(data) {
+  const rideCategory = String(data.rideCategory || data.ride_category || "").toLowerCase();
+  const sharedValue = String(data.sharedRide || data.shared_ride || data.studentSharedRide || "").toLowerCase();
+
+  return (
+    data.sharedRide === true ||
+    data.shared_ride === true ||
+    data.studentSharedRide === true ||
+    sharedValue === "true" ||
+    sharedValue === "yes" ||
+    rideCategory.includes("shared") ||
+    rideCategory.includes("student group") ||
+    rideCategory.includes("student shared")
+  );
+}
+
+function estimateMiles(pickup, dropoff) {
+  const text = `${pickup} ${dropoff}`.toLowerCase();
+
+  if (text.includes("austin")) return 221.5;
+  if (text.includes("houston")) return 240;
+  if (text.includes("san antonio")) return 275;
+  if (text.includes("oklahoma")) return 205;
+  if (text.includes("college station")) return 180;
+  if (text.includes("dfw")) return 25;
+  if (text.includes("love field")) return 15;
+
+  return 100;
+}
+
+function estimateDriveTime(miles) {
+  const hours = miles / 55;
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+
+  if (h <= 0) return `${m} min`;
+  return `${h}h ${m}m`;
+}
+
+async function checkStudentVerified(email) {
+  const cleanEmail = normalizeEmail(email);
+  if (!cleanEmail) {
+    return {
+      verified: false,
+      source: "none",
+      message: "Email required for student verification",
+    };
+  }
+
+  try {
+    const { data: passengerProfile } = await aeFareSupabaseClient
+      .from("passenger_profiles")
+      .select("student_verified, student_status, email")
+      .ilike("email", cleanEmail)
+      .maybeSingle();
+
+    if (passengerProfile) {
+      const status = String(passengerProfile.student_status || "").toLowerCase();
+      const verified = Boolean(
+        passengerProfile.student_verified === true ||
+        status === "approved" ||
+        status === "verified" ||
+        status === "active"
+      );
+
+      return {
+        verified,
+        source: "passenger_profiles",
+        message: verified ? "Student discount approved" : "Student account found but not approved yet",
+      };
+    }
+  } catch (error) {
+    console.warn("passenger_profiles student lookup skipped:", error.message);
+  }
+
+  try {
+    const { data: passenger } = await aeFareSupabaseClient
+      .from("passengers")
+      .select("student_verified, student_status, email")
+      .ilike("email", cleanEmail)
+      .maybeSingle();
+
+    if (passenger) {
+      const status = String(passenger.student_status || "").toLowerCase();
+      const verified = Boolean(
+        passenger.student_verified === true ||
+        status === "approved" ||
+        status === "verified" ||
+        status === "active"
+      );
+
+      return {
+        verified,
+        source: "passengers",
+        message: verified ? "Student discount approved" : "Student account found but not approved yet",
+      };
+    }
+  } catch (error) {
+    console.warn("passengers student lookup skipped:", error.message);
+  }
+
+  return {
+    verified: false,
+    source: "none",
+    message: "Student discount not approved for this email",
+  };
+}
+
+async function validateReferralCode(code, passengerEmail) {
+  const cleanCode = normalizeCode(code);
+  const cleanEmail = normalizeEmail(passengerEmail);
+
+  if (!cleanCode) {
+    return {
+      applied: false,
+      code: "",
+      referrerUserId: null,
+      discount: 0,
+      discountType: "fixed",
+      message: "No referral code entered",
+    };
+  }
+
+  if (!cleanEmail) {
+    return {
+      applied: false,
+      code: cleanCode,
+      referrerUserId: null,
+      discount: 0,
+      discountType: "fixed",
+      message: "Email required to use referral",
+    };
+  }
+
+  try {
+    const { data: referralCodeRecord } = await aeFareSupabaseClient
+      .from("referral_codes")
+      .select("*")
+      .ilike("code", cleanCode)
+      .maybeSingle();
+
+    if (referralCodeRecord) {
+      if (referralCodeRecord.is_active === false) {
+        return {
+          applied: false,
+          code: cleanCode,
+          referrerUserId: null,
+          discount: 0,
+          discountType: "fixed",
+          message: "Referral code is inactive",
+        };
+      }
+
+      const referrerEmail = normalizeEmail(referralCodeRecord.email || referralCodeRecord.referrer_email);
+      if (referrerEmail && referrerEmail === cleanEmail) {
+        return {
+          applied: false,
+          code: cleanCode,
+          referrerUserId: null,
+          discount: 0,
+          discountType: "fixed",
+          message: "Cannot use your own referral code",
+        };
+      }
+
+      return {
+        applied: true,
+        code: cleanCode,
+        referrerUserId:
+          referralCodeRecord.referrer_user_id ||
+          referralCodeRecord.user_id ||
+          referralCodeRecord.passenger_id ||
+          referralCodeRecord.id ||
+          null,
+        discount: Number(referralCodeRecord.discount_amount || referralCodeRecord.referral_discount || REFERRAL_DISCOUNT_DEFAULT),
+        discountType: referralCodeRecord.discount_percent || referralCodeRecord.discount_percentage ? "percent" : "fixed",
+        message: "Referral applied",
+      };
+    }
+  } catch (error) {
+    console.warn("referral_codes lookup skipped:", error.message);
+  }
+
+  let referrer = null;
+
+  try {
+    const { data } = await aeFareSupabaseClient
+      .from("passenger_profiles")
+      .select("user_id, id, email, referral_code")
+      .ilike("referral_code", cleanCode)
+      .maybeSingle();
+
+    if (data) referrer = data;
+  } catch (error) {
+    console.warn("passenger_profiles referral lookup skipped:", error.message);
+  }
+
+  if (!referrer) {
+    try {
+      const { data } = await aeFareSupabaseClient
+        .from("passengers")
+        .select("user_id, id, email, referral_code")
+        .ilike("referral_code", cleanCode)
+        .maybeSingle();
+
+      if (data) referrer = data;
+    } catch (error) {
+      console.warn("passengers referral lookup skipped:", error.message);
+    }
+  }
+
+  if (!referrer) {
+    return {
+      applied: false,
+      code: cleanCode,
+      referrerUserId: null,
+      discount: 0,
+      discountType: "fixed",
+      message: "Invalid referral code",
+    };
+  }
+
+  if (normalizeEmail(referrer.email) === cleanEmail) {
+    return {
+      applied: false,
+      code: cleanCode,
+      referrerUserId: null,
+      discount: 0,
+      discountType: "fixed",
+      message: "Cannot use your own referral code",
+    };
+  }
+
+  try {
+    const { data: previousUse } = await aeFareSupabaseClient
+      .from("bookings")
+      .select("id")
+      .ilike("email", cleanEmail)
+      .eq("referral_applied", true)
+      .limit(1);
+
+    if (previousUse && previousUse.length > 0) {
+      return {
+        applied: false,
+        code: cleanCode,
+        referrerUserId: null,
+        discount: 0,
+        discountType: "fixed",
+        message: "Referral already used by this email",
+      };
+    }
+  } catch (error) {
+    console.warn("Previous referral use check skipped:", error.message);
+  }
+
+  return {
+    applied: true,
+    code: cleanCode,
+    referrerUserId: referrer.user_id || referrer.id || null,
+    discount: REFERRAL_DISCOUNT_DEFAULT,
+    discountType: "fixed",
+    message: "Referral applied",
+  };
+}
+
+function calculateReferralDiscount(referralResult, subtotalAfterSharedAndStudent) {
+  if (!referralResult.applied) return 0;
+
+  if (referralResult.discountType === "percent") {
+    return subtotalAfterSharedAndStudent * (Number(referralResult.discount || 0) / 100);
+  }
+
+  return Math.min(Number(referralResult.discount || 0), subtotalAfterSharedAndStudent);
+}
+
+async function calculateFare() {
+  if (!booking.pickup || !booking.dropoff) {
+    window.location.href = "book-ride.html";
+    return;
+  }
+
+  const continueBtn = document.getElementById("continueBtn");
+  continueBtn.disabled = true;
+  continueBtn.textContent = "Calculating Rewards...";
+
+  try {
+    const miles = estimateMiles(booking.pickup, booking.dropoff);
+    const mileageFare = miles * RATE_PER_MILE;
+    const baseMileage = BASE_FARE + mileageFare;
+
+    const isRoundTrip = String(booking.tripType || booking.trip_type || "").toLowerCase() === "round trip";
+    const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
+
+    const sharedRideSelected = isSharedRideSelected(booking);
+    const sharedRideDiscount = sharedRideSelected ? beforeDiscount * SHARED_RIDE_DISCOUNT_RATE : 0;
+    const afterSharedRide = Math.max(beforeDiscount - sharedRideDiscount, 0);
+
+    const studentResult = await checkStudentVerified(booking.email || "");
+    const studentVerified = studentResult.verified;
+    const studentDiscount = studentVerified ? afterSharedRide * STUDENT_DISCOUNT_RATE : 0;
+    const afterStudent = Math.max(afterSharedRide - studentDiscount, 0);
+
+    const referralResult = await validateReferralCode(
+      booking.referral || booking.referralCode || booking.referral_code || booking.referral_code_used || "",
+      booking.email || ""
+    );
+
+    const referralDiscount = calculateReferralDiscount(referralResult, afterStudent);
+
+    const totalSavings = sharedRideDiscount + studentDiscount + referralDiscount;
+    const finalPrice = Math.max(beforeDiscount - totalSavings, 0);
+
+    const updatedBooking = {
+      ...booking,
+
+      miles: miles.toFixed(1),
+      estimated_miles: miles.toFixed(1),
+
+      base: BASE_FARE,
+      base_fare: BASE_FARE.toFixed(2),
+      mileageFare: mileageFare.toFixed(2),
+      mileage_fare: mileageFare.toFixed(2),
+      baseMileage: baseMileage.toFixed(2),
+      base_mileage: baseMileage.toFixed(2),
+
+      subtotal: beforeDiscount.toFixed(2),
+      baseTotal: beforeDiscount.toFixed(2),
+      base_total: beforeDiscount.toFixed(2),
+      total: finalPrice.toFixed(2),
+      total_fare: finalPrice.toFixed(2),
+
+      estimatedDriveTime: estimateDriveTime(miles),
+      estimated_drive_time: estimateDriveTime(miles),
+      pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
+      pricing_tier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
+      fareMethod: "$35.00 base + $1.10/mile",
+      fare_method: "$35.00 base + $1.10/mile",
+
+      sharedRide: sharedRideSelected,
+      shared_ride: sharedRideSelected,
+      sharedRideDiscount: sharedRideDiscount.toFixed(2),
+      shared_ride_discount: sharedRideDiscount.toFixed(2),
+      shared_ride_rate: SHARED_RIDE_DISCOUNT_RATE,
+
+      studentVerified,
+      student_verified: studentVerified,
+      student_status_message: studentResult.message,
+      studentDiscount: studentDiscount.toFixed(2),
+      student_discount: studentDiscount.toFixed(2),
+      student_discount_rate: STUDENT_DISCOUNT_RATE,
+
+      referralCode: referralResult.applied ? referralResult.code : "",
+      referral_code: referralResult.applied ? referralResult.code : "",
+      referral_code_used: referralResult.code || "",
+      referralApplied: referralResult.applied,
+      referral_applied: referralResult.applied,
+      referrerUserId: referralResult.referrerUserId,
+      referrer_user_id: referralResult.referrerUserId,
+      referralDiscount: referralDiscount.toFixed(2),
+      referral_discount: referralDiscount.toFixed(2),
+      referral_discount_type: referralResult.discountType,
+      referralMessage: referralResult.message,
+      referral_message: referralResult.message,
+      referral_credit_awarded: false,
+
+      totalSavings: totalSavings.toFixed(2),
+      total_discount: totalSavings.toFixed(2),
+      reward_points_earned: Math.round(miles),
+      source: booking.source || "website",
+    };
+
+    localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
+    booking = updatedBooking;
+
+    document.getElementById("pickupText").textContent = booking.pickup;
+    document.getElementById("dropoffText").textContent = booking.dropoff;
+    document.getElementById("dateTimeText").textContent =
+      `${booking.date || "No date selected"} at ${booking.time || "No time selected"}`;
+
+    document.getElementById("pricingTier").textContent = updatedBooking.pricingTier;
+    document.getElementById("distanceText").textContent = `${updatedBooking.miles} miles`;
+    document.getElementById("driveTimeText").textContent = updatedBooking.estimatedDriveTime;
+    document.getElementById("tripTypeText").textContent = booking.tripType || booking.trip_type || "One Way";
+    document.getElementById("rideCategoryText").textContent = booking.rideCategory || booking.ride_category || "Standard Ride";
+    document.getElementById("mileageFareText").textContent = money(mileageFare);
+    document.getElementById("baseMileageText").textContent = money(baseMileage);
+
+    const sharedRideText = document.getElementById("sharedRideText");
+    if (sharedRideSelected) {
+      sharedRideText.textContent = "-$" + sharedRideDiscount.toFixed(2) + " (15% shared ride)";
+      sharedRideText.classList.add("discount-good");
+      sharedRideText.classList.remove("discount-bad");
+    } else {
+      sharedRideText.textContent = "Not selected";
+      sharedRideText.classList.remove("discount-good", "discount-bad");
+    }
+
+    document.getElementById("roundTripText").textContent = isRoundTrip
+      ? money(beforeDiscount)
+      : money(baseMileage);
+
+    const studentStatusText = document.getElementById("studentStatusText");
+    studentStatusText.textContent = studentResult.message;
+    studentStatusText.classList.remove("discount-good", "discount-bad");
+    studentStatusText.classList.add(studentVerified ? "discount-good" : "discount-bad");
+
+    const studentDiscountText = document.getElementById("studentDiscountText");
+    studentDiscountText.textContent = "-$" + studentDiscount.toFixed(2);
+    studentDiscountText.classList.remove("discount-good", "discount-bad");
+    if (studentDiscount > 0) studentDiscountText.classList.add("discount-good");
+    if (!studentVerified) studentDiscountText.classList.add("discount-bad");
+
+    const referralDiscountText = document.getElementById("referralDiscountText");
+
+    if (referralResult.applied) {
+      referralDiscountText.textContent = "-$" + referralDiscount.toFixed(2) + ` (${referralResult.code})`;
+      referralDiscountText.classList.remove("discount-bad");
+      referralDiscountText.classList.add("discount-good");
+    } else if (referralResult.code) {
+      referralDiscountText.textContent = referralResult.message;
+      referralDiscountText.classList.remove("discount-good");
+      referralDiscountText.classList.add("discount-bad");
+    } else {
+      referralDiscountText.textContent = "-$0.00";
+      referralDiscountText.classList.remove("discount-good", "discount-bad");
+    }
+
+    document.getElementById("totalSavingsText").textContent = "-$" + totalSavings.toFixed(2);
+
+    if (totalSavings > 0) {
+      document.getElementById("totalSavingsText").classList.add("discount-good");
+    }
+
+    document.getElementById("finalPriceText").textContent = money(finalPrice);
+  } catch (error) {
+    console.error(error);
+    alert("Fare estimate could not be calculated. " + error.message);
+  } finally {
+    continueBtn.disabled = false;
+    continueBtn.textContent = "Continue to Confirm Booking";
+  }
+}
+
+function continueToConfirm() {
+  window.location.href = "confirm-booking.html";
+}
+
+const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+const mobileMenu = document.getElementById("mobileMenu");
+
+mobileMenuBtn?.addEventListener("click", () => {
+  mobileMenu?.classList.toggle("open");
+});
+
+mobileMenu?.querySelectorAll("a").forEach(link => {
+  link.addEventListener("click", () => {
+    mobileMenu.classList.remove("open");
+  });
+});
+
+calculateFare();
+</script></script>
+
+</body>
+</html>
