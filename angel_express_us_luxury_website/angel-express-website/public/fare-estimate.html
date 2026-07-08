@@ -19,23 +19,15 @@
   --ae-border:rgba(212,175,55,.28);
 }
 
-*{box-sizing:border-box;}
+*{
+  box-sizing:border-box;
+}
 
 body{
   margin:0;
   background:#050b16;
   color:white;
   overflow-x:hidden;
-}
-
-.mobile-menu{
-  display:none!important;
-}
-
-.mobile-menu.open{
-  display:grid!important;
-  grid-template-columns:1fr;
-  gap:9px;
 }
 
 .fare-bg{
@@ -267,7 +259,7 @@ body{
 
 @media(max-width:640px){
   .fare-shell{
-    padding:100px 4.5% 120px;
+    padding:100px 4.5% 150px;
   }
 
   .fare-card{
@@ -304,46 +296,7 @@ body{
 
 <body>
 
-<header class="navbar">
-  <a href="index.html" class="logo">
-    <div class="logo-mark">A</div>
-    <div class="logo-text">
-      <h1>ANGEL EXPRESS</h1>
-      <span>MOBILITY ECOSYSTEM</span>
-    </div>
-  </a>
-
-  <nav class="desktop-nav">
-    <a href="index.html">Home</a>
-    <a href="book-ride.html">Book Ride</a>
-    <a href="passenger.html">Passengers</a>
-    <a href="driver.html">Drivers</a>
-    <a href="terms.html">Terms</a>
-    <a href="blog.html">Blog</a>
-    <a href="contact.html">Contact</a>
-  </nav>
-
-  <div class="desktop-actions">
-    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
-    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
-  </div>
-
-  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
-    <i class="fa-solid fa-bars"></i>
-  </button>
-</header>
-
-<div class="mobile-menu" id="mobileMenu">
-  <a href="index.html">Home</a>
-  <a href="book-ride.html">Book Ride</a>
-  <a href="fare-estimate.html">Fare Estimate</a>
-  <a href="passenger.html">Passengers</a>
-  <a href="driver.html">Drivers</a>
-  <a href="terms.html">Terms</a>
-  <a href="blog.html">Blog</a>
-  <a href="contact.html">Contact</a>
-  <a href="driver.html#apply">Become a Chauffeur</a>
-</div>
+<div id="siteHeader"></div>
 
 <div class="fare-bg"></div>
 
@@ -483,47 +436,9 @@ body{
   </div>
 </main>
 
-<footer class="footer">
-  <div class="footer-grid">
-    <div>
-      <h3>Angel Express Mobility (AEM)</h3>
-      <p>
-        Private long-distance transportation across Texas for students,
-        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
-      </p>
-      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
-    </div>
+<div id="siteFooter"></div>
 
-    <div>
-      <h4>Contact Information</h4>
-      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
-      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
-      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
-      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
-    </div>
-
-    <div>
-      <h4>Quick Links</h4>
-      <p><a href="index.html">Home</a></p>
-      <p><a href="book-ride.html">Book a Ride</a></p>
-      <p><a href="passenger.html">Passenger Services</a></p>
-      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
-      <p><a href="terms.html">Terms & Privacy</a></p>
-    </div>
-
-    <div>
-      <h4>Follow Us</h4>
-      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
-      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
-      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
-      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
-    </div>
-  </div>
-
-  <div class="footer-bottom">
-    © 2026 Angel Express Mobility. All rights reserved.
-  </div>
-</footer>
+<script src="app.js"></script>
 
 <script>
 const AE_FARE_SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
@@ -534,54 +449,50 @@ const aeFareSupabaseClient = supabase.createClient(
   AE_FARE_SUPABASE_ANON_KEY
 );
 
-let booking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
+let aeFareBooking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
 
-const BASE_FARE = 35;
-const RATE_PER_MILE = 1.10;
-const STUDENT_DISCOUNT_RATE = 0.20;
-const REFERRAL_DISCOUNT_DEFAULT = 10;
+const AE_FARE_BASE_FARE = 35;
+const AE_FARE_RATE_PER_MILE = 1.10;
+const AE_FARE_STUDENT_DISCOUNT_RATE = 0.20;
+const AE_FARE_REFERRAL_DISCOUNT_DEFAULT = 10;
+const AE_FARE_SHARED_RIDE_DISCOUNT_RATE = 0.15;
 
-/*
-  Shared Ride Pricing:
-  - Applies when Book Ride sends one of these:
-    booking.sharedRide === true
-    booking.shared_ride === true
-    booking.studentSharedRide === true
-    booking.rideCategory includes "Student Group Ride" or "Shared"
-  - It reduces the fare by 15% after round-trip adjustment and before student/referral discounts.
-*/
-const SHARED_RIDE_DISCOUNT_RATE = 0.15;
-
-function money(value) {
+function aeFareMoney(value) {
   return "$" + Number(value || 0).toFixed(2);
 }
 
-function normalizeEmail(email) {
+function aeFareNormalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
 
-function normalizeCode(code) {
+function aeFareNormalizeCode(code) {
   return String(code || "").trim().toUpperCase().replace(/\s+/g, "");
 }
 
-function isSharedRideSelected(data) {
+function aeFareBooleanValue(value) {
+  if (value === true) return true;
+
+  const normalized = String(value || "").trim().toLowerCase();
+
+  return normalized === "true" || normalized === "yes" || normalized === "1";
+}
+
+function aeFareIsSharedRideSelected(data) {
   const rideCategory = String(data.rideCategory || data.ride_category || "").toLowerCase();
-  const sharedValue = String(data.sharedRide || data.shared_ride || data.studentSharedRide || "").toLowerCase();
 
   return (
-    data.sharedRide === true ||
-    data.shared_ride === true ||
-    data.studentSharedRide === true ||
-    sharedValue === "true" ||
-    sharedValue === "yes" ||
+    aeFareBooleanValue(data.sharedRide) ||
+    aeFareBooleanValue(data.shared_ride) ||
+    aeFareBooleanValue(data.studentSharedRide) ||
+    aeFareBooleanValue(data.student_shared_ride) ||
     rideCategory.includes("shared") ||
     rideCategory.includes("student group") ||
     rideCategory.includes("student shared")
   );
 }
 
-function estimateMiles(pickup, dropoff) {
-  const text = `${pickup} ${dropoff}`.toLowerCase();
+function aeFareEstimateMiles(pickup, dropoff) {
+  const text = `${pickup || ""} ${dropoff || ""}`.toLowerCase();
 
   if (text.includes("austin")) return 221.5;
   if (text.includes("houston")) return 240;
@@ -594,17 +505,19 @@ function estimateMiles(pickup, dropoff) {
   return 100;
 }
 
-function estimateDriveTime(miles) {
+function aeFareEstimateDriveTime(miles) {
   const hours = miles / 55;
   const h = Math.floor(hours);
   const m = Math.round((hours - h) * 60);
 
   if (h <= 0) return `${m} min`;
+
   return `${h}h ${m}m`;
 }
 
-async function checkStudentVerified(email) {
-  const cleanEmail = normalizeEmail(email);
+async function aeFareCheckStudentVerified(email) {
+  const cleanEmail = aeFareNormalizeEmail(email);
+
   if (!cleanEmail) {
     return {
       verified: false,
@@ -616,14 +529,20 @@ async function checkStudentVerified(email) {
   try {
     const { data: passengerProfile } = await aeFareSupabaseClient
       .from("passenger_profiles")
-      .select("student_verified, student_status, email")
-      .ilike("email", cleanEmail)
+      .select("student_verified,student_status,student_discount_eligible,student_verification_status,email,student_email")
+      .or(`email.ilike.${cleanEmail},student_email.ilike.${cleanEmail}`)
       .maybeSingle();
 
     if (passengerProfile) {
-      const status = String(passengerProfile.student_status || "").toLowerCase();
+      const status = String(
+        passengerProfile.student_status ||
+        passengerProfile.student_verification_status ||
+        ""
+      ).toLowerCase();
+
       const verified = Boolean(
         passengerProfile.student_verified === true ||
+        passengerProfile.student_discount_eligible === true ||
         status === "approved" ||
         status === "verified" ||
         status === "active"
@@ -632,7 +551,9 @@ async function checkStudentVerified(email) {
       return {
         verified,
         source: "passenger_profiles",
-        message: verified ? "Student discount approved" : "Student account found but not approved yet",
+        message: verified
+          ? "Student discount approved"
+          : "Student account found but not approved yet",
       };
     }
   } catch (error) {
@@ -642,12 +563,13 @@ async function checkStudentVerified(email) {
   try {
     const { data: passenger } = await aeFareSupabaseClient
       .from("passengers")
-      .select("student_verified, student_status, email")
+      .select("student_verified,student_status,email")
       .ilike("email", cleanEmail)
       .maybeSingle();
 
     if (passenger) {
       const status = String(passenger.student_status || "").toLowerCase();
+
       const verified = Boolean(
         passenger.student_verified === true ||
         status === "approved" ||
@@ -658,7 +580,9 @@ async function checkStudentVerified(email) {
       return {
         verified,
         source: "passengers",
-        message: verified ? "Student discount approved" : "Student account found but not approved yet",
+        message: verified
+          ? "Student discount approved"
+          : "Student account found but not approved yet",
       };
     }
   } catch (error) {
@@ -672,9 +596,9 @@ async function checkStudentVerified(email) {
   };
 }
 
-async function validateReferralCode(code, passengerEmail) {
-  const cleanCode = normalizeCode(code);
-  const cleanEmail = normalizeEmail(passengerEmail);
+async function aeFareValidateReferralCode(code, passengerEmail) {
+  const cleanCode = aeFareNormalizeCode(code);
+  const cleanEmail = aeFareNormalizeEmail(passengerEmail);
 
   if (!cleanCode) {
     return {
@@ -717,7 +641,11 @@ async function validateReferralCode(code, passengerEmail) {
         };
       }
 
-      const referrerEmail = normalizeEmail(referralCodeRecord.email || referralCodeRecord.referrer_email);
+      const referrerEmail = aeFareNormalizeEmail(
+        referralCodeRecord.email ||
+        referralCodeRecord.referrer_email
+      );
+
       if (referrerEmail && referrerEmail === cleanEmail) {
         return {
           applied: false,
@@ -738,8 +666,16 @@ async function validateReferralCode(code, passengerEmail) {
           referralCodeRecord.passenger_id ||
           referralCodeRecord.id ||
           null,
-        discount: Number(referralCodeRecord.discount_amount || referralCodeRecord.referral_discount || REFERRAL_DISCOUNT_DEFAULT),
-        discountType: referralCodeRecord.discount_percent || referralCodeRecord.discount_percentage ? "percent" : "fixed",
+        discount: Number(
+          referralCodeRecord.discount_amount ||
+          referralCodeRecord.referral_discount ||
+          AE_FARE_REFERRAL_DISCOUNT_DEFAULT
+        ),
+        discountType:
+          referralCodeRecord.discount_percent ||
+          referralCodeRecord.discount_percentage
+            ? "percent"
+            : "fixed",
         message: "Referral applied",
       };
     }
@@ -752,7 +688,7 @@ async function validateReferralCode(code, passengerEmail) {
   try {
     const { data } = await aeFareSupabaseClient
       .from("passenger_profiles")
-      .select("user_id, id, email, referral_code")
+      .select("user_id,id,email,referral_code")
       .ilike("referral_code", cleanCode)
       .maybeSingle();
 
@@ -765,7 +701,7 @@ async function validateReferralCode(code, passengerEmail) {
     try {
       const { data } = await aeFareSupabaseClient
         .from("passengers")
-        .select("user_id, id, email, referral_code")
+        .select("user_id,id,email,referral_code")
         .ilike("referral_code", cleanCode)
         .maybeSingle();
 
@@ -786,7 +722,7 @@ async function validateReferralCode(code, passengerEmail) {
     };
   }
 
-  if (normalizeEmail(referrer.email) === cleanEmail) {
+  if (aeFareNormalizeEmail(referrer.email) === cleanEmail) {
     return {
       applied: false,
       code: cleanCode,
@@ -823,13 +759,13 @@ async function validateReferralCode(code, passengerEmail) {
     applied: true,
     code: cleanCode,
     referrerUserId: referrer.user_id || referrer.id || null,
-    discount: REFERRAL_DISCOUNT_DEFAULT,
+    discount: AE_FARE_REFERRAL_DISCOUNT_DEFAULT,
     discountType: "fixed",
     message: "Referral applied",
   };
 }
 
-function calculateReferralDiscount(referralResult, subtotalAfterSharedAndStudent) {
+function aeFareCalculateReferralDiscount(referralResult, subtotalAfterSharedAndStudent) {
   if (!referralResult.applied) return 0;
 
   if (referralResult.discountType === "percent") {
@@ -839,66 +775,95 @@ function calculateReferralDiscount(referralResult, subtotalAfterSharedAndStudent
   return Math.min(Number(referralResult.discount || 0), subtotalAfterSharedAndStudent);
 }
 
-async function calculateFare() {
-  if (!booking.pickup || !booking.dropoff) {
+function aeFareSetText(id, value) {
+  const el = document.getElementById(id);
+
+  if (el) {
+    el.textContent = value;
+  }
+}
+
+async function aeFareCalculateFare() {
+  if (!aeFareBooking.pickup || !aeFareBooking.dropoff) {
     window.location.href = "book-ride.html";
     return;
   }
 
   const continueBtn = document.getElementById("continueBtn");
-  continueBtn.disabled = true;
-  continueBtn.textContent = "Calculating Rewards...";
+
+  if (continueBtn) {
+    continueBtn.disabled = true;
+    continueBtn.textContent = "Calculating Rewards...";
+  }
 
   try {
-    const miles = estimateMiles(booking.pickup, booking.dropoff);
-    const mileageFare = miles * RATE_PER_MILE;
-    const baseMileage = BASE_FARE + mileageFare;
+    const miles = aeFareEstimateMiles(aeFareBooking.pickup, aeFareBooking.dropoff);
+    const mileageFare = miles * AE_FARE_RATE_PER_MILE;
+    const baseMileage = AE_FARE_BASE_FARE + mileageFare;
 
-    const isRoundTrip = String(booking.tripType || booking.trip_type || "").toLowerCase() === "round trip";
+    const isRoundTrip =
+      String(aeFareBooking.tripType || aeFareBooking.trip_type || "")
+        .toLowerCase() === "round trip";
+
     const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
 
-    const sharedRideSelected = isSharedRideSelected(booking);
-    const sharedRideDiscount = sharedRideSelected ? beforeDiscount * SHARED_RIDE_DISCOUNT_RATE : 0;
+    const sharedRideSelected = aeFareIsSharedRideSelected(aeFareBooking);
+    const sharedRideDiscount = sharedRideSelected
+      ? beforeDiscount * AE_FARE_SHARED_RIDE_DISCOUNT_RATE
+      : 0;
+
     const afterSharedRide = Math.max(beforeDiscount - sharedRideDiscount, 0);
 
-    const studentResult = await checkStudentVerified(booking.email || "");
+    const studentResult = await aeFareCheckStudentVerified(aeFareBooking.email || "");
     const studentVerified = studentResult.verified;
-    const studentDiscount = studentVerified ? afterSharedRide * STUDENT_DISCOUNT_RATE : 0;
+    const studentDiscount = studentVerified
+      ? afterSharedRide * AE_FARE_STUDENT_DISCOUNT_RATE
+      : 0;
+
     const afterStudent = Math.max(afterSharedRide - studentDiscount, 0);
 
-    const referralResult = await validateReferralCode(
-      booking.referral || booking.referralCode || booking.referral_code || booking.referral_code_used || "",
-      booking.email || ""
+    const referralResult = await aeFareValidateReferralCode(
+      aeFareBooking.referral ||
+      aeFareBooking.referralCode ||
+      aeFareBooking.referral_code ||
+      aeFareBooking.referral_code_used ||
+      "",
+      aeFareBooking.email || ""
     );
 
-    const referralDiscount = calculateReferralDiscount(referralResult, afterStudent);
-
+    const referralDiscount = aeFareCalculateReferralDiscount(referralResult, afterStudent);
     const totalSavings = sharedRideDiscount + studentDiscount + referralDiscount;
     const finalPrice = Math.max(beforeDiscount - totalSavings, 0);
 
     const updatedBooking = {
-      ...booking,
+      ...aeFareBooking,
 
       miles: miles.toFixed(1),
       estimated_miles: miles.toFixed(1),
 
-      base: BASE_FARE,
-      base_fare: BASE_FARE.toFixed(2),
+      base: AE_FARE_BASE_FARE,
+      base_fare: AE_FARE_BASE_FARE.toFixed(2),
+
       mileageFare: mileageFare.toFixed(2),
       mileage_fare: mileageFare.toFixed(2),
+
       baseMileage: baseMileage.toFixed(2),
       base_mileage: baseMileage.toFixed(2),
 
       subtotal: beforeDiscount.toFixed(2),
       baseTotal: beforeDiscount.toFixed(2),
       base_total: beforeDiscount.toFixed(2),
+
       total: finalPrice.toFixed(2),
       total_fare: finalPrice.toFixed(2),
+      balance_due: finalPrice.toFixed(2),
 
-      estimatedDriveTime: estimateDriveTime(miles),
-      estimated_drive_time: estimateDriveTime(miles),
+      estimatedDriveTime: aeFareEstimateDriveTime(miles),
+      estimated_drive_time: aeFareEstimateDriveTime(miles),
+
       pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
       pricing_tier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
+
       fareMethod: "$35.00 base + $1.10/mile",
       fare_method: "$35.00 base + $1.10/mile",
 
@@ -906,14 +871,16 @@ async function calculateFare() {
       shared_ride: sharedRideSelected,
       sharedRideDiscount: sharedRideDiscount.toFixed(2),
       shared_ride_discount: sharedRideDiscount.toFixed(2),
-      shared_ride_rate: SHARED_RIDE_DISCOUNT_RATE,
+      sharedDiscount: sharedRideDiscount.toFixed(2),
+      shared_discount: sharedRideDiscount.toFixed(2),
+      shared_ride_rate: AE_FARE_SHARED_RIDE_DISCOUNT_RATE,
 
       studentVerified,
       student_verified: studentVerified,
       student_status_message: studentResult.message,
       studentDiscount: studentDiscount.toFixed(2),
       student_discount: studentDiscount.toFixed(2),
-      student_discount_rate: STUDENT_DISCOUNT_RATE,
+      student_discount_rate: AE_FARE_STUDENT_DISCOUNT_RATE,
 
       referralCode: referralResult.applied ? referralResult.code : "",
       referral_code: referralResult.applied ? referralResult.code : "",
@@ -931,79 +898,109 @@ async function calculateFare() {
 
       totalSavings: totalSavings.toFixed(2),
       total_discount: totalSavings.toFixed(2),
+
       reward_points_earned: Math.round(miles),
-      source: booking.source || "website",
+      source: aeFareBooking.source || "website",
     };
 
     localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
-    booking = updatedBooking;
+    aeFareBooking = updatedBooking;
 
-    document.getElementById("pickupText").textContent = booking.pickup;
-    document.getElementById("dropoffText").textContent = booking.dropoff;
-    document.getElementById("dateTimeText").textContent =
-      `${booking.date || "No date selected"} at ${booking.time || "No time selected"}`;
+    aeFareSetText("pickupText", aeFareBooking.pickup);
+    aeFareSetText("dropoffText", aeFareBooking.dropoff);
+    aeFareSetText(
+      "dateTimeText",
+      `${aeFareBooking.date || aeFareBooking.ride_date || "No date selected"} at ${aeFareBooking.time || aeFareBooking.ride_time || "No time selected"}`
+    );
 
-    document.getElementById("pricingTier").textContent = updatedBooking.pricingTier;
-    document.getElementById("distanceText").textContent = `${updatedBooking.miles} miles`;
-    document.getElementById("driveTimeText").textContent = updatedBooking.estimatedDriveTime;
-    document.getElementById("tripTypeText").textContent = booking.tripType || booking.trip_type || "One Way";
-    document.getElementById("rideCategoryText").textContent = booking.rideCategory || booking.ride_category || "Standard Ride";
-    document.getElementById("mileageFareText").textContent = money(mileageFare);
-    document.getElementById("baseMileageText").textContent = money(baseMileage);
+    aeFareSetText("pricingTier", updatedBooking.pricingTier);
+    aeFareSetText("distanceText", `${updatedBooking.miles} miles`);
+    aeFareSetText("driveTimeText", updatedBooking.estimatedDriveTime);
+    aeFareSetText("tripTypeText", aeFareBooking.tripType || aeFareBooking.trip_type || "One Way");
+    aeFareSetText("rideCategoryText", aeFareBooking.rideCategory || aeFareBooking.ride_category || "Standard Ride");
+    aeFareSetText("mileageFareText", aeFareMoney(mileageFare));
+    aeFareSetText("baseMileageText", aeFareMoney(baseMileage));
 
     const sharedRideText = document.getElementById("sharedRideText");
-    if (sharedRideSelected) {
-      sharedRideText.textContent = "-$" + sharedRideDiscount.toFixed(2) + " (15% shared ride)";
-      sharedRideText.classList.add("discount-good");
-      sharedRideText.classList.remove("discount-bad");
-    } else {
-      sharedRideText.textContent = "Not selected";
-      sharedRideText.classList.remove("discount-good", "discount-bad");
+
+    if (sharedRideText) {
+      if (sharedRideSelected) {
+        sharedRideText.textContent = "-$" + sharedRideDiscount.toFixed(2) + " (15% shared ride)";
+        sharedRideText.classList.add("discount-good");
+        sharedRideText.classList.remove("discount-bad");
+      } else {
+        sharedRideText.textContent = "Not selected";
+        sharedRideText.classList.remove("discount-good", "discount-bad");
+      }
     }
 
-    document.getElementById("roundTripText").textContent = isRoundTrip
-      ? money(beforeDiscount)
-      : money(baseMileage);
+    aeFareSetText(
+      "roundTripText",
+      isRoundTrip ? aeFareMoney(beforeDiscount) : aeFareMoney(baseMileage)
+    );
 
     const studentStatusText = document.getElementById("studentStatusText");
-    studentStatusText.textContent = studentResult.message;
-    studentStatusText.classList.remove("discount-good", "discount-bad");
-    studentStatusText.classList.add(studentVerified ? "discount-good" : "discount-bad");
+
+    if (studentStatusText) {
+      studentStatusText.textContent = studentResult.message;
+      studentStatusText.classList.remove("discount-good", "discount-bad");
+      studentStatusText.classList.add(studentVerified ? "discount-good" : "discount-bad");
+    }
 
     const studentDiscountText = document.getElementById("studentDiscountText");
-    studentDiscountText.textContent = "-$" + studentDiscount.toFixed(2);
-    studentDiscountText.classList.remove("discount-good", "discount-bad");
-    if (studentDiscount > 0) studentDiscountText.classList.add("discount-good");
-    if (!studentVerified) studentDiscountText.classList.add("discount-bad");
+
+    if (studentDiscountText) {
+      studentDiscountText.textContent = "-$" + studentDiscount.toFixed(2);
+      studentDiscountText.classList.remove("discount-good", "discount-bad");
+
+      if (studentDiscount > 0) {
+        studentDiscountText.classList.add("discount-good");
+      }
+
+      if (!studentVerified) {
+        studentDiscountText.classList.add("discount-bad");
+      }
+    }
 
     const referralDiscountText = document.getElementById("referralDiscountText");
 
-    if (referralResult.applied) {
-      referralDiscountText.textContent = "-$" + referralDiscount.toFixed(2) + ` (${referralResult.code})`;
-      referralDiscountText.classList.remove("discount-bad");
-      referralDiscountText.classList.add("discount-good");
-    } else if (referralResult.code) {
-      referralDiscountText.textContent = referralResult.message;
-      referralDiscountText.classList.remove("discount-good");
-      referralDiscountText.classList.add("discount-bad");
-    } else {
-      referralDiscountText.textContent = "-$0.00";
-      referralDiscountText.classList.remove("discount-good", "discount-bad");
+    if (referralDiscountText) {
+      if (referralResult.applied) {
+        referralDiscountText.textContent =
+          "-$" + referralDiscount.toFixed(2) + ` (${referralResult.code})`;
+        referralDiscountText.classList.remove("discount-bad");
+        referralDiscountText.classList.add("discount-good");
+      } else if (referralResult.code) {
+        referralDiscountText.textContent = referralResult.message;
+        referralDiscountText.classList.remove("discount-good");
+        referralDiscountText.classList.add("discount-bad");
+      } else {
+        referralDiscountText.textContent = "-$0.00";
+        referralDiscountText.classList.remove("discount-good", "discount-bad");
+      }
     }
 
-    document.getElementById("totalSavingsText").textContent = "-$" + totalSavings.toFixed(2);
+    const totalSavingsText = document.getElementById("totalSavingsText");
 
-    if (totalSavings > 0) {
-      document.getElementById("totalSavingsText").classList.add("discount-good");
+    if (totalSavingsText) {
+      totalSavingsText.textContent = "-$" + totalSavings.toFixed(2);
+
+      if (totalSavings > 0) {
+        totalSavingsText.classList.add("discount-good");
+      } else {
+        totalSavingsText.classList.remove("discount-good");
+      }
     }
 
-    document.getElementById("finalPriceText").textContent = money(finalPrice);
+    aeFareSetText("finalPriceText", aeFareMoney(finalPrice));
   } catch (error) {
     console.error(error);
-    alert("Fare estimate could not be calculated. " + error.message);
+    alert("Fare estimate could not be calculated. " + (error.message || ""));
   } finally {
-    continueBtn.disabled = false;
-    continueBtn.textContent = "Continue to Confirm Booking";
+    if (continueBtn) {
+      continueBtn.disabled = false;
+      continueBtn.textContent = "Continue to Confirm Booking";
+    }
   }
 }
 
@@ -1011,21 +1008,12 @@ function continueToConfirm() {
   window.location.href = "confirm-booking.html";
 }
 
-const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-const mobileMenu = document.getElementById("mobileMenu");
-
-mobileMenuBtn?.addEventListener("click", () => {
-  mobileMenu?.classList.toggle("open");
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    aeFareCalculateFare();
+  }, 150);
 });
-
-mobileMenu?.querySelectorAll("a").forEach(link => {
-  link.addEventListener("click", () => {
-    mobileMenu.classList.remove("open");
-  });
-});
-
-calculateFare();
-</script></script>
+</script>
 
 </body>
 </html>

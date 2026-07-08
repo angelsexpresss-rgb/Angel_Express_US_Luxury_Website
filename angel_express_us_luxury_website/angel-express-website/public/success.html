@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 <title>Booking Confirmed | Angel Express</title>
 
-<link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
 <style>
 :root{
@@ -17,20 +17,15 @@
   --ae-border:rgba(212,175,55,.28);
 }
 
-*{box-sizing:border-box;}
+*{
+  box-sizing:border-box;
+}
 
 body{
   margin:0;
   background:#050b16;
   color:white;
   overflow-x:hidden;
-}
-
-.mobile-menu{display:none!important;}
-.mobile-menu.open{
-  display:grid!important;
-  grid-template-columns:1fr;
-  gap:9px;
 }
 
 .success-bg{
@@ -69,6 +64,7 @@ body{
   border-radius:34px;
   padding:clamp(24px,5vw,50px);
   backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
   text-align:center;
   box-shadow:0 30px 90px rgba(0,0,0,.38);
 }
@@ -281,6 +277,20 @@ body{
   color:#dce5ee;
 }
 
+.reveal{
+  opacity:0;
+  transform:translateY(34px);
+  filter:blur(8px);
+  transition:opacity .85s ease,transform .85s ease,filter .85s ease;
+}
+
+.reveal.active,
+.reveal.visible{
+  opacity:1;
+  transform:translateY(0);
+  filter:blur(0);
+}
+
 @media(max-width:980px){
   .success-shell{
     padding-top:112px;
@@ -289,7 +299,7 @@ body{
 
 @media(max-width:640px){
   .success-shell{
-    padding:100px 4.5% 120px;
+    padding:100px 4.5% 150px;
   }
 
   .success-card{
@@ -331,46 +341,7 @@ body{
 
 <body>
 
-<header class="navbar">
-  <a href="index.html" class="logo">
-    <div class="logo-mark">A</div>
-    <div class="logo-text">
-      <h1>ANGEL EXPRESS</h1>
-      <span>MOBILITY ECOSYSTEM</span>
-    </div>
-  </a>
-
-  <nav class="desktop-nav">
-    <a href="index.html">Home</a>
-    <a href="book-ride.html">Book Ride</a>
-    <a href="passenger.html">Passengers</a>
-    <a href="driver.html">Drivers</a>
-    <a href="terms.html">Terms</a>
-    <a href="blog.html">Blog</a>
-    <a href="contact.html">Contact</a>
-  </nav>
-
-  <div class="desktop-actions">
-    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
-    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
-  </div>
-
-  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
-    <i class="fa-solid fa-bars"></i>
-  </button>
-</header>
-
-<div class="mobile-menu" id="mobileMenu">
-  <a href="index.html">Home</a>
-  <a href="book-ride.html">Book Ride</a>
-  <a href="fare-estimate.html">Fare Estimate</a>
-  <a href="passenger.html">Passengers</a>
-  <a href="driver.html">Drivers</a>
-  <a href="terms.html">Terms</a>
-  <a href="blog.html">Blog</a>
-  <a href="contact.html">Contact</a>
-  <a href="driver.html#apply">Become a Chauffeur</a>
-</div>
+<div id="siteHeader"></div>
 
 <div class="success-bg"></div>
 
@@ -518,51 +489,21 @@ body{
   </div>
 </main>
 
-<footer class="footer">
-  <div class="footer-grid">
-    <div>
-      <h3>Angel Express Mobility (AEM)</h3>
-      <p>
-        Private long-distance transportation across Texas for students,
-        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
-      </p>
-      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
-    </div>
+<div id="siteFooter"></div>
 
-    <div>
-      <h4>Contact Information</h4>
-      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
-      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
-      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
-      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
-    </div>
-
-    <div>
-      <h4>Quick Links</h4>
-      <p><a href="index.html">Home</a></p>
-      <p><a href="book-ride.html">Book a Ride</a></p>
-      <p><a href="passenger.html">Passenger Services</a></p>
-      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
-      <p><a href="terms.html">Terms & Privacy</a></p>
-    </div>
-
-    <div>
-      <h4>Follow Us</h4>
-      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
-      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
-      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
-      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
-    </div>
-  </div>
-
-  <div class="footer-bottom">
-    © 2026 Angel Express Mobility. All rights reserved.
-  </div>
-</footer>
+<script defer src="app.js"></script>
 
 <script>
-function money(value) {
+function successMoney(value) {
   return "$" + Number(value || 0).toFixed(2);
+}
+
+function successBoolean(value) {
+  if (value === true) return true;
+
+  const normalized = String(value || "").trim().toLowerCase();
+
+  return normalized === "true" || normalized === "yes" || normalized === "1";
 }
 
 function showReferralSuccess() {
@@ -582,33 +523,21 @@ function showReferralSuccess() {
   }
 
   const referralApplied =
-    booking.referralApplied === true ||
-    booking.referral_applied === true ||
-    String(booking.referralApplied || booking.referral_applied || "").toLowerCase() === "true";
+    successBoolean(booking.referralApplied) ||
+    successBoolean(booking.referral_applied);
 
   const studentVerified =
-    booking.studentVerified === true ||
-    booking.student_verified === true ||
-    String(booking.studentVerified || booking.student_verified || "").toLowerCase() === "true";
+    successBoolean(booking.studentVerified) ||
+    successBoolean(booking.student_verified);
 
   const sharedRideApplied =
-    booking.sharedRidePricingApplied === true ||
-    booking.shared_ride_pricing_applied === true ||
-    booking.sharedRide === true ||
-    booking.shared_ride === true ||
-    booking.is_shared_ride === true ||
-    booking.studentSharedRide === true ||
-    booking.student_shared_ride === true ||
-    String(
-      booking.sharedRidePricingApplied ||
-      booking.shared_ride_pricing_applied ||
-      booking.sharedRide ||
-      booking.shared_ride ||
-      booking.is_shared_ride ||
-      booking.studentSharedRide ||
-      booking.student_shared_ride ||
-      ""
-    ).toLowerCase() === "true";
+    successBoolean(booking.sharedRidePricingApplied) ||
+    successBoolean(booking.shared_ride_pricing_applied) ||
+    successBoolean(booking.sharedRide) ||
+    successBoolean(booking.shared_ride) ||
+    successBoolean(booking.is_shared_ride) ||
+    successBoolean(booking.studentSharedRide) ||
+    successBoolean(booking.student_shared_ride);
 
   const referralDiscount = Number(
     booking.referralDiscount ||
@@ -660,14 +589,33 @@ function showReferralSuccess() {
   const summaryText = document.getElementById("savingsSummaryText");
   const referrerCreditText = document.getElementById("referrerCreditText");
 
+  if (!banner) return;
+
   banner.classList.add("show");
 
-  code.textContent = referralApplied && referralCode ? referralCode : "N/A";
-  referralSavings.textContent = money(referralDiscount);
-  studentSavings.textContent = money(studentDiscount);
-  sharedSavings.textContent = money(sharedRideSavings);
-  totalSavingsEl.textContent = money(totalSavings);
-  referrerCredit.textContent = referralApplied ? "$10.00" : "$0.00";
+  if (code) {
+    code.textContent = referralApplied && referralCode ? referralCode : "N/A";
+  }
+
+  if (referralSavings) {
+    referralSavings.textContent = successMoney(referralDiscount);
+  }
+
+  if (studentSavings) {
+    studentSavings.textContent = successMoney(studentDiscount);
+  }
+
+  if (sharedSavings) {
+    sharedSavings.textContent = successMoney(sharedRideSavings);
+  }
+
+  if (totalSavingsEl) {
+    totalSavingsEl.textContent = successMoney(totalSavings);
+  }
+
+  if (referrerCredit) {
+    referrerCredit.textContent = referralApplied ? "$10.00" : "$0.00";
+  }
 
   const appliedSavings = [];
 
@@ -683,33 +631,56 @@ function showReferralSuccess() {
     appliedSavings.push("shared ride");
   }
 
-  summaryText.innerHTML =
-    appliedSavings.length > 0
-      ? `✓ <strong>${appliedSavings.join(", ")} savings applied.</strong>`
-      : `✓ <strong>Your eligible ride savings were applied.</strong>`;
+  if (summaryText) {
+    summaryText.innerHTML =
+      appliedSavings.length > 0
+        ? `✓ <strong>${appliedSavings.join(", ")} savings applied.</strong>`
+        : `✓ <strong>Your eligible ride savings were applied.</strong>`;
+  }
 
-  savedText.innerHTML =
-    `You saved <strong>${money(totalSavings)}</strong> today.`;
+  if (savedText) {
+    savedText.innerHTML =
+      `You saved <strong>${successMoney(totalSavings)}</strong> today.`;
+  }
 
-  referrerCreditText.style.display = referralApplied ? "block" : "none";
+  if (referrerCreditText) {
+    referrerCreditText.style.display = referralApplied ? "block" : "none";
+  }
 }
 
-const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-const mobileMenu = document.getElementById("mobileMenu");
+function revealSuccessPage() {
+  const revealElements = document.querySelectorAll(".reveal");
 
-mobileMenuBtn?.addEventListener("click", () => {
-  mobileMenu?.classList.toggle("open");
-});
+  if (!revealElements.length) return;
 
-mobileMenu?.querySelectorAll("a").forEach(link => {
-  link.addEventListener("click", () => {
-    mobileMenu.classList.remove("open");
+  if (!("IntersectionObserver" in window)) {
+    revealElements.forEach((element) => {
+      element.classList.add("active", "visible");
+    });
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("active", "visible");
+        }
+      });
+    },
+    { threshold: 0.15 }
+  );
+
+  revealElements.forEach((element) => {
+    observer.observe(element);
   });
-});
+}
 
-showReferralSuccess();
+document.addEventListener("DOMContentLoaded", () => {
+  showReferralSuccess();
+  revealSuccessPage();
+});
 </script>
-<script src="floating-support.js?v=20260704-nav-final"></script>
-<script src="script.js?v=20260704-nav-final"></script>
+
 </body>
 </html>

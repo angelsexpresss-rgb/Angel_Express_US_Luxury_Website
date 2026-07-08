@@ -20,20 +20,15 @@
   --ae-border:rgba(212,175,55,.28);
 }
 
-*{box-sizing:border-box;}
+*{
+  box-sizing:border-box;
+}
 
 body{
   margin:0;
   background:#050b16;
   color:white;
   overflow-x:hidden;
-}
-
-.mobile-menu{display:none!important;}
-.mobile-menu.open{
-  display:grid!important;
-  grid-template-columns:1fr;
-  gap:9px;
 }
 
 .confirm-bg{
@@ -295,7 +290,7 @@ body{
 
 @media(max-width:640px){
   .confirm-shell{
-    padding:100px 4.5% 120px;
+    padding:100px 4.5% 150px;
   }
 
   .confirm-card{
@@ -330,46 +325,7 @@ body{
 
 <body>
 
-<header class="navbar">
-  <a href="index.html" class="logo">
-    <div class="logo-mark">A</div>
-    <div class="logo-text">
-      <h1>ANGEL EXPRESS</h1>
-      <span>MOBILITY ECOSYSTEM</span>
-    </div>
-  </a>
-
-  <nav class="desktop-nav">
-    <a href="index.html">Home</a>
-    <a href="book-ride.html">Book Ride</a>
-    <a href="passenger.html">Passengers</a>
-    <a href="driver.html">Drivers</a>
-    <a href="terms.html">Terms</a>
-    <a href="blog.html">Blog</a>
-    <a href="contact.html">Contact</a>
-  </nav>
-
-  <div class="desktop-actions">
-    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
-    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
-  </div>
-
-  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
-    <i class="fa-solid fa-bars"></i>
-  </button>
-</header>
-
-<div class="mobile-menu" id="mobileMenu">
-  <a href="index.html">Home</a>
-  <a href="book-ride.html">Book Ride</a>
-  <a href="fare-estimate.html">Fare Estimate</a>
-  <a href="passenger.html">Passengers</a>
-  <a href="driver.html">Drivers</a>
-  <a href="terms.html">Terms</a>
-  <a href="blog.html">Blog</a>
-  <a href="contact.html">Contact</a>
-  <a href="driver.html#apply">Become a Chauffeur</a>
-</div>
+<div id="siteHeader"></div>
 
 <div class="confirm-bg"></div>
 
@@ -484,47 +440,7 @@ body{
   </div>
 </main>
 
-<footer class="footer">
-  <div class="footer-grid">
-    <div>
-      <h3>Angel Express Mobility (AEM)</h3>
-      <p>
-        Private long-distance transportation across Texas for students,
-        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
-      </p>
-      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
-    </div>
-
-    <div>
-      <h4>Contact Information</h4>
-      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
-      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
-      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
-      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
-    </div>
-
-    <div>
-      <h4>Quick Links</h4>
-      <p><a href="index.html">Home</a></p>
-      <p><a href="book-ride.html">Book a Ride</a></p>
-      <p><a href="passenger.html">Passenger Services</a></p>
-      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
-      <p><a href="terms.html">Terms & Privacy</a></p>
-    </div>
-
-    <div>
-      <h4>Follow Us</h4>
-      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
-      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
-      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
-      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
-    </div>
-  </div>
-
-  <div class="footer-bottom">
-    © 2026 Angel Express Mobility. All rights reserved.
-  </div>
-</footer>
+<div id="siteFooter"></div>
 
 <div id="bookingLoader" class="booking-loader">
   <div class="loader-card">
@@ -534,6 +450,8 @@ body{
   </div>
 </div>
 
+<script src="app.js"></script>
+
 <script>
 const AE_CONFIRM_SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
 const AE_CONFIRM_SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
@@ -542,6 +460,7 @@ const AE_CONFIRM_GOOGLE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzfjXYUphz8-nyETcdMYOpHCPoBY33V17OkAZMODpBRVT2V6m8H9DTG5iBM63QqbHtR/exec";
 
 const AE_CONFIRM_OWNER_WHATSAPP = "19728367910";
+const AE_CONFIRM_SUPPORT_EMAIL = "support@angelexpressus.com";
 const AE_REFERRAL_CREDIT_AMOUNT = 10;
 
 const aeConfirmSupabaseClient = supabase.createClient(
@@ -551,42 +470,53 @@ const aeConfirmSupabaseClient = supabase.createClient(
 
 let aeConfirmBooking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
 
-function money(value) {
+function aeConfirmMoney(value) {
   return "$" + Number(value || 0).toFixed(2);
 }
 
-function cleanPhone(value) {
+function aeConfirmCleanPhone(value) {
   return String(value || "").replace(/[^\d]/g, "");
 }
 
-function booleanValue(value) {
+function aeConfirmBooleanValue(value) {
   if (value === true) return true;
+
   const normalized = String(value || "").trim().toLowerCase();
+
   return normalized === "true" || normalized === "yes" || normalized === "1";
 }
 
-function isSharedRideSelected(data) {
+function aeConfirmIsSharedRideSelected(data) {
   const rideCategory = String(data.rideCategory || data.ride_category || "").toLowerCase();
+
   return (
-    booleanValue(data.sharedRide) ||
-    booleanValue(data.shared_ride) ||
-    booleanValue(data.studentSharedRide) ||
+    aeConfirmBooleanValue(data.sharedRide) ||
+    aeConfirmBooleanValue(data.shared_ride) ||
+    aeConfirmBooleanValue(data.studentSharedRide) ||
+    aeConfirmBooleanValue(data.student_shared_ride) ||
     rideCategory.includes("shared") ||
     rideCategory.includes("student group") ||
     rideCategory.includes("student shared")
   );
 }
 
-function getSharedRideDiscount(data) {
-  return Number(data.sharedRideDiscount || data.shared_ride_discount || data.sharedDiscount || 0);
+function aeConfirmGetSharedRideDiscount(data) {
+  return Number(
+    data.sharedRideDiscount ||
+    data.shared_ride_discount ||
+    data.sharedDiscount ||
+    data.shared_discount ||
+    0
+  );
 }
 
-function getSharedRideRate(data) {
+function aeConfirmGetSharedRideRate(data) {
   return Number(data.shared_ride_rate || data.sharedRideRate || 0.15);
 }
 
-function generateInvoiceNumber() {
+function aeConfirmGenerateInvoiceNumber() {
   const now = new Date();
+
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
@@ -603,9 +533,7 @@ async function revalidateReferral() {
     ""
   ).trim().toUpperCase();
 
-  const passengerEmail = String(aeConfirmBooking.email || "")
-    .trim()
-    .toLowerCase();
+  const passengerEmail = String(aeConfirmBooking.email || "").trim().toLowerCase();
 
   if (!code || !passengerEmail) {
     return {
@@ -680,7 +608,8 @@ async function generateInvoicePDF(bookingData) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF("p", "pt", "letter");
 
-  const invoiceNo = generateInvoiceNumber();
+  const invoiceNo = aeConfirmGenerateInvoiceNumber();
+
   const invoiceDate = new Date().toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -689,7 +618,7 @@ async function generateInvoicePDF(bookingData) {
 
   const miles = Number(bookingData.miles || 0);
   const total = Number(bookingData.total || 0);
-  const sharedRideDiscount = getSharedRideDiscount(bookingData);
+  const sharedRideDiscount = aeConfirmGetSharedRideDiscount(bookingData);
   const studentDiscount = Number(bookingData.studentDiscount || bookingData.student_discount || 0);
   const referralDiscount = Number(bookingData.referralDiscount || bookingData.referral_discount || 0);
   const amountPaid = 0;
@@ -716,7 +645,7 @@ async function generateInvoicePDF(bookingData) {
   doc.setFontSize(10);
   doc.setFont(undefined, "normal");
   doc.text("Angel Express", 50, 140);
-  doc.text("Phone: 972-836-7910 | Email: angelsexpresss@gmail.com", 50, 155);
+  doc.text(`Phone: 972-836-7910 | Email: ${AE_CONFIRM_SUPPORT_EMAIL}`, 50, 155);
   doc.text("Reservation Link: https://angelexpressus.com/", 50, 170);
 
   doc.setFontSize(11);
@@ -790,37 +719,37 @@ async function generateInvoicePDF(bookingData) {
   doc.setFillColor("#fff9e6");
   doc.rect(50, 528, 512, 30, "F");
   doc.text("Angel Express Transportation Service", 60, 548);
-  doc.text(money(Number(bookingData.baseTotal || bookingData.total || 0)), 500, 548);
+  doc.text(aeConfirmMoney(Number(bookingData.baseTotal || bookingData.total || 0)), 500, 548);
 
   doc.setFillColor("#ffffff");
   doc.rect(50, 558, 512, 30, "F");
   doc.setTextColor(green);
   doc.text("Shared Ride Discount", 60, 578);
-  doc.text(`-${money(sharedRideDiscount)}`, 500, 578);
+  doc.text(`-${aeConfirmMoney(sharedRideDiscount)}`, 500, 578);
 
   doc.setFillColor("#ffffff");
   doc.rect(50, 588, 512, 30, "F");
   doc.setTextColor(green);
   doc.text("Student Discount", 60, 608);
-  doc.text(`-${money(studentDiscount)}`, 500, 608);
+  doc.text(`-${aeConfirmMoney(studentDiscount)}`, 500, 608);
 
   doc.setFillColor("#ffffff");
   doc.rect(50, 618, 512, 30, "F");
   doc.setTextColor(green);
   doc.text("Referral Discount", 60, 638);
-  doc.text(`-${money(referralDiscount)}`, 500, 638);
+  doc.text(`-${aeConfirmMoney(referralDiscount)}`, 500, 638);
 
   doc.setFillColor("#ffffff");
   doc.rect(50, 648, 512, 30, "F");
   doc.setTextColor(green);
   doc.text("Amount Paid", 60, 668);
-  doc.text(money(amountPaid), 500, 668);
+  doc.text(aeConfirmMoney(amountPaid), 500, 668);
 
   doc.setFillColor("#fdecea");
   doc.rect(50, 678, 512, 30, "F");
   doc.setTextColor(red);
   doc.text("Balance Due", 60, 698);
-  doc.text(money(balanceDue), 500, 698);
+  doc.text(aeConfirmMoney(balanceDue), 500, 698);
 
   doc.setTextColor(navy);
   doc.setFontSize(13);
@@ -842,35 +771,35 @@ async function generateInvoicePDF(bookingData) {
   };
 }
 
-function ownerMessage(b) {
+function ownerMessage(booking) {
   return `NEW ANGEL EXPRESS BOOKING
 
-Passenger: ${b.name || "Website Passenger"}
-Phone: ${b.phone || "Not provided"}
-Email: ${b.email || "Not provided"}
+Passenger: ${booking.name || "Website Passenger"}
+Phone: ${booking.phone || "Not provided"}
+Email: ${booking.email || "Not provided"}
 
-Pickup: ${b.pickup}
-Drop-off: ${b.dropoff}
-Date: ${b.date}
-Time: ${b.time}
+Pickup: ${booking.pickup}
+Drop-off: ${booking.dropoff}
+Date: ${booking.date}
+Time: ${booking.time}
 
-Trip Type: ${b.trip_type}
-Ride Category: ${b.ride_category}
-Shared Ride: ${b.shared_ride ? "Yes" : "No"}
-Passengers: ${b.passengers}
-Luggage: ${b.luggage_count}
+Trip Type: ${booking.trip_type}
+Ride Category: ${booking.ride_category}
+Shared Ride: ${booking.shared_ride ? "Yes" : "No"}
+Passengers: ${booking.passengers}
+Luggage: ${booking.luggage_count}
 
-Miles: ${b.miles}
-Subtotal: $${Number(b.base || 0).toFixed(2)}
-Shared Ride Discount: -$${Number(b.shared_ride_discount || 0).toFixed(2)}
-Student Discount: -$${Number(b.student_discount || 0).toFixed(2)}
-Referral Discount: -$${Number(b.referral_discount || 0).toFixed(2)}
-Total: $${Number(b.total || 0).toFixed(2)}
+Miles: ${booking.miles}
+Subtotal: $${Number(booking.base || 0).toFixed(2)}
+Shared Ride Discount: -$${Number(booking.shared_ride_discount || 0).toFixed(2)}
+Student Discount: -$${Number(booking.student_discount || 0).toFixed(2)}
+Referral Discount: -$${Number(booking.referral_discount || 0).toFixed(2)}
+Total: $${Number(booking.total || 0).toFixed(2)}
 
-Referral Code: ${b.referral_code || "None"}
-Referral Applied: ${b.referral_applied ? "Yes" : "No"}
+Referral Code: ${booking.referral_code || "None"}
+Referral Applied: ${booking.referral_applied ? "Yes" : "No"}
 
-Notes: ${b.notes || "None"}
+Notes: ${booking.notes || "None"}
 
 Please confirm availability.`;
 }
@@ -885,43 +814,47 @@ function renderConfirmPage() {
   document.getElementById("dropoffText").textContent = aeConfirmBooking.dropoff || "Not provided";
   document.getElementById("dateText").textContent = aeConfirmBooking.date || "Not provided";
   document.getElementById("timeText").textContent = aeConfirmBooking.time || "Not provided";
-  document.getElementById("tripTypeText").textContent = aeConfirmBooking.tripType || "One Way";
-  document.getElementById("rideCategoryText").textContent = aeConfirmBooking.rideCategory || "Standard Ride";
+  document.getElementById("tripTypeText").textContent = aeConfirmBooking.tripType || aeConfirmBooking.trip_type || "One Way";
+  document.getElementById("rideCategoryText").textContent = aeConfirmBooking.rideCategory || aeConfirmBooking.ride_category || "Standard Ride";
 
-  const sharedRideSelected = isSharedRideSelected(aeConfirmBooking);
-  const sharedRideDiscount = getSharedRideDiscount(aeConfirmBooking);
+  const sharedRideSelected = aeConfirmIsSharedRideSelected(aeConfirmBooking);
+  const sharedRideDiscount = aeConfirmGetSharedRideDiscount(aeConfirmBooking);
 
   const sharedRideTextEl = document.getElementById("sharedRideText");
+
   sharedRideTextEl.textContent = sharedRideSelected
     ? "Yes — shared ride pricing selected"
     : "No — private ride";
+
   sharedRideTextEl.className = sharedRideSelected ? "success-text" : "";
 
   document.getElementById("passengersText").textContent = aeConfirmBooking.passengers || "1";
-  document.getElementById("luggageText").textContent = aeConfirmBooking.luggage || "0";
+  document.getElementById("luggageText").textContent = aeConfirmBooking.luggage || aeConfirmBooking.luggage_count || "0";
   document.getElementById("notesText").textContent = aeConfirmBooking.notes || "None";
 
   const referralLabel =
     aeConfirmBooking.referralApplied || aeConfirmBooking.referral_applied
       ? `${aeConfirmBooking.referralCode || aeConfirmBooking.referral_code} — Applied`
-      : aeConfirmBooking.referral || "None";
+      : aeConfirmBooking.referral || aeConfirmBooking.referralCode || aeConfirmBooking.referral_code || "None";
 
   document.getElementById("referralText").textContent = referralLabel;
 
   document.getElementById("pricingTierText").textContent =
-    aeConfirmBooking.pricingTier || "Long Distance Trip";
+    aeConfirmBooking.pricingTier || aeConfirmBooking.pricing_tier || "Long Distance Trip";
 
   document.getElementById("distanceText").textContent =
-    `${aeConfirmBooking.miles || 0} miles`;
+    `${aeConfirmBooking.miles || aeConfirmBooking.estimated_miles || 0} miles`;
 
   document.getElementById("driveTimeText").textContent =
-    aeConfirmBooking.estimatedDriveTime || "Not calculated";
+    aeConfirmBooking.estimatedDriveTime || aeConfirmBooking.duration_text || "Not calculated";
 
   document.getElementById("mileageFareText").textContent =
-    money(aeConfirmBooking.mileageFare || 0);
+    aeConfirmMoney(aeConfirmBooking.mileageFare || aeConfirmBooking.mileage_fare || 0);
 
   const sharedRideDiscountEl = document.getElementById("sharedRideDiscountText");
+
   sharedRideDiscountEl.textContent = "-$" + sharedRideDiscount.toFixed(2);
+
   if (sharedRideDiscount > 0) {
     sharedRideDiscountEl.classList.add("success-text");
   }
@@ -930,6 +863,7 @@ function renderConfirmPage() {
     "-$" + Number(aeConfirmBooking.studentDiscount || aeConfirmBooking.student_discount || 0).toFixed(2);
 
   const referralDiscountEl = document.getElementById("referralDiscountText");
+
   if (referralDiscountEl) {
     referralDiscountEl.textContent =
       "-$" + Number(aeConfirmBooking.referralDiscount || aeConfirmBooking.referral_discount || 0).toFixed(2);
@@ -940,7 +874,7 @@ function renderConfirmPage() {
   }
 
   document.getElementById("finalPriceText").textContent =
-    money(aeConfirmBooking.total || 0);
+    aeConfirmMoney(aeConfirmBooking.total || aeConfirmBooking.total_fare || 0);
 }
 
 async function createPendingReferralReward(insertedBooking, referralResult) {
@@ -1000,9 +934,9 @@ async function confirmBooking() {
       total: finalTotal.toFixed(2),
     };
 
-    const sharedRideSelected = isSharedRideSelected(secureBooking);
-    const sharedRideDiscount = getSharedRideDiscount(secureBooking);
-    const sharedRideRate = getSharedRideRate(secureBooking);
+    const sharedRideSelected = aeConfirmIsSharedRideSelected(secureBooking);
+    const sharedRideDiscount = aeConfirmGetSharedRideDiscount(secureBooking);
+    const sharedRideRate = aeConfirmGetSharedRideRate(secureBooking);
 
     const invoice = await generateInvoicePDF({
       ...secureBooking,
@@ -1014,18 +948,23 @@ async function confirmBooking() {
     });
 
     const finalBooking = {
-      name: secureBooking.name || "Website Passenger",
-      passenger_name: secureBooking.name || "Website Passenger",
-      phone: cleanPhone(secureBooking.phone || ""),
+      name: secureBooking.name || secureBooking.email || "Website Passenger",
+      passenger_name: secureBooking.name || secureBooking.email || "Website Passenger",
+      phone: aeConfirmCleanPhone(secureBooking.phone || ""),
       email: secureBooking.email || "",
 
       route: `${secureBooking.pickup} → ${secureBooking.dropoff}`,
-      trip_type: secureBooking.tripType || "One Way",
-      ride_category: secureBooking.rideCategory || "Standard Ride",
+      trip_type: secureBooking.tripType || secureBooking.trip_type || "One Way",
+      tripType: secureBooking.tripType || secureBooking.trip_type || "One Way",
+      ride_category: secureBooking.rideCategory || secureBooking.ride_category || "Standard Ride",
 
       shared_ride: sharedRideSelected,
       is_shared_ride: sharedRideSelected,
-      student_shared_ride: sharedRideSelected && String(secureBooking.rideCategory || "").toLowerCase().includes("student"),
+      student_shared_ride:
+        sharedRideSelected &&
+        String(secureBooking.rideCategory || secureBooking.ride_category || "")
+          .toLowerCase()
+          .includes("student"),
       shared_ride_discount: sharedRideDiscount,
       shared_ride_rate: sharedRideRate,
       shared_ride_pricing_applied: sharedRideSelected,
@@ -1033,21 +972,21 @@ async function confirmBooking() {
 
       date: secureBooking.date,
       time: secureBooking.time,
-      ride_date: secureBooking.date,
-      ride_time: secureBooking.time,
+      ride_date: secureBooking.date || secureBooking.ride_date,
+      ride_time: secureBooking.time || secureBooking.ride_time,
 
       pickup: secureBooking.pickup,
       dropoff: secureBooking.dropoff,
       pickup_address: secureBooking.pickup,
       dropoff_address: secureBooking.dropoff,
 
-      pickup_lat: secureBooking.pickupLatitude || null,
-      pickup_lng: secureBooking.pickupLongitude || null,
-      dropoff_lat: secureBooking.dropoffLatitude || null,
-      dropoff_lng: secureBooking.dropoffLongitude || null,
+      pickup_lat: secureBooking.pickupLatitude || secureBooking.pickup_lat || null,
+      pickup_lng: secureBooking.pickupLongitude || secureBooking.pickup_lng || null,
+      dropoff_lat: secureBooking.dropoffLatitude || secureBooking.dropoff_lat || null,
+      dropoff_lng: secureBooking.dropoffLongitude || secureBooking.dropoff_lng || null,
 
       passengers: Number(secureBooking.passengers || 1),
-      luggage_count: Number(secureBooking.luggage || 0),
+      luggage_count: Number(secureBooking.luggage || secureBooking.luggage_count || 0),
       notes: secureBooking.notes || "",
 
       promo_code: secureBooking.referral || "",
@@ -1058,12 +997,12 @@ async function confirmBooking() {
       referral_applied: referralResult.applied,
       referral_credit_awarded: false,
 
-      miles: Number(secureBooking.miles || 0),
-      estimated_miles: Number(secureBooking.miles || 0),
+      miles: Number(secureBooking.miles || secureBooking.estimated_miles || 0),
+      estimated_miles: Number(secureBooking.miles || secureBooking.estimated_miles || 0),
 
       base: Number(secureBooking.base || 35),
-      base_fare: Number(secureBooking.baseMileage || secureBooking.base || 35),
-      mileage_fare: Number(secureBooking.mileageFare || 0),
+      base_fare: Number(secureBooking.baseMileage || secureBooking.base_fare || secureBooking.base || 35),
+      mileage_fare: Number(secureBooking.mileageFare || secureBooking.mileage_fare || 0),
 
       shared_discount: sharedRideDiscount,
       student_discount: Number(secureBooking.studentDiscount || secureBooking.student_discount || 0),
@@ -1076,7 +1015,7 @@ async function confirmBooking() {
       total_fare: Number(secureBooking.total || 0),
       balance_due: Number(secureBooking.total || 0),
 
-      reward_points_earned: Math.round(Number(secureBooking.miles || 0)),
+      reward_points_earned: Math.round(Number(secureBooking.miles || secureBooking.estimated_miles || 0)),
 
       status: "pending",
       source: "website",
@@ -1103,11 +1042,15 @@ async function confirmBooking() {
       balance_due: finalBooking.total,
     };
 
-    await fetch(AE_CONFIRM_GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      body: JSON.stringify(emailBooking),
-    });
+    try {
+      await fetch(AE_CONFIRM_GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: JSON.stringify(emailBooking),
+      });
+    } catch (emailError) {
+      console.log("Google Script notification skipped:", emailError);
+    }
 
     const whatsappText = encodeURIComponent(
       ownerMessage({
@@ -1120,37 +1063,35 @@ async function confirmBooking() {
       `https://wa.me/${AE_CONFIRM_OWNER_WHATSAPP}?text=${whatsappText}`,
       "_blank"
     );
-localStorage.setItem("angelLastBooking", JSON.stringify({
-      ...secureBooking,
-      sharedRide: sharedRideSelected,
-      shared_ride: sharedRideSelected,
-      sharedRideDiscount: sharedRideDiscount,
-      shared_ride_discount: sharedRideDiscount,
-      shared_ride_rate: sharedRideRate,
-    }));
+
+    localStorage.setItem(
+      "angelLastBooking",
+      JSON.stringify({
+        ...data,
+        ...finalBooking,
+        id: data?.id,
+        invoice_no: invoice.invoiceNo,
+        sharedRide: sharedRideSelected,
+        shared_ride: sharedRideSelected,
+        sharedRideDiscount: sharedRideDiscount,
+        shared_ride_discount: sharedRideDiscount,
+        shared_ride_rate: sharedRideRate,
+      })
+    );
+
     localStorage.removeItem("angelBooking");
+
     window.location.href = "success.html";
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error(error);
+
     loader.classList.remove("show");
     confirmBtn.disabled = false;
     confirmBtn.textContent = "Confirm Booking";
-    alert("Booking could not be saved. " + err.message);
+
+    alert("Booking could not be saved. " + (error.message || ""));
   }
 }
-
-const aeConfirmMobileMenuBtn = document.getElementById("mobileMenuBtn");
-const aeConfirmMobileMenu = document.getElementById("mobileMenu");
-
-aeConfirmMobileMenuBtn?.addEventListener("click", () => {
-  aeConfirmMobileMenu?.classList.toggle("open");
-});
-
-aeConfirmMobileMenu?.querySelectorAll("a").forEach(link => {
-  link.addEventListener("click", () => {
-    aeConfirmMobileMenu.classList.remove("open");
-  });
-});
 
 renderConfirmPage();
 </script>

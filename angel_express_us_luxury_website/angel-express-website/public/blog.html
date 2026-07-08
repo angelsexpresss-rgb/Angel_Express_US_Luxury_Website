@@ -5,317 +5,284 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Angel Express Blog | Road Travel, Student Travel & Private Rides</title>
-  <meta name="description" content="Angel Express blog covering road travel, private rides, student transportation, airport transfers, and long-distance travel across Texas.">
+  <meta
+    name="description"
+    content="Angel Express blog covering road travel, private rides, student transportation, airport transfers, and long-distance travel across Texas."
+  />
 
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  />
 
   <style>
-    :root{
-      --ae-navy:#050b16;
-      --ae-gold:#D4AF37;
-      --ae-muted:#B8C1CC;
-      --ae-border:rgba(212,175,55,.28);
+    :root {
+      --ae-navy: #050b16;
+      --ae-gold: #d4af37;
+      --ae-muted: #b8c1cc;
+      --ae-border: rgba(212, 175, 55, 0.28);
     }
 
-    body{
-      margin:0;
-      background:#050b16;
-      color:white;
-      overflow-x:hidden;
+    body {
+      margin: 0;
+      background: #050b16;
+      color: white;
+      overflow-x: hidden;
     }
 
-    .mobile-menu{display:none!important;}
-    .mobile-menu.open{
-      display:grid!important;
-      grid-template-columns:1fr;
-      gap:9px;
-    }
-
-    .blog-bg{
-      position:fixed;
-      inset:0;
-      z-index:-3;
+    .blog-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -3;
       background:
-        linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.74)),
+        linear-gradient(90deg, rgba(5, 11, 22, 0.97), rgba(5, 11, 22, 0.74)),
         url("images/hero/07-texas-highway.jpg");
-      background-size:cover;
-      background-position:center;
+      background-size: cover;
+      background-position: center;
     }
 
-    .blog-bg::after{
-      content:"";
-      position:absolute;
-      inset:0;
+    .blog-bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
       background:
-        radial-gradient(circle at 78% 22%,rgba(212,175,55,.22),transparent 30%),
-        linear-gradient(180deg,rgba(5,11,22,.1),#050b16 96%);
+        radial-gradient(circle at 78% 22%, rgba(212, 175, 55, 0.22), transparent 30%),
+        linear-gradient(180deg, rgba(5, 11, 22, 0.1), #050b16 96%);
     }
 
-    .blog-shell{
-      min-height:100vh;
-      padding:125px 5.5% 90px;
+    .blog-shell {
+      min-height: 100vh;
+      padding: 125px 5.5% 90px;
     }
 
-    .blog-wrap{
-      max-width:1180px;
-      margin:0 auto;
+    .blog-wrap {
+      max-width: 1180px;
+      margin: 0 auto;
     }
 
-    .blog-hero{
-      max-width:860px;
-      margin-bottom:50px;
+    .blog-hero {
+      max-width: 860px;
+      margin-bottom: 50px;
     }
 
-    .blog-kicker{
-      display:inline-flex;
-      gap:10px;
-      align-items:center;
-      color:var(--ae-gold);
-      border:1px solid rgba(212,175,55,.35);
-      border-radius:999px;
-      padding:9px 14px;
-      font-size:12px;
-      font-weight:900;
-      letter-spacing:1.5px;
-      text-transform:uppercase;
-      background:rgba(255,255,255,.07);
-      backdrop-filter:blur(14px);
+    .blog-kicker {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--ae-gold);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
     }
 
-    .blog-hero h1{
-      font-size:clamp(44px,7vw,82px);
-      line-height:.95;
-      margin:22px 0 16px;
-      letter-spacing:-2px;
+    .blog-hero h1 {
+      font-size: clamp(44px, 7vw, 82px);
+      line-height: 0.95;
+      margin: 22px 0 16px;
+      letter-spacing: -2px;
     }
 
-    .blog-hero h1 span{
-      color:var(--ae-gold);
+    .blog-hero h1 span {
+      color: var(--ae-gold);
     }
 
-    .blog-hero p{
-      color:#dce5ee;
-      font-size:18px;
-      line-height:1.7;
-      max-width:780px;
+    .blog-hero p {
+      color: #dce5ee;
+      font-size: 18px;
+      line-height: 1.7;
+      max-width: 780px;
     }
 
-    .blog-layout{
-      display:grid;
-      grid-template-columns:minmax(0,1fr) 340px;
-      gap:28px;
-      align-items:start;
+    .blog-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      gap: 28px;
+      align-items: start;
     }
 
     .blog-article,
     .blog-sidebar,
     .blog-stat,
-    .ad-slot-v4{
-      background:rgba(13,20,34,.82);
-      border:1px solid var(--ae-border);
-      border-radius:30px;
-      backdrop-filter:blur(20px);
-      box-shadow:0 30px 90px rgba(0,0,0,.34);
+    .ad-slot-v4 {
+      background: rgba(13, 20, 34, 0.82);
+      border: 1px solid var(--ae-border);
+      border-radius: 30px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
     }
 
-    .blog-article{
-      padding:clamp(24px,4vw,42px);
+    .blog-article {
+      padding: clamp(24px, 4vw, 42px);
     }
 
-    .blog-image{
-      width:100%;
-      height:330px;
-      object-fit:cover;
-      border-radius:24px;
-      margin-bottom:26px;
-      border:1px solid rgba(212,175,55,.18);
+    .blog-image {
+      width: 100%;
+      height: 330px;
+      object-fit: cover;
+      border-radius: 24px;
+      margin-bottom: 26px;
+      border: 1px solid rgba(212, 175, 55, 0.18);
     }
 
-    .blog-article h2{
-      font-size:clamp(32px,4vw,52px);
-      line-height:1;
-      margin:18px 0;
+    .blog-article h2 {
+      font-size: clamp(32px, 4vw, 52px);
+      line-height: 1;
+      margin: 18px 0;
+      letter-spacing: -1.4px;
     }
 
-    .blog-article h3{
-      color:var(--ae-gold);
-      font-size:26px;
-      margin:40px 0 12px;
+    .blog-article h3 {
+      color: var(--ae-gold);
+      font-size: 26px;
+      margin: 40px 0 12px;
     }
 
-    .blog-article p{
-      color:#dce5ee;
-      line-height:1.85;
-      font-size:17px;
+    .blog-article p {
+      color: #dce5ee;
+      line-height: 1.85;
+      font-size: 17px;
     }
 
-    .blog-stats{
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:14px;
-      margin:24px 0 30px;
+    .blog-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin: 24px 0 30px;
     }
 
-    .blog-stat{
-      padding:20px;
+    .blog-stat {
+      padding: 20px;
     }
 
-    .blog-stat strong{
-      display:block;
-      font-size:24px;
-      color:white;
+    .blog-stat strong {
+      display: block;
+      font-size: 24px;
+      color: white;
     }
 
-    .blog-stat span{
-      display:block;
-      margin-top:6px;
-      color:var(--ae-muted);
-      font-size:13px;
-      font-weight:800;
+    .blog-stat span {
+      display: block;
+      margin-top: 6px;
+      color: var(--ae-muted);
+      font-size: 13px;
+      font-weight: 800;
     }
 
-    .blog-divider{
-      border:none;
-      border-top:1px solid rgba(212,175,55,.24);
-      margin:34px 0;
+    .blog-divider {
+      border: none;
+      border-top: 1px solid rgba(212, 175, 55, 0.24);
+      margin: 34px 0;
     }
 
-    .ad-slot-v4{
-      padding:24px;
-      margin:32px 0;
-      text-align:center;
-      color:var(--ae-gold);
-      font-weight:900;
-      letter-spacing:1px;
+    .ad-slot-v4 {
+      padding: 24px;
+      margin: 32px 0;
+      text-align: center;
+      color: var(--ae-gold);
+      font-weight: 900;
+      letter-spacing: 1px;
       background:
-        radial-gradient(circle at 50% 0%,rgba(212,175,55,.18),rgba(255,255,255,.06)),
-        rgba(13,20,34,.78);
+        radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.18), rgba(255, 255, 255, 0.06)),
+        rgba(13, 20, 34, 0.78);
     }
 
-    .blog-sidebar{
-      position:sticky;
-      top:110px;
-      padding:28px;
+    .blog-sidebar {
+      position: sticky;
+      top: 110px;
+      padding: 28px;
     }
 
-    .blog-sidebar h3{
-      font-size:28px;
-      margin:0 0 18px;
+    .blog-sidebar h3 {
+      font-size: 28px;
+      margin: 0 0 18px;
     }
 
-    .topic-list{
-      display:grid;
-      gap:12px;
-      margin:22px 0;
+    .topic-list {
+      display: grid;
+      gap: 12px;
+      margin: 22px 0;
     }
 
-    .topic-list p{
-      color:#dce5ee;
-      margin:0;
-      padding:13px 14px;
-      border-radius:16px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(212,175,55,.14);
+    .topic-list p {
+      color: #dce5ee;
+      margin: 0;
+      padding: 13px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(212, 175, 55, 0.14);
     }
 
-    .cta-v4{
-      margin-top:70px;
-      padding:60px 30px;
-      border-radius:34px;
-      text-align:center;
+    .cta-v4 {
+      margin-top: 70px;
+      padding: 60px 30px;
+      border-radius: 34px;
+      text-align: center;
       background:
-        radial-gradient(circle at 50% 0%,rgba(212,175,55,.22),rgba(255,255,255,.06)),
-        rgba(13,20,34,.78);
-      border:1px solid var(--ae-border);
-      box-shadow:0 30px 90px rgba(0,0,0,.35);
-      backdrop-filter:blur(18px);
+        radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.22), rgba(255, 255, 255, 0.06)),
+        rgba(13, 20, 34, 0.78);
+      border: 1px solid var(--ae-border);
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
     }
 
-    .cta-v4 h2{
-      font-size:clamp(34px,5vw,62px);
-      line-height:1;
-      max-width:850px;
-      margin:16px auto 24px;
+    .cta-v4 h2 {
+      font-size: clamp(34px, 5vw, 62px);
+      line-height: 1;
+      max-width: 850px;
+      margin: 16px auto 24px;
+      letter-spacing: -1.4px;
     }
 
-    .mobile-support-dock{display:none;}
-
-    @media(max-width:980px){
-      .blog-shell{
-        padding-top:112px;
+    @media (max-width: 980px) {
+      .blog-shell {
+        padding-top: 112px;
       }
 
-      .blog-layout{
-        grid-template-columns:1fr;
+      .blog-layout {
+        grid-template-columns: 1fr;
       }
 
-      .blog-sidebar{
-        position:relative;
-        top:auto;
+      .blog-sidebar {
+        position: relative;
+        top: auto;
       }
     }
 
-    @media(max-width:640px){
-      .blog-shell{
-        padding:100px 4.5% 120px;
+    @media (max-width: 640px) {
+      .blog-shell {
+        padding: 100px 4.5% 150px;
       }
 
-      .blog-hero h1{
-        font-size:42px;
+      .blog-hero h1 {
+        font-size: 42px;
       }
 
       .blog-hero p,
-      .blog-article p{
-        font-size:15px;
+      .blog-article p {
+        font-size: 15px;
       }
 
-      .blog-image{
-        height:230px;
+      .blog-image {
+        height: 230px;
       }
 
-      .blog-stats{
-        grid-template-columns:1fr;
+      .blog-stats {
+        grid-template-columns: 1fr;
       }
 
-      .chat-toggle,
-      .whatsapp-float{
-        display:none!important;
-      }
-
-      .mobile-support-dock{
-        position:fixed;
-        left:12px;
-        right:12px;
-        bottom:calc(env(safe-area-inset-bottom) + 14px);
-        z-index:999999;
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:10px;
-      }
-
-      .mobile-support-btn{
-        min-height:48px;
-        border-radius:999px;
-        border:none;
-        font-weight:900;
-        font-size:13px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        gap:8px;
-        text-decoration:none;
-        box-shadow:0 14px 35px rgba(0,0,0,.35);
-      }
-
-      .mobile-support-btn.ai{
-        background:#D4AF37;
-        color:#050A14;
-      }
-
-      .mobile-support-btn.whatsapp{
-        background:#25D366;
-        color:#050A14;
+      .blog-article,
+      .blog-sidebar {
+        border-radius: 24px;
       }
     }
   </style>
@@ -323,46 +290,7 @@
 
 <body>
 
-<header class="navbar">
-  <a href="index.html" class="logo">
-    <div class="logo-mark">A</div>
-    <div class="logo-text">
-      <h1>ANGEL EXPRESS</h1>
-      <span>MOBILITY ECOSYSTEM</span>
-    </div>
-  </a>
-
-  <nav class="desktop-nav">
-    <a href="index.html">Home</a>
-    <a href="book-ride.html">Book Ride</a>
-    <a href="passenger.html">Passengers</a>
-    <a href="driver.html">Drivers</a>
-    <a href="terms.html">Terms</a>
-    <a href="blog.html">Blog</a>
-    <a href="contact.html">Contact</a>
-  </nav>
-
-  <div class="desktop-actions">
-    <a href="book-ride.html" class="nav-cta">Book a Ride</a>
-    <a href="driver.html#apply" class="nav-cta nav-cta-secondary">Drive</a>
-  </div>
-
-  <button class="mobile-menu-btn" id="mobileMenuBtn" type="button">
-    <i class="fa-solid fa-bars"></i>
-  </button>
-</header>
-
-<div class="mobile-menu" id="mobileMenu">
-  <a href="index.html">Home</a>
-  <a href="book-ride.html">Book Ride</a>
-  <a href="fare-estimate.html">Fare Estimate</a>
-  <a href="passenger.html">Passengers</a>
-  <a href="driver.html">Drivers</a>
-  <a href="terms.html">Terms</a>
-  <a href="blog.html">Blog</a>
-  <a href="contact.html">Contact</a>
-  <a href="driver.html#apply">Become a Chauffeur</a>
-</div>
+<div id="siteHeader"></div>
 
 <div class="blog-bg"></div>
 
@@ -558,116 +486,22 @@
   </div>
 </main>
 
-<footer class="footer">
-  <div class="footer-grid">
-    <div>
-      <h3>Angel Express Mobility (AEM)</h3>
-      <p>
-        Private long-distance transportation across Texas for students,
-        travelers, airport passengers, tourists, World Cup 2026 visitors, and approved chauffeurs.
-      </p>
-      <p><i class="fa-solid fa-futbol"></i> Transportation Support for World Cup 2026 Visitors</p>
-    </div>
-
-    <div>
-      <h4>Contact Information</h4>
-      <p><i class="fa-solid fa-phone"></i> +1 (972) 836-7910</p>
-      <p><i class="fa-solid fa-clock"></i> Available 24/7 by Reservation</p>
-      <p><i class="fa-solid fa-envelope"></i> <a href="mailto:angelsexpresss@gmail.com">angelsexpresss@gmail.com</a></p>
-      <p><i class="fa-solid fa-location-dot"></i> Dallas, Texas, USA</p>
-    </div>
-
-    <div>
-      <h4>Quick Links</h4>
-      <p><a href="index.html">Home</a></p>
-      <p><a href="book-ride.html">Book a Ride</a></p>
-      <p><a href="passenger.html">Passenger Services</a></p>
-      <p><a href="driver.html#apply">Become a Chauffeur</a></p>
-      <p><a href="terms.html">Terms & Privacy</a></p>
-    </div>
-
-    <div>
-      <h4>Follow Us</h4>
-      <p><a href="https://instagram.com/angelexpresss" target="_blank"><i class="fab fa-instagram"></i> @angelexpresss</a></p>
-      <p><a href="https://x.com/angelexpresss" target="_blank"><i class="fa-brands fa-x-twitter"></i> @angelexpresss</a></p>
-      <p><a href="https://wa.me/19728367910" target="_blank"><i class="fab fa-whatsapp"></i> Chat With Us</a></p>
-      <p><a href="mailto:angelsexpresss@gmail.com"><i class="fas fa-envelope"></i> Email Us</a></p>
-    </div>
-  </div>
-
-  <div class="footer-bottom">
-    © 2026 Angel Express Mobility. All rights reserved.
-  </div>
-</footer>
-
-<button id="chatToggle" class="chat-toggle" type="button">
-  💬 AI Assistant
-</button>
-
-<div class="chatbot-box" id="chatbotBox">
-  <div class="chatbot-header">Angel Express Assistant</div>
-
-  <div class="chatbot-messages" id="chatbotMessages">
-    <p><strong>Angel Assistant:</strong> Hi! How can I help you today?</p>
-  </div>
-
-  <div class="chatbot-input">
-    <input type="text" id="chatInput" placeholder="Ask about booking, pricing, routes...">
-    <button type="button" onclick="sendChat()">Send</button>
-  </div>
-</div>
-
-<a href="https://wa.me/19728367910" target="_blank" class="whatsapp-float">
-  💬 Chat With Us
-</a>
-
-<div class="mobile-support-dock">
-  <button id="mobileChatBtn" class="mobile-support-btn ai" type="button">
-    💬 AI Assistant
-  </button>
-
-  <a href="https://wa.me/19728367910" target="_blank" class="mobile-support-btn whatsapp">
-    💬 Chat With Us
-  </a>
-</div>
+<div id="siteFooter"></div>
 
 <script>
   const viewKey = "angel_blog_road_travel_views";
   let views = Number(localStorage.getItem(viewKey) || 1248);
+
   views += 1;
-  localStorage.setItem(viewKey, views);
+  localStorage.setItem(viewKey, String(views));
 
   const viewCount = document.getElementById("viewCount");
+
   if (viewCount) {
     viewCount.textContent = views.toLocaleString();
   }
-
-  const mobileMenuBtn = document.getElementById("mobileMenuBtn");
-  const mobileMenu = document.getElementById("mobileMenu");
-
-  mobileMenuBtn?.addEventListener("click", () => {
-    mobileMenu?.classList.toggle("open");
-  });
-
-  mobileMenu?.querySelectorAll("a").forEach(link => {
-    link.addEventListener("click", () => {
-      mobileMenu.classList.remove("open");
-    });
-  });
-
-  const chatToggle = document.getElementById("chatToggle");
-  const mobileChatBtn = document.getElementById("mobileChatBtn");
-  const chatbotBox = document.getElementById("chatbotBox");
-
-  function toggleAngelChat(){
-    chatbotBox?.classList.toggle("open");
-  }
-
-  chatToggle?.addEventListener("click", toggleAngelChat);
-  mobileChatBtn?.addEventListener("click", toggleAngelChat);
 </script>
 
-<script src="floating-support.js?v=20260704-nav-final"></script>
-<script src="script.js?v=20260704-nav-final"></script>
+<script src="app.js"></script>
 </body>
 </html>
