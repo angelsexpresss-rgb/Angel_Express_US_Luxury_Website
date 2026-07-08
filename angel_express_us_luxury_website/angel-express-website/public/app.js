@@ -1612,9 +1612,10 @@ function injectAdaptiveAIStyles() {
     .chatbot-box{
       position:fixed;
       right:22px;
-      bottom:164px;
+      top:88px;
+      bottom:154px;
       width:min(420px, calc(100vw - 44px));
-      max-height:72vh;
+      max-height:none;
       z-index:99991;
       display:none;
       overflow:hidden;
@@ -1700,8 +1701,8 @@ function injectAdaptiveAIStyles() {
 
     .chatbot-messages{
       flex:1 1 auto;
-      min-height:160px;
-      max-height:280px;
+      min-height:0;
+      max-height:none;
       padding:16px;
       overflow-y:auto;
       overscroll-behavior:contain;
@@ -1885,18 +1886,15 @@ function injectAdaptiveAIStyles() {
     @media(max-width:1024px){
       .chatbot-box{
         right:18px;
-        bottom:150px;
+        top:82px;
+        bottom:142px;
         width:min(440px, calc(100vw - 36px));
-        max-height:70vh;
+        max-height:none;
       }
 
       .chat-toggle,
       .whatsapp-float{
         right:18px;
-      }
-
-      .chatbot-messages{
-        max-height:270px;
       }
     }
 
@@ -1944,9 +1942,10 @@ function injectAdaptiveAIStyles() {
       .chatbot-box{
         left:12px;
         right:12px;
+        top:78px;
         bottom:calc(env(safe-area-inset-bottom) + 82px);
         width:auto;
-        max-height:calc(100vh - 120px);
+        max-height:none;
         border-radius:24px;
       }
 
@@ -1970,7 +1969,8 @@ function injectAdaptiveAIStyles() {
       }
 
       .chatbot-messages{
-        max-height:34vh;
+        min-height:0;
+        max-height:none;
         padding:14px;
       }
 
@@ -2013,8 +2013,9 @@ function injectAdaptiveAIStyles() {
       }
 
       .chatbot-box{
+        top:70px;
         bottom:calc(env(safe-area-inset-bottom) + 132px);
-        max-height:calc(100vh - 160px);
+        max-height:none;
       }
 
       .quick-prompts{
@@ -2022,14 +2023,14 @@ function injectAdaptiveAIStyles() {
       }
 
       .chatbot-messages{
-        max-height:30vh;
+        min-height:0;
+        max-height:none;
       }
     }
   `;
 
   document.head.appendChild(style);
 }
-
 /* =========================
    DESIGN HELPERS
 ========================= */
