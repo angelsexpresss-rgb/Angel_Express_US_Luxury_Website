@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,8 +12,20 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+import {
+  getDriverPayoutAmount,
+  getDropoffValue,
+  getPassengerNameValue,
+  getPickupValue,
+  getTripTotal,
+  useDriverTheme,
+  v5Shadow,
+} from "../lib/driverTheme";
 
 export default function UpcomingTripsScreen() {
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState<any[]>([]);
 
@@ -46,8 +58,15 @@ export default function UpcomingTripsScreen() {
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
-        .eq("driver_id", user.id)
-        .in("status", ["assigned", "confirmed"])
+        .or(`driver_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
+        .in("status", [
+          "assigned",
+          "driver_assigned",
+          "accepted",
+          "driver_accepted",
+          "confirmed",
+          "Confirmed",
+        ])
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -123,45 +142,16 @@ export default function UpcomingTripsScreen() {
   const thisWeekTrips = trips.filter(isThisWeek);
   const futureTrips = trips.filter(isFutureTrip);
 
-  function getPickup(trip: any) {
-    return (
-      trip.pickup ||
-      trip.pickup_address ||
-      trip.pickup_location ||
-      "Not provided"
-    );
-  }
-
-  function getDropoff(trip: any) {
-    return (
-      trip.dropoff ||
-      trip.dropoff_address ||
-      trip.dropoff_location ||
-      "Not provided"
-    );
-  }
-
   function getTripTitle(trip: any) {
-    return trip.route || `${getPickup(trip)} → ${getDropoff(trip)}`;
+    return trip.route || `${getPickupValue(trip)} → ${getDropoffValue(trip)}`;
   }
 
   function getFare(trip: any) {
-    return (
-      Number(trip.total) ||
-      Number(trip.total_fare) ||
-      Number(trip.amount) ||
-      0
-    );
+    return getTripTotal(trip);
   }
 
   function getDriverPayout(trip: any) {
-    const driverShare = Number(trip.driver_share);
-
-    if (driverShare > 0) {
-      return driverShare;
-    }
-
-    return getFare(trip) * 0.7;
+    return getDriverPayoutAmount(trip);
   }
 
   function renderTripCard(trip: any) {
@@ -171,32 +161,28 @@ export default function UpcomingTripsScreen() {
 
         <View style={styles.statusBadge}>
           <Text style={styles.statusText}>
-            Status: {String(trip.status).replace("_", " ").toUpperCase()}
+            Status: {String(trip.status || "").replace(/_/g, " ").toUpperCase()}
           </Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Passenger</Text>
-          <Text style={styles.value}>
-            {trip.name || trip.passenger_name || "Not provided"}
-          </Text>
+          <Text style={styles.value}>{getPassengerNameValue(trip)}</Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Pickup</Text>
-          <Text style={styles.value}>{getPickup(trip)}</Text>
+          <Text style={styles.value}>{getPickupValue(trip)}</Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Drop-off</Text>
-          <Text style={styles.value}>{getDropoff(trip)}</Text>
+          <Text style={styles.value}>{getDropoffValue(trip)}</Text>
         </View>
 
         <View style={styles.row}>
           <Text style={styles.label}>Date</Text>
-          <Text style={styles.value}>
-            {getTripDateValue(trip) || "Not set"}
-          </Text>
+          <Text style={styles.value}>{getTripDateValue(trip) || "Not set"}</Text>
         </View>
 
         <View style={styles.row}>
@@ -222,7 +208,15 @@ export default function UpcomingTripsScreen() {
 
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => router.push("/active-trip")}
+          onPress={() =>
+            router.push({
+              pathname: "/active-trip" as any,
+              params: {
+                booking_id: String(trip.id),
+                invoice_no: String(trip.invoice_no || ""),
+              },
+            })
+          }
         >
           <Text style={styles.primaryButtonText}>View Active Trip</Text>
         </TouchableOpacity>
@@ -280,16 +274,24 @@ export default function UpcomingTripsScreen() {
             <RefreshControl
               refreshing={loading}
               onRefresh={loadUpcomingTrips}
-              tintColor="#d4af37"
+              tintColor={colors.gold}
             />
           }
         >
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.push("/driver-dashboard")}
-          >
-            <Text style={styles.backButtonText}>← Dashboard</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.push("/driver-dashboard")}
+            >
+              <Text style={styles.backButtonText}>← Dashboard</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.title}>Upcoming Trips</Text>
 
@@ -299,7 +301,7 @@ export default function UpcomingTripsScreen() {
 
           {loading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator color="#d4af37" size="large" />
+              <ActivityIndicator color={colors.gold} size="large" />
               <Text style={styles.loadingText}>Loading upcoming trips...</Text>
             </View>
           ) : trips.length === 0 ? (
@@ -350,222 +352,223 @@ export default function UpcomingTripsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
-  },
-
-  container: {
-    flexGrow: 1,
-    padding: 22,
-    paddingTop: 65,
-    paddingBottom: 45,
-  },
-
-  backButton: {
-    borderWidth: 1,
-    borderColor: "#d4af37",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: "rgba(15,23,42,0.88)",
-    alignSelf: "flex-start",
-    marginBottom: 20,
-  },
-
-  backButtonText: {
-    color: "#d4af37",
-    fontWeight: "900",
-  },
-
-  title: {
-    color: "#d4af37",
-    fontSize: 32,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-
-  subtitle: {
-    color: "#e5e7eb",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 18,
-  },
-
-  loadingBox: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderRadius: 18,
-    padding: 24,
-    alignItems: "center",
-  },
-
-  loadingText: {
-    color: "#e5e7eb",
-    marginTop: 12,
-  },
-
-  emptyCard: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 18,
-    padding: 22,
-  },
-
-  emptyTitle: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-
-  emptyText: {
-    color: "#cbd5e1",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 18,
-  },
-
-  sectionWrapper: {
-    marginBottom: 14,
-  },
-
-  dropdownHeader: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#d4af37",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  dropdownTitle: {
-    color: "#d4af37",
-    fontSize: 19,
-    fontWeight: "900",
-  },
-
-  dropdownIcon: {
-    color: "#d4af37",
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  dropdownContent: {
-    marginBottom: 10,
-  },
-
-  emptySmallCard: {
-    backgroundColor: "rgba(15,23,42,0.75)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-
-  emptySmallText: {
-    color: "#cbd5e1",
-    textAlign: "center",
-  },
-
-  tripCard: {
-    backgroundColor: "rgba(15,23,42,0.94)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.55)",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 18,
-  },
-
-  tripTitle: {
-    color: "#d4af37",
-    fontSize: 21,
-    fontWeight: "900",
-    marginBottom: 14,
-  },
-
-  statusBadge: {
-    backgroundColor: "rgba(212,175,55,0.18)",
-    borderWidth: 1,
-    borderColor: "#d4af37",
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-  },
-
-  statusText: {
-    color: "#d4af37",
-    fontWeight: "900",
-    textAlign: "center",
-  },
-
-  row: {
-    marginBottom: 12,
-  },
-
-  label: {
-    color: "#94a3b8",
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 4,
-    textTransform: "uppercase",
-  },
-
-  value: {
-    color: "#ffffff",
-    fontSize: 15,
-    lineHeight: 21,
-  },
-
-  moneyBox: {
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 8,
-    marginBottom: 18,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-
-  moneyLabel: {
-    color: "#cbd5e1",
-    fontSize: 13,
-    marginBottom: 5,
-  },
-
-  moneyValue: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-
-  payoutValue: {
-    color: "#d4af37",
-    fontSize: 20,
-    fontWeight: "900",
-  },
-
-  primaryButton: {
-    backgroundColor: "#d4af37",
-    paddingVertical: 16,
-    borderRadius: 16,
-  },
-
-  primaryButtonText: {
-    color: "#07111f",
-    fontSize: 16,
-    fontWeight: "900",
-    textAlign: "center",
-    textTransform: "uppercase",
-  },
-});
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+    },
+    container: {
+      flexGrow: 1,
+      padding: 22,
+      paddingTop: 65,
+      paddingBottom: 45,
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingVertical: 11,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      backgroundColor: colors.card,
+    },
+    backButtonText: {
+      color: colors.gold,
+      fontWeight: "900",
+      fontSize: 14,
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 11,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    title: {
+      color: colors.gold,
+      fontSize: 32,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    subtitle: {
+      color: colors.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      marginBottom: 18,
+      fontWeight: "700",
+    },
+    loadingBox: {
+      backgroundColor: colors.card,
+      borderRadius: 20,
+      padding: 24,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+    },
+    loadingText: {
+      color: colors.text2,
+      marginTop: 12,
+      fontWeight: "800",
+    },
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 22,
+      padding: 22,
+      ...v5Shadow(colors),
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    emptyText: {
+      color: colors.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      marginBottom: 18,
+      fontWeight: "700",
+    },
+    sectionWrapper: {
+      marginBottom: 14,
+    },
+    dropdownHeader: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 10,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    dropdownTitle: {
+      color: colors.gold,
+      fontSize: 19,
+      fontWeight: "900",
+    },
+    dropdownIcon: {
+      color: colors.gold,
+      fontSize: 18,
+      fontWeight: "900",
+    },
+    dropdownContent: {
+      marginBottom: 10,
+    },
+    emptySmallCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+    },
+    emptySmallText: {
+      color: colors.text2,
+      textAlign: "center",
+      fontWeight: "700",
+    },
+    tripCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 22,
+      padding: 18,
+      marginBottom: 18,
+      ...v5Shadow(colors),
+    },
+    tripTitle: {
+      color: colors.gold,
+      fontSize: 21,
+      fontWeight: "900",
+      marginBottom: 14,
+    },
+    statusBadge: {
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.18)" : "#FFF8E8",
+      borderWidth: 1,
+      borderColor: colors.gold,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginBottom: 16,
+    },
+    statusText: {
+      color: colors.gold,
+      fontWeight: "900",
+      textAlign: "center",
+    },
+    row: {
+      marginBottom: 12,
+    },
+    label: {
+      color: colors.muted2,
+      fontSize: 13,
+      fontWeight: "800",
+      marginBottom: 4,
+      textTransform: "uppercase",
+    },
+    value: {
+      color: colors.text,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: "700",
+    },
+    moneyBox: {
+      backgroundColor: colors.card2,
+      borderRadius: 16,
+      padding: 16,
+      marginTop: 8,
+      marginBottom: 18,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+    },
+    moneyLabel: {
+      color: colors.text2,
+      fontSize: 13,
+      marginBottom: 5,
+      fontWeight: "700",
+    },
+    moneyValue: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: "900",
+    },
+    payoutValue: {
+      color: colors.gold,
+      fontSize: 20,
+      fontWeight: "900",
+    },
+    primaryButton: {
+      backgroundColor: colors.gold,
+      paddingVertical: 16,
+      borderRadius: 16,
+    },
+    primaryButtonText: {
+      color: colors.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textAlign: "center",
+      textTransform: "uppercase",
+    },
+  });
+}

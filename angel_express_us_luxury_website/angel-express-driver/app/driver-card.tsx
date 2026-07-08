@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,8 +11,12 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+import { useDriverTheme, v5Shadow } from "../lib/driverTheme";
 
 export default function DriverCardScreen() {
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
   const [driver, setDriver] = useState<any>(null);
 
@@ -55,7 +59,7 @@ export default function DriverCardScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#d4af37" />
+        <ActivityIndicator size="large" color={colors.gold} />
         <Text style={styles.loadingText}>Loading driver card...</Text>
       </View>
     );
@@ -69,9 +73,17 @@ export default function DriverCardScreen() {
     >
       <View style={styles.overlay}>
         <ScrollView contentContainerStyle={styles.container}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backText}>← Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.title}>Driver Card</Text>
           <Text style={styles.subtitle}>
@@ -108,7 +120,7 @@ export default function DriverCardScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>License Plate</Text>
               <Text style={styles.infoValue}>
-                {driver?.license_plate || "Not added"}
+                {driver?.license_plate || driver?.plate_number || "Not added"}
               </Text>
             </View>
 
@@ -157,159 +169,191 @@ export default function DriverCardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#07111f",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    color: "#e5e7eb",
-    marginTop: 14,
-  },
-  container: {
-    flexGrow: 1,
-    padding: 22,
-    paddingTop: 60,
-    paddingBottom: 45,
-  },
-  backButton: {
-    marginBottom: 20,
-  },
-  backText: {
-    color: "#d4af37",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  title: {
-    color: "#ffffff",
-    fontSize: 34,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#cbd5e1",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 22,
-  },
-  card: {
-    backgroundColor: "rgba(15,23,42,0.94)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.7)",
-    borderRadius: 26,
-    padding: 24,
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  avatarCircle: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "#d4af37",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  avatarText: {
-    color: "#07111f",
-    fontSize: 30,
-    fontWeight: "900",
-  },
-  name: {
-    color: "#ffffff",
-    fontSize: 26,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  role: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    marginTop: 5,
-    marginBottom: 12,
-  },
-  ratingBadge: {
-    backgroundColor: "rgba(212,175,55,0.15)",
-    borderWidth: 1,
-    borderColor: "#d4af37",
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  ratingText: {
-    color: "#d4af37",
-    fontSize: 14,
-    fontWeight: "900",
-  },
-  divider: {
-    width: "100%",
-    height: 1,
-    backgroundColor: "#334155",
-    marginVertical: 22,
-  },
-  infoRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 14,
-    gap: 14,
-  },
-  infoLabel: {
-    color: "#94a3b8",
-    fontSize: 14,
-    flex: 1,
-  },
-  infoValue: {
-    color: "#ffffff",
-    fontSize: 14,
-    fontWeight: "800",
-    flex: 1,
-    textAlign: "right",
-  },
-  previewCard: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-  },
-  previewTitle: {
-    color: "#d4af37",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  previewText: {
-    color: "#e5e7eb",
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  noteCard: {
-    backgroundColor: "rgba(30,41,59,0.85)",
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#475569",
-  },
-  noteTitle: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  noteText: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    lineHeight: 22,
-  },
-});
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: colors.bg,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      color: colors.text2,
+      marginTop: 14,
+      fontWeight: "800",
+    },
+    container: {
+      flexGrow: 1,
+      padding: 22,
+      paddingTop: 60,
+      paddingBottom: 45,
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: colors.gold,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    title: {
+      color: colors.text,
+      fontSize: 34,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    subtitle: {
+      color: colors.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      marginBottom: 22,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 26,
+      padding: 24,
+      alignItems: "center",
+      marginBottom: 18,
+      ...v5Shadow(colors),
+    },
+    avatarCircle: {
+      width: 90,
+      height: 90,
+      borderRadius: 45,
+      backgroundColor: colors.gold,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 16,
+    },
+    avatarText: {
+      color: colors.navy,
+      fontSize: 30,
+      fontWeight: "900",
+    },
+    name: {
+      color: colors.text,
+      fontSize: 26,
+      fontWeight: "900",
+      textAlign: "center",
+    },
+    role: {
+      color: colors.text2,
+      fontSize: 14,
+      marginTop: 5,
+      marginBottom: 12,
+      fontWeight: "700",
+    },
+    ratingBadge: {
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.15)" : "#FFF8E8",
+      borderWidth: 1,
+      borderColor: colors.gold,
+      borderRadius: 999,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+    },
+    ratingText: {
+      color: colors.gold,
+      fontSize: 14,
+      fontWeight: "900",
+    },
+    divider: {
+      width: "100%",
+      height: 1,
+      backgroundColor: colors.borderSoft,
+      marginVertical: 22,
+    },
+    infoRow: {
+      width: "100%",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 14,
+      gap: 14,
+    },
+    infoLabel: {
+      color: colors.muted2,
+      fontSize: 14,
+      flex: 1,
+      fontWeight: "700",
+    },
+    infoValue: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "900",
+      flex: 1,
+      textAlign: "right",
+    },
+    previewCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 16,
+    },
+    previewTitle: {
+      color: colors.gold,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    previewText: {
+      color: colors.text2,
+      fontSize: 14,
+      lineHeight: 22,
+      marginBottom: 8,
+      fontWeight: "700",
+    },
+    noteCard: {
+      backgroundColor: colors.card2,
+      borderRadius: 18,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+    },
+    noteTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    noteText: {
+      color: colors.text2,
+      fontSize: 14,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+  });
+}

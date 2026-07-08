@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   BadgeCheck,
   Bus,
   Gift,
@@ -23,16 +24,7 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 const campusHubs = ["UTD", "UT Arlington", "SMU", "UNT", "Texas A&M", "UT Austin"];
 
@@ -64,6 +56,9 @@ const poolRoutes = [
 ];
 
 export default function StudentTravelScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [studentVerified, setStudentVerified] = useState(false);
@@ -75,8 +70,26 @@ export default function StudentTravelScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useFocusEffect(
@@ -108,7 +121,10 @@ export default function StudentTravelScreen() {
       setStudentVerified(Boolean(data?.student_verified));
       setVerificationStatus(data?.student_verification_status || "Not Submitted");
     } catch (error: any) {
-      Alert.alert("Student Mode Error", error.message || "Could not load student status.");
+      Alert.alert(
+        "Student Mode Error",
+        error.message || "Could not load student status."
+      );
     } finally {
       setLoading(false);
     }
@@ -167,7 +183,7 @@ export default function StudentTravelScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={GOLD} size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.loadingText}>Loading Student Travel Mode...</Text>
       </View>
     );
@@ -189,14 +205,21 @@ export default function StudentTravelScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View style={{ opacity: pageFade, transform: [{ translateY: pageTranslate }] }}>
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  STUDENT MOBILITY NETWORK</Text>
-            </View>
+            <Text style={styles.kicker}>STUDENT MOBILITY NETWORK</Text>
 
             <Text style={styles.title}>Student Travel Mode+</Text>
 
@@ -205,9 +228,9 @@ export default function StudentTravelScreen() {
               Texas campuses with Angel Express.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <GraduationCap size={30} color={AE_COLORS.navy2} />
+                <GraduationCap size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -220,21 +243,37 @@ export default function StudentTravelScreen() {
                     : "Student verification unlocks pool rides, campus pickup priority, and discounts."}
                 </Text>
               </View>
-            </AngelCard>
-
-            <View style={styles.statusRow}>
-              <StatusPill title={studentVerified ? "Verified Student" : verificationStatus} active={studentVerified} />
-              <StatusPill title="Pool Ride Eligible" active={studentVerified} />
-              <StatusPill title="20% Student Discount" active />
             </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.statusRow}>
+              <StatusPill
+                title={studentVerified ? "Verified Student" : verificationStatus}
+                active={studentVerified}
+                styles={styles}
+              />
+              <StatusPill
+                title="Pool Ride Eligible"
+                active={studentVerified}
+                styles={styles}
+              />
+              <StatusPill
+                title="20% Student Discount"
+                active
+                styles={styles}
+              />
+            </View>
+
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <MapPinned size={23} color={GOLD} />
+                <MapPinned size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Choose Campus Hub</Text>
               </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.campusRow}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.campusRow}
+              >
                 {campusHubs.map((campus) => (
                   <TouchableOpacity
                     key={campus}
@@ -256,11 +295,11 @@ export default function StudentTravelScreen() {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Users size={23} color={GOLD} />
+                <Users size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Student Pool Rides</Text>
               </View>
 
@@ -279,7 +318,7 @@ export default function StudentTravelScreen() {
                   activeOpacity={0.85}
                 >
                   <View style={styles.poolIcon}>
-                    <Bus size={24} color={GOLD} />
+                    <Bus size={24} color={colors.gold} />
                   </View>
 
                   <View style={styles.poolCopy}>
@@ -295,17 +334,23 @@ export default function StudentTravelScreen() {
                 </TouchableOpacity>
               ))}
 
-              <AngelHeroButton
-                title={joining ? "Joining Pool..." : "Join Selected Pool"}
+              <TouchableOpacity
+                style={[styles.goldButton, joining && styles.buttonDisabled]}
                 onPress={joinPoolRide}
-                variant="gold"
-                style={styles.joinButton}
-              />
-            </AngelCard>
+                disabled={joining}
+                activeOpacity={0.88}
+              >
+                {joining ? (
+                  <ActivityIndicator color={colors.navy} />
+                ) : (
+                  <Text style={styles.goldButtonText}>Join Selected Pool</Text>
+                )}
+              </TouchableOpacity>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Route size={23} color={GOLD} />
+                <Route size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Create a New Student Pool</Text>
               </View>
 
@@ -314,17 +359,18 @@ export default function StudentTravelScreen() {
                 match other students going the same direction.
               </Text>
 
-              <AngelHeroButton
-                title="Request Student Pool"
+              <TouchableOpacity
+                style={styles.outlineButton}
                 onPress={() => router.push("/book-ride" as any)}
-                variant="outline"
-                style={styles.requestButton}
-              />
-            </AngelCard>
+                activeOpacity={0.88}
+              >
+                <Text style={styles.outlineButtonText}>Request Student Pool</Text>
+              </TouchableOpacity>
+            </View>
 
-            <AngelCard style={styles.badgeCard}>
+            <View style={styles.badgeCard}>
               <View style={styles.cardHeader}>
-                <BadgeCheck size={23} color={GOLD} />
+                <BadgeCheck size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Student Verification Badge</Text>
               </View>
 
@@ -336,27 +382,45 @@ export default function StudentTravelScreen() {
                 )}
               </View>
 
-              <BenefitItem icon={<Gift size={18} color={GOLD} />} text="Student discounts" />
-              <BenefitItem icon={<MapPinned size={18} color={GOLD} />} text="Priority campus pickups" />
-              <BenefitItem icon={<Users size={18} color={GOLD} />} text="Split rides with verified students" />
-              <BenefitItem icon={<ShieldCheck size={18} color={GOLD} />} text="Verified passenger safety badge" />
+              <BenefitItem
+                icon={<Gift size={18} color={colors.gold} />}
+                text="Student discounts"
+                styles={styles}
+              />
+              <BenefitItem
+                icon={<MapPinned size={18} color={colors.gold} />}
+                text="Priority campus pickups"
+                styles={styles}
+              />
+              <BenefitItem
+                icon={<Users size={18} color={colors.gold} />}
+                text="Split rides with verified students"
+                styles={styles}
+              />
+              <BenefitItem
+                icon={<ShieldCheck size={18} color={colors.gold} />}
+                text="Verified passenger safety badge"
+                styles={styles}
+              />
 
               {!studentVerified && (
-                <AngelHeroButton
-                  title="Verify Student Status"
+                <TouchableOpacity
+                  style={styles.goldButton}
                   onPress={() => router.push("/student-verification" as any)}
-                  variant="gold"
-                  style={styles.verifyButton}
-                />
+                  activeOpacity={0.88}
+                >
+                  <Text style={styles.goldButtonText}>Verify Student Status</Text>
+                </TouchableOpacity>
               )}
-            </AngelCard>
+            </View>
 
-            <AngelHeroButton
-              title="Book Student Ride"
-              onPress={() => router.push("/book-ride" as any)}
-              variant="gold"
+            <TouchableOpacity
               style={styles.bookButton}
-            />
+              onPress={() => router.push("/book-ride" as any)}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.bookButtonText}>Book Student Ride</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -364,7 +428,15 @@ export default function StudentTravelScreen() {
   );
 }
 
-function StatusPill({ title, active }: { title: string; active?: boolean }) {
+function StatusPill({
+  title,
+  active,
+  styles,
+}: {
+  title: string;
+  active?: boolean;
+  styles: any;
+}) {
   return (
     <View style={[styles.statusPill, active && styles.statusPillActive]}>
       <Text style={[styles.statusPillText, active && styles.statusPillTextActive]}>
@@ -374,7 +446,15 @@ function StatusPill({ title, active }: { title: string; active?: boolean }) {
   );
 }
 
-function BenefitItem({ icon, text }: { icon: React.ReactNode; text: string }) {
+function BenefitItem({
+  icon,
+  text,
+  styles,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  styles: any;
+}) {
   return (
     <View style={styles.benefitRow}>
       <View style={styles.benefitIcon}>{icon}</View>
@@ -383,275 +463,398 @@ function BenefitItem({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
+    bgWrap: { ...StyleSheet.absoluteFillObject },
+    background: { flex: 1 },
+    overlay: { flex: 1, backgroundColor: c.overlay },
+    container: { flex: 1 },
+    content: { padding: 22, paddingTop: 58, paddingBottom: 54 },
 
-  center: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
+    center: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
 
-  loadingText: { color: AE_COLORS.white, marginTop: 12, fontSize: 16 },
+    loadingText: {
+      color: c.text,
+      marginTop: 12,
+      fontSize: 16,
+      fontWeight: "800",
+    },
 
-  backButton: { alignSelf: "flex-start", marginBottom: 18 },
-  backText: { color: GOLD, fontSize: 18, fontWeight: "900" },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-    letterSpacing: -0.7,
-  },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  heroCard: {
-    minHeight: 124,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
 
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
+    title: {
+      color: c.text,
+      fontSize: 36,
+      fontWeight: "900",
+      marginBottom: 10,
+      letterSpacing: -0.7,
+    },
 
-  heroCopy: { flex: 1 },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
+    heroCard: {
+      minHeight: 124,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 16,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
 
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  statusRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 18,
-  },
+    heroCopy: { flex: 1 },
 
-  statusPill: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 24,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
 
-  statusPillActive: {
-    backgroundColor: GOLD,
-    borderColor: AE_COLORS.goldLight,
-  },
+    heroText: {
+      color: c.navy,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  statusPillText: {
-    color: AE_COLORS.white,
-    fontSize: 13,
-    fontWeight: "900",
-  },
+    statusRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 18,
+    },
 
-  statusPillTextActive: { color: AE_COLORS.navy2 },
+    statusPill: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+      backgroundColor: c.card,
+    },
 
-  card: { padding: 20, marginBottom: 18 },
-  badgeCard: { padding: 20, marginBottom: 18, borderColor: "rgba(212,175,55,0.36)" },
+    statusPillActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
 
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
+    statusPillText: {
+      color: c.text,
+      fontSize: 13,
+      fontWeight: "900",
+    },
 
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
+    statusPillTextActive: {
+      color: c.navy,
+    },
 
-  sectionText: {
-    color: AE_COLORS.textSoft,
-    fontSize: 15.5,
-    lineHeight: 23,
-    marginBottom: 16,
-  },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  campusRow: { gap: 10, paddingRight: 12 },
+    badgeCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  campusPill: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
 
-  campusPillActive: {
-    backgroundColor: GOLD,
-    borderColor: AE_COLORS.goldLight,
-  },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  campusPillText: {
-    color: AE_COLORS.white,
-    fontWeight: "900",
-  },
+    sectionText: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 16,
+      fontWeight: "700",
+    },
 
-  campusPillTextActive: {
-    color: AE_COLORS.navy2,
-  },
+    campusRow: {
+      gap: 10,
+      paddingRight: 12,
+    },
 
-  poolCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.20)",
-    backgroundColor: "rgba(255,255,255,0.06)",
-    padding: 14,
-    marginBottom: 12,
-  },
+    campusPill: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      paddingHorizontal: 15,
+      paddingVertical: 10,
+      backgroundColor: c.card2,
+    },
 
-  poolCardActive: {
-    borderColor: GOLD,
-    backgroundColor: "rgba(212,175,55,0.12)",
-  },
+    campusPillActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
 
-  poolIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
+    campusPillText: {
+      color: c.text,
+      fontWeight: "900",
+    },
 
-  poolCopy: { flex: 1 },
+    campusPillTextActive: {
+      color: c.navy,
+    },
 
-  poolRoute: {
-    color: AE_COLORS.white,
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 5,
-  },
+    poolCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card2,
+      padding: 14,
+      marginBottom: 12,
+    },
 
-  poolMeta: {
-    color: AE_COLORS.muted,
-    fontSize: 13.5,
-    marginBottom: 2,
-  },
+    poolCardActive: {
+      borderColor: c.gold,
+      backgroundColor: c.soft,
+    },
 
-  poolFareBox: {
-    alignItems: "flex-end",
-  },
+    poolIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 14,
+    },
 
-  poolFare: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-  },
+    poolCopy: {
+      flex: 1,
+    },
 
-  poolFareSub: {
-    color: AE_COLORS.muted,
-    fontSize: 12,
-  },
+    poolRoute: {
+      color: c.text,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
 
-  joinButton: { marginTop: 12 },
-  requestButton: { marginTop: 4 },
+    poolMeta: {
+      color: c.text2,
+      fontSize: 13.5,
+      marginBottom: 2,
+      fontWeight: "700",
+    },
 
-  badgeStatusBox: { marginBottom: 14 },
+    poolFareBox: {
+      alignItems: "flex-end",
+    },
 
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: GOLD,
-    color: AE_COLORS.navy2,
-    fontSize: 13,
-    fontWeight: "900",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
+    poolFare: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+    },
 
-  pendingBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    color: AE_COLORS.white,
-    fontSize: 13,
-    fontWeight: "900",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-  },
+    poolFareSub: {
+      color: c.text2,
+      fontSize: 12,
+      fontWeight: "700",
+    },
 
-  benefitRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
+    goldButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 12,
+      ...v5Shadow(c),
+    },
 
-  benefitIcon: {
-    width: 30,
-    marginTop: 2,
-  },
+    goldButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
 
-  benefitText: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    lineHeight: 23,
-    flex: 1,
-  },
+    outlineButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+    },
 
-  verifyButton: { marginTop: 16 },
-  bookButton: { marginTop: 4 },
-});
+    outlineButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+
+    badgeStatusBox: {
+      marginBottom: 14,
+    },
+
+    badge: {
+      alignSelf: "flex-start",
+      backgroundColor: c.gold,
+      color: c.navy,
+      fontSize: 13,
+      fontWeight: "900",
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      overflow: "hidden",
+    },
+
+    pendingBadge: {
+      alignSelf: "flex-start",
+      backgroundColor: c.card2,
+      color: c.text,
+      fontSize: 13,
+      fontWeight: "900",
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      overflow: "hidden",
+    },
+
+    benefitRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 12,
+    },
+
+    benefitIcon: {
+      width: 30,
+      marginTop: 2,
+    },
+
+    benefitText: {
+      color: c.text,
+      fontSize: 16,
+      lineHeight: 23,
+      flex: 1,
+      fontWeight: "700",
+    },
+
+    bookButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+      ...v5Shadow(c),
+    },
+
+    bookButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}

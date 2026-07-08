@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,11 +14,27 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+import {
+  getCompanyShareAmount,
+  getDriverPayoutAmount,
+  getDropoffValue,
+  getPassengerNameValue,
+  getPickupValue,
+  getTripMilesValue,
+  getTripTotal,
+  useDriverTheme,
+  v5Shadow,
+} from "../lib/driverTheme";
 
 type PeriodType = "weekly" | "monthly" | "yearly";
 
 export default function EarningsScreen() {
+  const { colors } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [driver, setDriver] = useState<any>(null);
   const [completedTrips, setCompletedTrips] = useState<any[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>("weekly");
@@ -27,9 +44,13 @@ export default function EarningsScreen() {
     loadEarnings();
   }, []);
 
-  async function loadEarnings() {
+  async function loadEarnings(isRefresh = false) {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       const {
         data: { user },
@@ -47,7 +68,7 @@ export default function EarningsScreen() {
         .from("drivers")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (driverError) throw driverError;
 
@@ -56,9 +77,9 @@ export default function EarningsScreen() {
       const { data: tripsData, error: tripsError } = await supabase
         .from("bookings")
         .select("*")
-        .eq("driver_id", user.id)
-        .eq("status", "Completed")
-        .order("created_at", { ascending: false });
+        .or(`driver_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
+        .in("status", ["completed", "Completed"])
+        .order("completed_at", { ascending: false, nullsFirst: false });
 
       if (tripsError) throw tripsError;
 
@@ -67,11 +88,12 @@ export default function EarningsScreen() {
       Alert.alert("Error", err.message || "Unable to load earnings.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
   function getTripDate(trip: any) {
-    return new Date(trip.completed_at || trip.updated_at || trip.created_at);
+    return new Date(trip.completed_at || trip.created_at);
   }
 
   function getStartDate(period: PeriodType) {
@@ -98,38 +120,48 @@ export default function EarningsScreen() {
     return "This Year";
   }
 
-  function getTripAmount(trip: any) {
-    return Number(trip.total || trip.total_price || trip.price || 0);
-  }
-
-  function getTripMiles(trip: any) {
-    return Number(trip.miles || trip.distance_miles || trip.trip_miles || 0);
-  }
-
   const filteredTrips = useMemo(() => {
     const startDate = getStartDate(selectedPeriod);
-    return completedTrips.filter((trip) => getTripDate(trip) >= startDate);
+
+    return completedTrips.filter((trip) => {
+      const tripDate = getTripDate(trip);
+
+      if (Number.isNaN(tripDate.getTime())) return false;
+
+      return tripDate >= startDate;
+    });
   }, [completedTrips, selectedPeriod]);
 
   const periodRevenue = filteredTrips.reduce((sum, trip) => {
-    return sum + getTripAmount(trip);
+    return sum + getTripTotal(trip);
   }, 0);
 
-  const periodDriverPayout = periodRevenue * 0.7;
-  const periodCompanyShare = periodRevenue * 0.3;
+  const periodDriverPayout = filteredTrips.reduce((sum, trip) => {
+    return sum + getDriverPayoutAmount(trip);
+  }, 0);
+
+  const periodCompanyShare = filteredTrips.reduce((sum, trip) => {
+    return sum + getCompanyShareAmount(trip);
+  }, 0);
 
   const periodMiles = filteredTrips.reduce((sum, trip) => {
-    return sum + getTripMiles(trip);
+    return sum + getTripMilesValue(trip);
   }, 0);
 
   const lifetimeRevenue = completedTrips.reduce((sum, trip) => {
-    return sum + getTripAmount(trip);
+    return sum + getTripTotal(trip);
   }, 0);
 
-  const lifetimeDriverPayout = lifetimeRevenue * 0.7;
+  const lifetimeDriverPayout = completedTrips.reduce((sum, trip) => {
+    return sum + getDriverPayoutAmount(trip);
+  }, 0);
+
+  const lifetimeCompanyShare = completedTrips.reduce((sum, trip) => {
+    return sum + getCompanyShareAmount(trip);
+  }, 0);
 
   const lifetimeMiles = completedTrips.reduce((sum, trip) => {
-    return sum + getTripMiles(trip);
+    return sum + getTripMilesValue(trip);
   }, 0);
 
   function cleanCSVValue(value: any) {
@@ -146,7 +178,7 @@ export default function EarningsScreen() {
         ["Total Miles", periodMiles.toFixed(2), "", "", "", "", "", "", "", ""],
         ["Total Revenue", periodRevenue.toFixed(2), "", "", "", "", "", "", "", ""],
         [
-          "Driver 70% Payout",
+          "Driver Payout",
           periodDriverPayout.toFixed(2),
           "",
           "",
@@ -158,7 +190,7 @@ export default function EarningsScreen() {
           "",
         ],
         [
-          "Company 30% Share",
+          "Company Share",
           periodCompanyShare.toFixed(2),
           "",
           "",
@@ -180,30 +212,31 @@ export default function EarningsScreen() {
         "Dropoff",
         "Miles",
         "Trip Total",
-        "Driver 70% Payout",
-        "Company 30% Share",
+        "Driver Payout",
+        "Company Share",
         "Status",
       ]
         .map(cleanCSVValue)
         .join(",");
 
       const tripRows = filteredTrips.map((trip) => {
-        const tripAmount = getTripAmount(trip);
-        const payout = tripAmount * 0.7;
-        const companyShare = tripAmount * 0.3;
-        const miles = getTripMiles(trip);
+        const tripAmount = getTripTotal(trip);
+        const payout = getDriverPayoutAmount(trip);
+        const companyShare = getCompanyShareAmount(trip);
+        const miles = getTripMilesValue(trip);
+        const tripDate = getTripDate(trip);
 
         return [
           trip.id,
-          getTripDate(trip).toLocaleDateString(),
-          trip.name || trip.passenger_name || "Passenger",
-          trip.pickup || "",
-          trip.dropoff || "",
+          Number.isNaN(tripDate.getTime()) ? "" : tripDate.toLocaleDateString(),
+          getPassengerNameValue(trip),
+          getPickupValue(trip),
+          getDropoffValue(trip),
           miles.toFixed(2),
           tripAmount.toFixed(2),
           payout.toFixed(2),
           companyShare.toFixed(2),
-          trip.status || "Completed",
+          trip.status || "completed",
         ]
           .map(cleanCSVValue)
           .join(",");
@@ -236,7 +269,7 @@ export default function EarningsScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#d4af37" />
+        <ActivityIndicator size="large" color={colors.gold} />
         <Text style={styles.loadingText}>Loading earnings...</Text>
       </View>
     );
@@ -249,7 +282,16 @@ export default function EarningsScreen() {
       resizeMode="cover"
     >
       <View style={styles.overlay}>
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadEarnings(true)}
+              tintColor={colors.gold}
+            />
+          }
+        >
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
@@ -262,62 +304,35 @@ export default function EarningsScreen() {
           </Text>
 
           <View style={styles.tabs}>
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                selectedPeriod === "weekly" && styles.tabActive,
-              ]}
-              onPress={() => setSelectedPeriod("weekly")}
-            >
-              <Text
+            {(["weekly", "monthly", "yearly"] as PeriodType[]).map((period) => (
+              <TouchableOpacity
+                key={period}
                 style={[
-                  styles.tabText,
-                  selectedPeriod === "weekly" && styles.tabTextActive,
+                  styles.tabButton,
+                  selectedPeriod === period && styles.tabActive,
                 ]}
+                onPress={() => setSelectedPeriod(period)}
               >
-                Weekly
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                selectedPeriod === "monthly" && styles.tabActive,
-              ]}
-              onPress={() => setSelectedPeriod("monthly")}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  selectedPeriod === "monthly" && styles.tabTextActive,
-                ]}
-              >
-                Monthly
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tabButton,
-                selectedPeriod === "yearly" && styles.tabActive,
-              ]}
-              onPress={() => setSelectedPeriod("yearly")}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  selectedPeriod === "yearly" && styles.tabTextActive,
-                ]}
-              >
-                Yearly
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  style={[
+                    styles.tabText,
+                    selectedPeriod === period && styles.tabTextActive,
+                  ]}
+                >
+                  {period === "weekly"
+                    ? "Weekly"
+                    : period === "monthly"
+                    ? "Monthly"
+                    : "Yearly"}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          <View style={styles.card}>
+          <View style={styles.heroCard}>
             <Text style={styles.cardLabel}>{getPeriodTitle(selectedPeriod)}</Text>
             <Text style={styles.bigAmount}>${periodDriverPayout.toFixed(2)}</Text>
-            <Text style={styles.cardSubtext}>Your 70% chauffeur payout</Text>
+            <Text style={styles.cardSubtext}>Your chauffeur payout</Text>
           </View>
 
           <View style={styles.row}>
@@ -339,7 +354,7 @@ export default function EarningsScreen() {
             </View>
 
             <View style={styles.smallCard}>
-              <Text style={styles.smallLabel}>Company 30%</Text>
+              <Text style={styles.smallLabel}>Company Share</Text>
               <Text style={styles.smallAmount}>
                 ${periodCompanyShare.toFixed(2)}
               </Text>
@@ -365,28 +380,33 @@ export default function EarningsScreen() {
               {filteredTrips.length === 0 ? (
                 <View style={styles.emptyCard}>
                   <Text style={styles.emptyText}>
-                    No completed trips for this period.
+                    No completed trips for this period. Pull down to refresh if
+                    you just completed a trip.
                   </Text>
                 </View>
               ) : (
                 filteredTrips.map((trip) => {
-                  const tripAmount = getTripAmount(trip);
-                  const payout = tripAmount * 0.7;
-                  const miles = getTripMiles(trip);
+                  const tripAmount = getTripTotal(trip);
+                  const payout = getDriverPayoutAmount(trip);
+                  const companyShare = getCompanyShareAmount(trip);
+                  const miles = getTripMilesValue(trip);
+                  const tripDate = getTripDate(trip);
 
                   return (
                     <View key={trip.id} style={styles.tripCard}>
                       <Text style={styles.tripRoute}>
-                        {trip.pickup || "Pickup"} → {trip.dropoff || "Dropoff"}
+                        {getPickupValue(trip)} → {getDropoffValue(trip)}
                       </Text>
 
                       <Text style={styles.tripText}>
-                        Date: {getTripDate(trip).toLocaleDateString()}
+                        Date:{" "}
+                        {Number.isNaN(tripDate.getTime())
+                          ? "Not available"
+                          : tripDate.toLocaleDateString()}
                       </Text>
 
                       <Text style={styles.tripText}>
-                        Passenger:{" "}
-                        {trip.name || trip.passenger_name || "Passenger"}
+                        Passenger: {getPassengerNameValue(trip)}
                       </Text>
 
                       <Text style={styles.tripText}>
@@ -398,10 +418,16 @@ export default function EarningsScreen() {
                       </Text>
 
                       <Text style={styles.payoutText}>
-                        Your 70% Payout: ${payout.toFixed(2)}
+                        Your Payout: ${payout.toFixed(2)}
                       </Text>
 
-                      <Text style={styles.tripStatus}>Status: Completed</Text>
+                      <Text style={styles.tripText}>
+                        Company Share: ${companyShare.toFixed(2)}
+                      </Text>
+
+                      <Text style={styles.tripStatus}>
+                        Status: {String(trip.status || "completed")}
+                      </Text>
                     </View>
                   );
                 })
@@ -416,6 +442,18 @@ export default function EarningsScreen() {
               Lifetime Driver Payout:{" "}
               <Text style={styles.goldText}>
                 ${lifetimeDriverPayout.toFixed(2)}
+              </Text>
+            </Text>
+
+            <Text style={styles.infoText}>
+              Lifetime Trip Revenue:{" "}
+              <Text style={styles.goldText}>${lifetimeRevenue.toFixed(2)}</Text>
+            </Text>
+
+            <Text style={styles.infoText}>
+              Lifetime Company Share:{" "}
+              <Text style={styles.goldText}>
+                ${lifetimeCompanyShare.toFixed(2)}
               </Text>
             </Text>
 
@@ -460,215 +498,236 @@ export default function EarningsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#07111f",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    color: "#e5e7eb",
-    marginTop: 14,
-  },
-  container: {
-    flexGrow: 1,
-    padding: 22,
-    paddingTop: 60,
-    paddingBottom: 45,
-  },
-  backButton: {
-    marginBottom: 20,
-  },
-  backText: {
-    color: "#d4af37",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  title: {
-    color: "#ffffff",
-    fontSize: 34,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#cbd5e1",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 22,
-  },
-  tabs: {
-    flexDirection: "row",
-    backgroundColor: "rgba(15,23,42,0.9)",
-    borderRadius: 18,
-    padding: 6,
-    borderWidth: 1,
-    borderColor: "#334155",
-    marginBottom: 16,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-  tabActive: {
-    backgroundColor: "#d4af37",
-  },
-  tabText: {
-    color: "#cbd5e1",
-    fontWeight: "900",
-    fontSize: 14,
-  },
-  tabTextActive: {
-    color: "#07111f",
-  },
-  card: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.6)",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-  },
-  cardLabel: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  cardSubtext: {
-    color: "#94a3b8",
-    fontSize: 13,
-    marginTop: 6,
-  },
-  bigAmount: {
-    color: "#d4af37",
-    fontSize: 36,
-    fontWeight: "900",
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 16,
-  },
-  smallCard: {
-    width: "48%",
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 18,
-    padding: 16,
-  },
-  smallLabel: {
-    color: "#cbd5e1",
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  smallAmount: {
-    color: "#ffffff",
-    fontSize: 22,
-    fontWeight: "900",
-  },
-  exportButton: {
-    backgroundColor: "#d4af37",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  exportText: {
-    color: "#07111f",
-    textAlign: "center",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  dropdownHeader: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#d4af37",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  dropdownTitle: {
-    color: "#d4af37",
-    fontSize: 17,
-    fontWeight: "900",
-    flex: 1,
-  },
-  dropdownIcon: {
-    color: "#d4af37",
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  dropdownContent: {
-    marginBottom: 18,
-  },
-  emptyCard: {
-    backgroundColor: "rgba(15,23,42,0.9)",
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  emptyText: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  tripCard: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 13,
-  },
-  tripRoute: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  tripText: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  payoutText: {
-    color: "#d4af37",
-    fontSize: 16,
-    fontWeight: "900",
-    marginTop: 6,
-  },
-  tripStatus: {
-    color: "#22c55e",
-    fontSize: 13,
-    fontWeight: "800",
-    marginTop: 8,
-  },
-  sectionTitle: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 14,
-  },
-  infoText: {
-    color: "#e5e7eb",
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  goldText: {
-    color: "#d4af37",
-    fontWeight: "800",
-  },
-});
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: colors.bg,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      color: colors.text2,
+      marginTop: 14,
+      fontWeight: "800",
+    },
+    container: {
+      flexGrow: 1,
+      padding: 22,
+      paddingTop: 60,
+      paddingBottom: 45,
+    },
+    backButton: {
+      alignSelf: "flex-start",
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginBottom: 20,
+    },
+    backText: {
+      color: colors.gold,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    title: {
+      color: colors.text,
+      fontSize: 34,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    subtitle: {
+      color: colors.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      marginBottom: 22,
+    },
+    tabs: {
+      flexDirection: "row",
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      padding: 6,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      marginBottom: 16,
+    },
+    tabButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 14,
+      alignItems: "center",
+    },
+    tabActive: {
+      backgroundColor: colors.gold,
+    },
+    tabText: {
+      color: colors.muted,
+      fontWeight: "900",
+      fontSize: 14,
+    },
+    tabTextActive: {
+      color: colors.navy,
+    },
+    heroCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 22,
+      padding: 20,
+      marginBottom: 16,
+      ...v5Shadow(colors),
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 16,
+    },
+    cardLabel: {
+      color: colors.text2,
+      fontSize: 14,
+      marginBottom: 8,
+      fontWeight: "800",
+    },
+    cardSubtext: {
+      color: colors.muted2,
+      fontSize: 13,
+      marginTop: 6,
+    },
+    bigAmount: {
+      color: colors.gold,
+      fontSize: 36,
+      fontWeight: "900",
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 16,
+    },
+    smallCard: {
+      width: "48%",
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 18,
+      padding: 16,
+    },
+    smallLabel: {
+      color: colors.text2,
+      fontSize: 13,
+      marginBottom: 8,
+      fontWeight: "800",
+    },
+    smallAmount: {
+      color: colors.text,
+      fontSize: 22,
+      fontWeight: "900",
+    },
+    exportButton: {
+      backgroundColor: colors.gold,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+    },
+    exportText: {
+      color: colors.navy,
+      textAlign: "center",
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    dropdownHeader: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 12,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    dropdownTitle: {
+      color: colors.gold,
+      fontSize: 17,
+      fontWeight: "900",
+      flex: 1,
+    },
+    dropdownIcon: {
+      color: colors.gold,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    dropdownContent: {
+      marginBottom: 18,
+    },
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderRadius: 18,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+    },
+    emptyText: {
+      color: colors.text2,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    tripCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 13,
+    },
+    tripRoute: {
+      color: colors.text,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    tripText: {
+      color: colors.text2,
+      fontSize: 14,
+      marginBottom: 5,
+    },
+    payoutText: {
+      color: colors.gold,
+      fontSize: 16,
+      fontWeight: "900",
+      marginTop: 6,
+    },
+    tripStatus: {
+      color: colors.success,
+      fontSize: 13,
+      fontWeight: "800",
+      marginTop: 8,
+    },
+    sectionTitle: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 14,
+    },
+    infoText: {
+      color: colors.text2,
+      fontSize: 14,
+      marginBottom: 8,
+    },
+    goldText: {
+      color: colors.gold,
+      fontWeight: "800",
+    },
+  });
+}

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ImageBackground,
@@ -11,9 +11,9 @@ import {
 } from "react-native";
 import {
   AlertTriangle,
+  ArrowLeft,
   BriefcaseBusiness,
   CarFront,
-  Clock,
   CreditCard,
   Languages,
   MapPinned,
@@ -22,14 +22,7 @@ import {
   ShieldCheck,
 } from "lucide-react-native";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 const LANGUAGES = [
   { key: "en", name: "English", group: "Global" },
@@ -237,7 +230,7 @@ const PHRASES: any = {
     ar: "أحتاج إلى مساعدة.",
     pt: "Preciso de ajuda.",
     hi: "मुझे मदद चाहिए।",
-    zh: "我需要 मदद चाहिए।",
+    zh: "我需要帮助。",
   },
   emergency: {
     category: "Safety",
@@ -260,6 +253,9 @@ const PHRASES: any = {
 const CATEGORIES = ["All", "Pickup", "Destination", "Ride Details", "Payment", "Safety"];
 
 export default function LanguageAssistantScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [selectedLanguage, setSelectedLanguage] = useState("pidgin");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [translatedText, setTranslatedText] = useState("");
@@ -269,8 +265,26 @@ export default function LanguageAssistantScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   function translatePhrase(key: string) {
@@ -301,15 +315,26 @@ export default function LanguageAssistantScreen() {
       </Animated.View>
 
       <View style={styles.overlay}>
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View style={{ opacity: pageFade, transform: [{ translateY: pageTranslate }] }}>
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  TRAVEL PHRASE TRANSLATOR</Text>
-            </View>
+            <Text style={styles.kicker}>TRAVEL PHRASE TRANSLATOR</Text>
 
             <Text style={styles.title}>Multi-Language Assistant</Text>
 
@@ -318,9 +343,9 @@ export default function LanguageAssistantScreen() {
               hotels, events, students, and international visitors.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Languages size={30} color={AE_COLORS.navy2} />
+                <Languages size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -330,11 +355,11 @@ export default function LanguageAssistantScreen() {
                   passenger, hotel staff, or airport support.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Languages size={22} color={GOLD} />
+                <Languages size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Choose Language</Text>
               </View>
 
@@ -346,6 +371,7 @@ export default function LanguageAssistantScreen() {
                     lang={lang}
                     selected={selectedLanguage === lang.key}
                     onPress={() => setSelectedLanguage(lang.key)}
+                    styles={styles}
                   />
                 ))}
               </View>
@@ -358,28 +384,41 @@ export default function LanguageAssistantScreen() {
                     lang={lang}
                     selected={selectedLanguage === lang.key}
                     onPress={() => setSelectedLanguage(lang.key)}
+                    styles={styles}
                   />
                 ))}
               </View>
-            </AngelCard>
+            </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryRow}
+            >
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.categoryPill, selectedCategory === cat && styles.categoryPillActive]}
+                  style={[
+                    styles.categoryPill,
+                    selectedCategory === cat && styles.categoryPillActive,
+                  ]}
                   onPress={() => setSelectedCategory(cat)}
                 >
-                  <Text style={[styles.categoryText, selectedCategory === cat && styles.categoryTextActive]}>
+                  <Text
+                    style={[
+                      styles.categoryText,
+                      selectedCategory === cat && styles.categoryTextActive,
+                    ]}
+                  >
                     {cat}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <MessageCircle size={22} color={GOLD} />
+                <MessageCircle size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Travel Phrases</Text>
               </View>
 
@@ -388,9 +427,10 @@ export default function LanguageAssistantScreen() {
                   key={key}
                   style={styles.phraseButton}
                   onPress={() => translatePhrase(key)}
+                  activeOpacity={0.85}
                 >
                   <View style={styles.phraseIcon}>
-                    {getCategoryIcon(PHRASES[key].category)}
+                    {getCategoryIcon(PHRASES[key].category, colors)}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.phraseCategory}>{PHRASES[key].category}</Text>
@@ -398,12 +438,12 @@ export default function LanguageAssistantScreen() {
                   </View>
                 </TouchableOpacity>
               ))}
-            </AngelCard>
+            </View>
 
             {translatedText ? (
-              <AngelCard style={styles.resultCard}>
+              <View style={styles.resultCard}>
                 <View style={styles.cardHeader}>
-                  <ShieldCheck size={22} color={GOLD} />
+                  <ShieldCheck size={22} color={colors.gold} />
                   <Text style={styles.cardTitle}>Translation</Text>
                 </View>
 
@@ -414,7 +454,7 @@ export default function LanguageAssistantScreen() {
                   <Text style={styles.translationLabelGold}>{selectedLanguageName}</Text>
                   <Text style={styles.resultText}>{translatedText}</Text>
                 </View>
-              </AngelCard>
+              </View>
             ) : null}
           </Animated.View>
         </ScrollView>
@@ -423,11 +463,12 @@ export default function LanguageAssistantScreen() {
   );
 }
 
-function LanguagePill({ lang, selected, onPress }: any) {
+function LanguagePill({ lang, selected, onPress, styles }: any) {
   return (
     <TouchableOpacity
       style={[styles.languageButton, selected && styles.languageButtonActive]}
       onPress={onPress}
+      activeOpacity={0.85}
     >
       <Text style={[styles.languageText, selected && styles.languageTextActive]}>
         {lang.name}
@@ -436,109 +477,262 @@ function LanguagePill({ lang, selected, onPress }: any) {
   );
 }
 
-function getCategoryIcon(category: string) {
-  if (category === "Pickup") return <MapPinned size={18} color={GOLD} />;
-  if (category === "Destination") return <Plane size={18} color={GOLD} />;
-  if (category === "Ride Details") return <CarFront size={18} color={GOLD} />;
-  if (category === "Payment") return <CreditCard size={18} color={GOLD} />;
-  if (category === "Safety") return <AlertTriangle size={18} color={GOLD} />;
-  return <BriefcaseBusiness size={18} color={GOLD} />;
+function getCategoryIcon(category: string, c: any) {
+  if (category === "Pickup") return <MapPinned size={18} color={c.gold} />;
+  if (category === "Destination") return <Plane size={18} color={c.gold} />;
+  if (category === "Ride Details") return <CarFront size={18} color={c.gold} />;
+  if (category === "Payment") return <CreditCard size={18} color={c.gold} />;
+  if (category === "Safety") return <AlertTriangle size={18} color={c.gold} />;
+  return <BriefcaseBusiness size={18} color={c.gold} />;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
-  backButton: { alignSelf: "flex-start", marginBottom: 18 },
-  backText: { color: GOLD, fontSize: 18, fontWeight: "900" },
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  kickerText: { color: GOLD, fontSize: 11, fontWeight: "900", letterSpacing: 1.3 },
-  title: { color: GOLD, fontSize: 34, fontWeight: "900", marginBottom: 10 },
-  subtitle: { color: AE_COLORS.textSoft, fontSize: 16, lineHeight: 24, marginBottom: 24 },
-  heroCard: { minHeight: 124, flexDirection: "row", alignItems: "center", marginBottom: 18 },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  heroCopy: { flex: 1 },
-  heroTitle: { color: AE_COLORS.navy2, fontSize: 24, fontWeight: "900", marginBottom: 6 },
-  heroText: { color: "rgba(6,17,31,0.78)", fontSize: 15, lineHeight: 21, fontWeight: "700" },
-  card: { padding: 20, marginBottom: 18 },
-  cardHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
-  cardTitle: { color: GOLD, fontSize: 22, fontWeight: "900", flex: 1 },
-  groupTitle: { color: GOLD, fontSize: 14, fontWeight: "900", textTransform: "uppercase", marginBottom: 10 },
-  languageWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 16 },
-  languageButton: {
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  languageButtonActive: { backgroundColor: GOLD },
-  languageText: { color: AE_COLORS.white, fontWeight: "900" },
-  languageTextActive: { color: AE_COLORS.navy2 },
-  categoryRow: { gap: 10, marginBottom: 18 },
-  categoryPill: {
-    paddingVertical: 11,
-    paddingHorizontal: 15,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-  categoryPillActive: { backgroundColor: GOLD },
-  categoryText: { color: AE_COLORS.white, fontWeight: "900" },
-  categoryTextActive: { color: AE_COLORS.navy2 },
-  phraseButton: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.14)",
-    flexDirection: "row",
-    gap: 12,
-  },
-  phraseIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  phraseCategory: { color: GOLD, fontSize: 11, fontWeight: "900", textTransform: "uppercase", marginBottom: 4 },
-  phraseText: { color: AE_COLORS.white, fontSize: 15.5, lineHeight: 22 },
-  resultCard: { padding: 20, borderColor: "rgba(212,175,55,0.36)" },
-  translationLabel: { color: AE_COLORS.muted, fontSize: 12, fontWeight: "900", textTransform: "uppercase", marginBottom: 6 },
-  originalText: { color: AE_COLORS.white, fontSize: 16, lineHeight: 24, marginBottom: 16 },
-  translationBox: {
-    borderRadius: 18,
-    backgroundColor: "rgba(212,175,55,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    padding: 16,
-  },
-  translationLabelGold: { color: GOLD, fontSize: 12, fontWeight: "900", textTransform: "uppercase", marginBottom: 8 },
-  resultText: { color: AE_COLORS.white, fontSize: 22, lineHeight: 32, fontWeight: "900" },
-});
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
+    bgWrap: { ...StyleSheet.absoluteFillObject },
+    background: { flex: 1 },
+    overlay: { flex: 1, backgroundColor: c.overlay },
+    container: { flex: 1 },
+    content: { padding: 22, paddingTop: 58, paddingBottom: 54 },
+
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: { color: c.gold, fontSize: 12, fontWeight: "900" },
+
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
+    title: {
+      color: c.text,
+      fontSize: 34,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
+
+    heroCard: {
+      minHeight: 124,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: { flex: 1 },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 24,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
+
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
+    groupTitle: {
+      color: c.gold,
+      fontSize: 14,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 10,
+    },
+
+    languageWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 16,
+    },
+    languageButton: {
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      backgroundColor: c.card2,
+    },
+    languageButtonActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    languageText: {
+      color: c.text,
+      fontWeight: "900",
+    },
+    languageTextActive: {
+      color: c.navy,
+    },
+
+    categoryRow: {
+      gap: 10,
+      marginBottom: 18,
+      paddingRight: 18,
+    },
+    categoryPill: {
+      paddingVertical: 11,
+      paddingHorizontal: 15,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+    },
+    categoryPillActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    categoryText: {
+      color: c.text,
+      fontWeight: "900",
+    },
+    categoryTextActive: {
+      color: c.navy,
+    },
+
+    phraseButton: {
+      backgroundColor: c.card2,
+      borderRadius: 16,
+      padding: 15,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      flexDirection: "row",
+      gap: 12,
+    },
+    phraseIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    phraseCategory: {
+      color: c.gold,
+      fontSize: 11,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    phraseText: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+
+    resultCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 20,
+      ...v5Shadow(c),
+    },
+    translationLabel: {
+      color: c.text2,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 6,
+    },
+    originalText: {
+      color: c.text,
+      fontSize: 16,
+      lineHeight: 24,
+      marginBottom: 16,
+      fontWeight: "700",
+    },
+    translationBox: {
+      borderRadius: 18,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 16,
+    },
+    translationLabelGold: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 8,
+    },
+    resultText: {
+      color: c.text,
+      fontSize: 22,
+      lineHeight: 32,
+      fontWeight: "900",
+    },
+  });
+}

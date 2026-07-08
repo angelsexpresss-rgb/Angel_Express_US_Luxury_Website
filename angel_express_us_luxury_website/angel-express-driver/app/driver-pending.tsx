@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,8 +11,12 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+import { useDriverTheme, v5Shadow } from "../lib/driverTheme";
 
 export default function DriverPendingScreen() {
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [checking, setChecking] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -105,6 +109,12 @@ export default function DriverPendingScreen() {
     >
       <View style={styles.overlay}>
         <ScrollView contentContainerStyle={styles.container}>
+          <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <Text style={styles.themeText}>
+              {themeMode === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode"}
+            </Text>
+          </TouchableOpacity>
+
           <View style={styles.card}>
             <Text style={styles.icon}>⏳</Text>
 
@@ -145,12 +155,12 @@ export default function DriverPendingScreen() {
             </View>
 
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={[styles.primaryButton, checking && styles.disabledButton]}
               onPress={checkApprovalStatus}
               disabled={checking}
             >
               {checking ? (
-                <ActivityIndicator color="#07111f" />
+                <ActivityIndicator color={colors.navy} />
               ) : (
                 <Text style={styles.primaryButtonText}>
                   Refresh Approval Status
@@ -159,12 +169,12 @@ export default function DriverPendingScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.logoutButton}
+              style={[styles.logoutButton, loggingOut && styles.disabledButton]}
               onPress={handleLogout}
               disabled={loggingOut}
             >
               {loggingOut ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={colors.text} />
               ) : (
                 <Text style={styles.logoutButtonText}>Logout</Text>
               )}
@@ -176,117 +186,163 @@ export default function DriverPendingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
-  },
-  container: {
-    flexGrow: 1,
-    padding: 24,
-    justifyContent: "center",
-  },
-  card: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#d4af37",
-    borderRadius: 22,
-    padding: 22,
-  },
-  icon: {
-    fontSize: 54,
-    textAlign: "center",
-    marginBottom: 14,
-  },
-  title: {
-    color: "#d4af37",
-    fontSize: 28,
-    fontWeight: "900",
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  statusBadge: {
-    color: "#07111f",
-    backgroundColor: "#d4af37",
-    fontSize: 14,
-    fontWeight: "900",
-    textAlign: "center",
-    paddingVertical: 10,
-    borderRadius: 999,
-    marginBottom: 18,
-    textTransform: "uppercase",
-  },
-  message: {
-    color: "#e5e7eb",
-    fontSize: 15,
-    lineHeight: 24,
-    textAlign: "center",
-    marginBottom: 18,
-  },
-  infoBox: {
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  infoTitle: {
-    color: "#d4af37",
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  infoText: {
-    color: "#ffffff",
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  stripeBox: {
-    backgroundColor: "rgba(212,175,55,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.6)",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  stripeTitle: {
-    color: "#d4af37",
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  stripeText: {
-    color: "#f8fafc",
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  primaryButton: {
-    backgroundColor: "#d4af37",
-    paddingVertical: 17,
-    borderRadius: 16,
-    marginBottom: 14,
-  },
-  primaryButtonText: {
-    color: "#07111f",
-    textAlign: "center",
-    fontWeight: "900",
-    fontSize: 15,
-    textTransform: "uppercase",
-  },
-  logoutButton: {
-    borderWidth: 1,
-    borderColor: "#64748b",
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: "rgba(15,23,42,0.75)",
-  },
-  logoutButtonText: {
-    color: "#ffffff",
-    textAlign: "center",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-});
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    background: {
+      flex: 1,
+    },
+
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+    },
+
+    container: {
+      flexGrow: 1,
+      padding: 24,
+      justifyContent: "center",
+    },
+
+    themePill: {
+      alignSelf: "flex-end",
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      marginBottom: 18,
+    },
+
+    themeText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+
+    card: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.gold,
+      borderRadius: 24,
+      padding: 22,
+      ...v5Shadow(colors),
+    },
+
+    icon: {
+      fontSize: 54,
+      textAlign: "center",
+      marginBottom: 14,
+    },
+
+    title: {
+      color: colors.gold,
+      fontSize: 28,
+      fontWeight: "900",
+      textAlign: "center",
+      marginBottom: 12,
+    },
+
+    statusBadge: {
+      color: colors.navy,
+      backgroundColor: colors.gold,
+      fontSize: 14,
+      fontWeight: "900",
+      textAlign: "center",
+      paddingVertical: 10,
+      borderRadius: 999,
+      marginBottom: 18,
+      textTransform: "uppercase",
+    },
+
+    message: {
+      color: colors.text2,
+      fontSize: 15,
+      lineHeight: 24,
+      textAlign: "center",
+      marginBottom: 18,
+      fontWeight: "700",
+    },
+
+    infoBox: {
+      backgroundColor: colors.mode === "dark" ? "rgba(0,0,0,0.35)" : "rgba(7,17,31,0.04)",
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+    },
+
+    infoTitle: {
+      color: colors.gold,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+
+    infoText: {
+      color: colors.text,
+      fontSize: 14,
+      lineHeight: 22,
+      marginBottom: 8,
+      fontWeight: "700",
+    },
+
+    stripeBox: {
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.12)" : "#FFF8E8",
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 20,
+    },
+
+    stripeTitle: {
+      color: colors.gold,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+
+    stripeText: {
+      color: colors.text2,
+      fontSize: 14,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+
+    primaryButton: {
+      backgroundColor: colors.gold,
+      paddingVertical: 17,
+      borderRadius: 16,
+      marginBottom: 14,
+    },
+
+    primaryButtonText: {
+      color: colors.navy,
+      textAlign: "center",
+      fontWeight: "900",
+      fontSize: 15,
+      textTransform: "uppercase",
+    },
+
+    logoutButton: {
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      paddingVertical: 16,
+      borderRadius: 16,
+      backgroundColor: colors.card2,
+    },
+
+    logoutButtonText: {
+      color: colors.text,
+      textAlign: "center",
+      fontWeight: "800",
+      fontSize: 16,
+    },
+
+    disabledButton: {
+      opacity: 0.7,
+    },
+  });
+}

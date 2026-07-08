@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import {
   AlertTriangle,
+  ArrowLeft,
   CarFront,
   Clock,
   CreditCard,
@@ -30,18 +31,10 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
 const SUPPORT_PHONE = "19728367910";
-const SUPPORT_EMAIL = "angelsexpresss@gmail.com";
+const SUPPORT_EMAIL = "support@angelexpressus.com";
 
 const quickQuestions = [
   "My driver is late",
@@ -60,6 +53,9 @@ const quickQuestions = [
 ];
 
 export default function SupportScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
@@ -74,8 +70,26 @@ export default function SupportScreen() {
   const chatRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useFocusEffect(
@@ -281,7 +295,6 @@ ${message || ""}`;
   const filteredMessages = messages.filter((item) => {
     if (item.sender_role === chatTarget) return true;
     if (item.receiver_role === chatTarget) return true;
-
     return false;
   });
 
@@ -293,7 +306,7 @@ ${message || ""}`;
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={GOLD} size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.loadingText}>Loading Support Center...</Text>
       </View>
     );
@@ -316,6 +329,7 @@ ${message || ""}`;
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
+              tintColor={colors.gold}
               onRefresh={() => {
                 setRefreshing(true);
                 loadSupportData();
@@ -325,9 +339,18 @@ ${message || ""}`;
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -335,9 +358,7 @@ ${message || ""}`;
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  PASSENGER SUPPORT CENTER</Text>
-            </View>
+            <Text style={styles.kicker}>PASSENGER SUPPORT CENTER</Text>
 
             <Text style={styles.title}>Angel Express Support</Text>
 
@@ -346,9 +367,9 @@ ${message || ""}`;
               and upcoming trips.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Headphones size={30} color={AE_COLORS.navy2} />
+                <Headphones size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -357,11 +378,11 @@ ${message || ""}`;
                   Owner/support chat, driver chat, emergency help, and quick trip assistance.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.emergencyCard}>
+            <View style={styles.emergencyCard}>
               <View style={styles.cardHeader}>
-                <AlertTriangle size={24} color="#FF6B6B" />
+                <AlertTriangle size={24} color={colors.danger} />
                 <Text style={styles.emergencyTitle}>Emergency Help</Text>
               </View>
 
@@ -379,28 +400,40 @@ ${message || ""}`;
                   <Text style={styles.callSupportText}>Call Support</Text>
                 </TouchableOpacity>
               </View>
-            </AngelCard>
+            </View>
 
             <View style={styles.statusRow}>
-              <StatusCard title="Chat" value="Owner" />
-              <StatusCard title="Driver" value={activeTrip ? "Trip Linked" : "No Trip"} />
-              <StatusCard title="Priority" value="Safety" />
+              <StatusCard title="Chat" value="Owner" styles={styles} />
+              <StatusCard
+                title="Driver"
+                value={activeTrip ? "Trip Linked" : "No Trip"}
+                styles={styles}
+              />
+              <StatusCard title="Priority" value="Safety" styles={styles} />
             </View>
 
             {activeTrip ? (
-              <AngelCard style={styles.tripCard}>
+              <View style={styles.tripCard}>
                 <View style={styles.cardHeader}>
-                  <CarFront size={22} color={GOLD} />
+                  <CarFront size={22} color={colors.gold} />
                   <Text style={styles.cardTitle}>Current / Upcoming Ride</Text>
                 </View>
 
-                <Info label="Status" value={activeTrip.status || "N/A"} />
-                <Info label="Pickup" value={activeTrip.pickup_address || activeTrip.pickup || "N/A"} />
-                <Info label="Drop-off" value={activeTrip.dropoff_address || activeTrip.dropoff || "N/A"} />
-                <Info label="Invoice" value={activeTrip.invoice_no || "N/A"} />
+                <Info label="Status" value={activeTrip.status || "N/A"} styles={styles} />
+                <Info
+                  label="Pickup"
+                  value={activeTrip.pickup_address || activeTrip.pickup || "N/A"}
+                  styles={styles}
+                />
+                <Info
+                  label="Drop-off"
+                  value={activeTrip.dropoff_address || activeTrip.dropoff || "N/A"}
+                  styles={styles}
+                />
+                <Info label="Invoice" value={activeTrip.invoice_no || "N/A"} styles={styles} />
 
-                <AngelHeroButton
-                  title="Track Ride"
+                <TouchableOpacity
+                  style={styles.outlineButton}
                   onPress={() =>
                     router.push({
                       pathname: "/live-trip" as any,
@@ -410,25 +443,26 @@ ${message || ""}`;
                       },
                     })
                   }
-                  variant="outline"
-                  style={styles.trackButton}
-                />
-              </AngelCard>
+                  activeOpacity={0.88}
+                >
+                  <Text style={styles.outlineButtonText}>Track Ride</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
-              <AngelCard style={styles.tripCard}>
+              <View style={styles.tripCard}>
                 <View style={styles.cardHeader}>
-                  <MessageCircle size={22} color={GOLD} />
+                  <MessageCircle size={22} color={colors.gold} />
                   <Text style={styles.cardTitle}>In-App Chat</Text>
                 </View>
                 <Text style={styles.text}>
                   In-app chat becomes available when you have an active or upcoming trip.
                 </Text>
-              </AngelCard>
+              </View>
             )}
 
-            <AngelCard style={styles.chatCard}>
+            <View style={styles.chatCard}>
               <View style={styles.cardHeader}>
-                <MessageCircle size={22} color={GOLD} />
+                <MessageCircle size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>In-App Chat</Text>
               </View>
 
@@ -526,9 +560,9 @@ ${message || ""}`;
                   })
                 )}
               </ScrollView>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.messageCard}>
+            <View style={styles.messageCard}>
               <Text style={styles.inputLabel}>
                 Message {chatTarget === "driver" ? "Driver" : "Angel Support"}
               </Text>
@@ -540,40 +574,46 @@ ${message || ""}`;
                     ? "Message your driver..."
                     : "Message Angel Express support..."
                 }
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={message}
                 onChangeText={setMessage}
                 multiline
               />
 
-              <AngelHeroButton
-                title={sending ? "Sending..." : "Send Message"}
+              <TouchableOpacity
+                style={[styles.goldButton, sending && styles.disabledButton]}
                 onPress={() => sendMessage()}
-                variant="gold"
-                style={styles.sendButton}
-              />
+                disabled={sending}
+                activeOpacity={0.88}
+              >
+                {sending ? (
+                  <ActivityIndicator color={colors.navy} />
+                ) : (
+                  <Text style={styles.goldButtonText}>Send Message</Text>
+                )}
+              </TouchableOpacity>
 
               <View style={styles.contactGrid}>
                 <TouchableOpacity style={styles.contactButton} onPress={openWhatsApp}>
-                  <MessageCircle size={18} color={GOLD} />
+                  <MessageCircle size={18} color={colors.gold} />
                   <Text style={styles.contactText}>WhatsApp</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contactButton} onPress={callSupport}>
-                  <Phone size={18} color={GOLD} />
+                  <Phone size={18} color={colors.gold} />
                   <Text style={styles.contactText}>Call</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.contactButton} onPress={emailSupport}>
-                  <Mail size={18} color={GOLD} />
+                  <Mail size={18} color={colors.gold} />
                   <Text style={styles.contactText}>Email</Text>
                 </TouchableOpacity>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.quickCard}>
+            <View style={styles.quickCard}>
               <View style={styles.cardHeader}>
-                <HelpCircle size={22} color={GOLD} />
+                <HelpCircle size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Quick Help</Text>
               </View>
 
@@ -584,37 +624,41 @@ ${message || ""}`;
                   onPress={() => sendMessage(item)}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.quickIcon}>{getQuickIcon(item)}</View>
+                  <View style={styles.quickIcon}>{getQuickIcon(item, colors)}</View>
                   <Text style={styles.quickText}>{item}</Text>
                 </TouchableOpacity>
               ))}
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.faqCard}>
+            <View style={styles.faqCard}>
               <View style={styles.cardHeader}>
-                <Sparkles size={22} color={GOLD} />
+                <Sparkles size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>FAQ</Text>
               </View>
 
               <FAQ
                 q="How do I book a ride?"
                 a="Use the Book a Ride section of the app and submit your trip request."
+                styles={styles}
               />
               <FAQ
                 q="Can I cancel my trip?"
                 a="Yes. Contact support as soon as possible for assistance."
+                styles={styles}
               />
               <FAQ
                 q="Do students receive discounts?"
                 a="Verified students receive exclusive discounts and benefits."
+                styles={styles}
               />
-            </AngelCard>
+            </View>
 
             <TouchableOpacity
               style={styles.safetyButton}
               onPress={() => router.push("/safety-share" as any)}
+              activeOpacity={0.88}
             >
-              <ShieldCheck size={18} color={GOLD} />
+              <ShieldCheck size={18} color={colors.gold} />
               <Text style={styles.safetyText}>Open Safety Share</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -624,7 +668,15 @@ ${message || ""}`;
   );
 }
 
-function StatusCard({ title, value }: { title: string; value: string }) {
+function StatusCard({
+  title,
+  value,
+  styles,
+}: {
+  title: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.statusCard}>
       <Text style={styles.statusValue}>{value}</Text>
@@ -633,7 +685,15 @@ function StatusCard({ title, value }: { title: string; value: string }) {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -642,7 +702,15 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function FAQ({ q, a }: { q: string; a: string }) {
+function FAQ({
+  q,
+  a,
+  styles,
+}: {
+  q: string;
+  a: string;
+  styles: any;
+}) {
   return (
     <View style={styles.faqItem}>
       <Text style={styles.question}>{q}</Text>
@@ -651,415 +719,478 @@ function FAQ({ q, a }: { q: string; a: string }) {
   );
 }
 
-function getQuickIcon(text: string) {
+function getQuickIcon(text: string, c: any) {
   const q = text.toLowerCase();
 
-  if (q.includes("driver") || q.includes("pickup")) return <MapPinned size={18} color={GOLD} />;
-  if (q.includes("payment") || q.includes("invoice")) return <CreditCard size={18} color={GOLD} />;
-  if (q.includes("emergency") || q.includes("unsafe")) return <AlertTriangle size={18} color={GOLD} />;
-  if (q.includes("airport") || q.includes("world cup")) return <Clock size={18} color={GOLD} />;
+  if (q.includes("driver") || q.includes("pickup")) {
+    return <MapPinned size={18} color={c.gold} />;
+  }
+  if (q.includes("payment") || q.includes("invoice")) {
+    return <CreditCard size={18} color={c.gold} />;
+  }
+  if (q.includes("emergency") || q.includes("unsafe")) {
+    return <AlertTriangle size={18} color={c.gold} />;
+  }
+  if (q.includes("airport") || q.includes("world cup")) {
+    return <Clock size={18} color={c.gold} />;
+  }
 
-  return <Sparkles size={18} color={GOLD} />;
+  return <Sparkles size={18} color={c.gold} />;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
+    bgWrap: { ...StyleSheet.absoluteFillObject },
+    background: { flex: 1 },
+    overlay: { flex: 1, backgroundColor: c.overlay },
+    container: { flex: 1 },
+    content: { padding: 22, paddingTop: 58, paddingBottom: 54 },
 
-  center: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    center: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    loadingText: {
+      color: c.text,
+      marginTop: 12,
+      fontWeight: "800",
+    },
 
-  loadingText: { color: AE_COLORS.white, marginTop: 12 },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  backButton: { alignSelf: "flex-start", marginBottom: 18 },
-  backText: { color: GOLD, fontSize: 18, fontWeight: "900" },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
+    title: {
+      color: c.text,
+      fontSize: 36,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
+    heroCard: {
+      minHeight: 124,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: { flex: 1 },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 24,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    emergencyCard: {
+      padding: 20,
+      marginBottom: 18,
+      backgroundColor: c.dangerSoft,
+      borderColor:
+        c.mode === "dark" ? "rgba(239,68,68,0.65)" : "rgba(220,38,38,0.35)",
+      borderWidth: 1,
+      borderRadius: 22,
+      ...v5Shadow(c),
+    },
+    emergencyTitle: {
+      color: c.danger,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
+    emergencyText: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 16,
+      fontWeight: "700",
+    },
+    emergencyActions: {
+      flexDirection: "row",
+      gap: 10,
+    },
+    call911Button: {
+      flex: 1,
+      backgroundColor: c.danger,
+      borderRadius: 15,
+      paddingVertical: 15,
+      alignItems: "center",
+    },
+    call911Text: {
+      color: "#FFFFFF",
+      fontWeight: "900",
+    },
+    callSupportButton: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: c.danger,
+      borderRadius: 15,
+      paddingVertical: 15,
+      alignItems: "center",
+      backgroundColor: c.card,
+    },
+    callSupportText: {
+      color: c.danger,
+      fontWeight: "900",
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
+    statusRow: { flexDirection: "row", gap: 10, marginBottom: 18 },
+    statusCard: {
+      flex: 1,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      borderRadius: 17,
+      padding: 13,
+      ...v5Shadow(c),
+    },
+    statusValue: { color: c.gold, fontSize: 16, fontWeight: "900" },
+    statusTitle: {
+      color: c.text,
+      fontSize: 12,
+      fontWeight: "800",
+      marginTop: 4,
+    },
 
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    tripCard: cardBase(c),
+    quickCard: cardBase(c),
+    chatCard: cardBase(c),
+    messageCard: cardBase(c),
+    faqCard: cardBase(c),
 
-  heroCard: {
-    minHeight: 124,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: { color: c.gold, fontSize: 22, fontWeight: "900", flex: 1 },
 
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
+    text: {
+      color: c.text,
+      fontSize: 16,
+      lineHeight: 24,
+      fontWeight: "700",
+    },
+    infoRow: { marginBottom: 12 },
+    infoLabel: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    infoValue: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
 
-  heroCopy: { flex: 1 },
+    outlineButton: {
+      minHeight: 52,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+    },
+    outlineButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
 
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
+    targetRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 14,
+    },
+    targetButton: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 14,
+      padding: 13,
+      alignItems: "center",
+      backgroundColor: c.card2,
+    },
+    activeTargetButton: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    targetText: {
+      color: c.text,
+      fontWeight: "900",
+    },
+    activeTargetText: {
+      color: c.navy,
+    },
 
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
+    driverQuickRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 14,
+    },
+    driverQuickButton: {
+      flex: 1,
+      backgroundColor: c.gold,
+      borderRadius: 14,
+      padding: 13,
+      alignItems: "center",
+    },
+    driverQuickText: {
+      color: c.navy,
+      fontWeight: "900",
+      fontSize: 12,
+    },
 
-  emergencyCard: {
+    chatScroll: {
+      maxHeight: 360,
+      backgroundColor: c.card2,
+      borderRadius: 16,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+    },
+    chatContent: { paddingBottom: 8 },
+    noMessageText: {
+      color: c.text2,
+      textAlign: "center",
+      padding: 12,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+    bubble: {
+      padding: 15,
+      borderRadius: 16,
+      marginBottom: 12,
+      maxWidth: "88%",
+    },
+    supportBubble: {
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      alignSelf: "flex-start",
+    },
+    passengerBubble: {
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignSelf: "flex-end",
+    },
+    bubbleRole: {
+      color: c.gold,
+      fontWeight: "900",
+      fontSize: 12,
+      textTransform: "uppercase",
+      marginBottom: 6,
+    },
+    bubbleText: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 23,
+      fontWeight: "700",
+    },
+    timeText: {
+      color: c.text2,
+      fontSize: 10,
+      marginTop: 6,
+      fontWeight: "700",
+    },
+
+    inputLabel: {
+      color: c.gold,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 12,
+    },
+    input: {
+      backgroundColor: c.input,
+      color: c.inputText,
+      padding: 16,
+      borderRadius: 16,
+      fontSize: 16,
+      minHeight: 105,
+      textAlignVertical: "top",
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      marginBottom: 16,
+      fontWeight: "700",
+    },
+
+    goldButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      ...v5Shadow(c),
+    },
+    goldButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+    disabledButton: {
+      opacity: 0.7,
+    },
+
+    contactGrid: { flexDirection: "row", gap: 9, marginTop: 14 },
+    contactButton: {
+      flex: 1,
+      minHeight: 58,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.soft,
+      gap: 5,
+    },
+    contactText: { color: c.gold, fontSize: 12, fontWeight: "900" },
+
+    quickButton: {
+      backgroundColor: c.card2,
+      padding: 15,
+      borderRadius: 16,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    quickIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    quickText: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 22,
+      flex: 1,
+      fontWeight: "700",
+    },
+
+    faqItem: {
+      marginBottom: 16,
+    },
+    question: {
+      color: c.text,
+      fontWeight: "900",
+      fontSize: 16,
+      marginBottom: 5,
+    },
+    answer: {
+      color: c.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+
+    safetyButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    safetyText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+  });
+}
+
+function cardBase(c: any) {
+  return {
     padding: 20,
     marginBottom: 18,
-    backgroundColor: "rgba(43,16,16,0.88)",
-    borderColor: "rgba(255,107,107,0.65)",
-  },
-
-  emergencyTitle: {
-    color: "#FF6B6B",
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
-
-  emergencyText: {
-    color: AE_COLORS.white,
-    fontSize: 15.5,
-    lineHeight: 23,
-    marginBottom: 16,
-  },
-
-  emergencyActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-
-  call911Button: {
-    flex: 1,
-    backgroundColor: "#FF6B6B",
-    borderRadius: 15,
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-
-  call911Text: {
-    color: "#FFFFFF",
-    fontWeight: "900",
-  },
-
-  callSupportButton: {
-    flex: 1,
+    backgroundColor: c.card,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: "#FF6B6B",
-    borderRadius: 15,
-    paddingVertical: 15,
-    alignItems: "center",
-  },
-
-  callSupportText: {
-    color: "#FF6B6B",
-    fontWeight: "900",
-  },
-
-  statusRow: { flexDirection: "row", gap: 10, marginBottom: 18 },
-
-  statusCard: {
-    flex: 1,
-    backgroundColor: "rgba(13,20,34,0.84)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    borderRadius: 17,
-    padding: 13,
-  },
-
-  statusValue: { color: GOLD, fontSize: 16, fontWeight: "900" },
-
-  statusTitle: {
-    color: AE_COLORS.white,
-    fontSize: 12,
-    fontWeight: "800",
-    marginTop: 4,
-  },
-
-  tripCard: { padding: 20, marginBottom: 18 },
-  quickCard: { padding: 20, marginBottom: 18 },
-  chatCard: { padding: 20, marginBottom: 18 },
-  messageCard: { padding: 20, marginBottom: 18 },
-  faqCard: { padding: 20, marginBottom: 18 },
-
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-
-  cardTitle: { color: GOLD, fontSize: 22, fontWeight: "900", flex: 1 },
-
-  text: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-
-  infoRow: { marginBottom: 12 },
-
-  infoLabel: {
-    color: GOLD,
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-
-  infoValue: { color: AE_COLORS.white, fontSize: 15.5, lineHeight: 22 },
-
-  trackButton: { marginTop: 8 },
-
-  targetRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-
-  targetButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    borderRadius: 14,
-    padding: 13,
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
-
-  activeTargetButton: {
-    backgroundColor: GOLD,
-    borderColor: GOLD,
-  },
-
-  targetText: {
-    color: AE_COLORS.white,
-    fontWeight: "900",
-  },
-
-  activeTargetText: {
-    color: AE_COLORS.navy,
-  },
-
-  driverQuickRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-
-  driverQuickButton: {
-    flex: 1,
-    backgroundColor: GOLD,
-    borderRadius: 14,
-    padding: 13,
-    alignItems: "center",
-  },
-
-  driverQuickText: {
-    color: AE_COLORS.navy,
-    fontWeight: "900",
-    fontSize: 12,
-  },
-
-  chatScroll: {
-    maxHeight: 360,
-    backgroundColor: "rgba(255,255,255,0.035)",
-    borderRadius: 16,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.12)",
-  },
-
-  chatContent: { paddingBottom: 8 },
-
-  noMessageText: {
-    color: AE_COLORS.textSoft,
-    textAlign: "center",
-    padding: 12,
-    lineHeight: 22,
-  },
-
-  bubble: {
-    padding: 15,
-    borderRadius: 16,
-    marginBottom: 12,
-    maxWidth: "88%",
-  },
-
-  supportBubble: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.14)",
-    alignSelf: "flex-start",
-  },
-
-  passengerBubble: {
-    backgroundColor: "rgba(212,175,55,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.24)",
-    alignSelf: "flex-end",
-  },
-
-  bubbleRole: {
-    color: GOLD,
-    fontWeight: "900",
-    fontSize: 12,
-    textTransform: "uppercase",
-    marginBottom: 6,
-  },
-
-  bubbleText: {
-    color: AE_COLORS.white,
-    fontSize: 15.5,
-    lineHeight: 23,
-  },
-
-  timeText: {
-    color: AE_COLORS.muted,
-    fontSize: 10,
-    marginTop: 6,
-  },
-
-  inputLabel: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 12,
-  },
-
-  input: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    color: AE_COLORS.white,
-    padding: 16,
-    borderRadius: 16,
-    fontSize: 16,
-    minHeight: 105,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    marginBottom: 16,
-  },
-
-  sendButton: { marginTop: 2 },
-
-  contactGrid: { flexDirection: "row", gap: 9, marginTop: 14 },
-
-  contactButton: {
-    flex: 1,
-    minHeight: 58,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    gap: 5,
-  },
-
-  contactText: { color: GOLD, fontSize: 12, fontWeight: "900" },
-
-  quickButton: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    padding: 15,
-    borderRadius: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.14)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-
-  quickIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  quickText: {
-    color: AE_COLORS.white,
-    fontSize: 15.5,
-    lineHeight: 22,
-    flex: 1,
-    fontWeight: "700",
-  },
-
-  faqItem: {
-    marginBottom: 16,
-  },
-
-  question: {
-    color: AE_COLORS.white,
-    fontWeight: "900",
-    fontSize: 16,
-    marginBottom: 5,
-  },
-
-  answer: {
-    color: AE_COLORS.textSoft,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-
-  safetyButton: {
-    minHeight: 54,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-
-  safetyText: { color: GOLD, fontSize: 15, fontWeight: "900" },
-});
+    borderColor: c.borderSoft,
+    ...v5Shadow(c),
+  };
+}

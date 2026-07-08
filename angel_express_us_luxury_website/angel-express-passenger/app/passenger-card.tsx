@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   BadgeCheck,
   CarFront,
   FileText,
@@ -29,29 +30,43 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
 const DRIVER_WHATSAPP = "19728367910";
 
 export default function PassengerCardScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
   const [trips, setTrips] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
+  const [ratingSummary, setRatingSummary] = useState<any>(null);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   useFocusEffect(
@@ -72,7 +87,7 @@ export default function PassengerCardScreen() {
       if (userError) throw userError;
       if (!user) return;
 
-      const userEmail = user.email?.trim().toLowerCase();
+      const userEmail = user.email?.trim().toLowerCase() || "";
 
       const { data: profileData, error: profileError } = await supabase
         .from("passenger_profiles")
@@ -83,6 +98,26 @@ export default function PassengerCardScreen() {
       if (profileError) throw profileError;
 
       setProfile(profileData);
+
+      const { data: summaryByUser } = await supabase
+        .from("passenger_rating_summary")
+        .select("*")
+        .eq("passenger_user_id", user.id)
+        .maybeSingle();
+
+      if (summaryByUser) {
+        setRatingSummary(summaryByUser);
+      } else if (userEmail) {
+        const { data: summaryByEmail } = await supabase
+          .from("passenger_rating_summary")
+          .select("*")
+          .ilike("passenger_email", userEmail)
+          .maybeSingle();
+
+        setRatingSummary(summaryByEmail || null);
+      } else {
+        setRatingSummary(null);
+      }
 
       const { data: tripData, error: tripsError } = await supabase
         .from("bookings")
@@ -96,6 +131,7 @@ export default function PassengerCardScreen() {
           "in_progress",
           "assigned",
           "driver_arrived",
+          "driver_assigned",
         ])
         .order("created_at", { ascending: false });
 
@@ -107,6 +143,14 @@ export default function PassengerCardScreen() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function getLiveRating() {
+    return Number(ratingSummary?.average_rating || profile?.rating || 5).toFixed(1);
+  }
+
+  function getReviewCount() {
+    return Number(ratingSummary?.total_reviews || 0);
   }
 
   function sendToDriver(trip: any) {
@@ -136,7 +180,8 @@ Status: ${trip.status || "N/A"}
 
 Passenger Profile:
 Trips: ${profile?.total_trips || "0"}
-Rating: ${profile?.rating || "5.0"}
+Rating: ${getLiveRating()}
+Driver Reviews: ${getReviewCount()}
 Student Verified: ${studentVerified ? "Yes" : "No"}
 Luggage Count: ${trip.luggage_count || "0"}
 
@@ -153,9 +198,7 @@ ${profile?.emergency_name && profile?.emergency_phone ? "Added" : "Not Added"}
 Notes:
 ${trip.notes || "No notes added."}`;
 
-    const url = `https://wa.me/${DRIVER_WHATSAPP}?text=${encodeURIComponent(
-      message
-    )}`;
+    const url = `https://wa.me/${DRIVER_WHATSAPP}?text=${encodeURIComponent(message)}`;
 
     Linking.openURL(url);
   }
@@ -168,7 +211,7 @@ ${trip.notes || "No notes added."}`;
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={GOLD} size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.loadingText}>Loading Passenger Card...</Text>
       </View>
     );
@@ -190,9 +233,18 @@ ${trip.notes || "No notes added."}`;
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -200,10 +252,7 @@ ${trip.notes || "No notes added."}`;
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  DRIVER-READY PROFILE</Text>
-            </View>
-
+            <Text style={styles.kicker}>DRIVER-READY PROFILE</Text>
             <Text style={styles.title}>Passenger Card</Text>
 
             <Text style={styles.subtitle}>
@@ -211,23 +260,24 @@ ${trip.notes || "No notes added."}`;
               pickup, preferences, luggage, safety, and service quality.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <UserRound size={30} color={AE_COLORS.navy2} />
+                <UserRound size={31} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
-                <Text style={styles.heroTitle}>Prepared Ride Experience</Text>
+                <Text style={styles.heroLabel}>Prepared Ride Experience</Text>
+                <Text style={styles.heroRating}>⭐ {getLiveRating()}</Text>
                 <Text style={styles.heroText}>
-                  Share key ride details and preferences with your assigned chauffeur.
+                  {getReviewCount()} chauffeur review{getReviewCount() === 1 ? "" : "s"} • Live passenger rating
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
             {trips.length === 0 ? (
-              <AngelCard style={styles.card}>
+              <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <CarFront size={22} color={GOLD} />
+                  <CarFront size={22} color={colors.gold} />
                   <Text style={styles.cardTitle}>No Confirmed Ride</Text>
                 </View>
 
@@ -235,13 +285,13 @@ ${trip.notes || "No notes added."}`;
                   Passenger Card will appear when a ride is confirmed, assigned, or in progress.
                 </Text>
 
-                <AngelHeroButton
-                  title="View My Trips"
+                <TouchableOpacity
+                  style={styles.goldButton}
                   onPress={() => router.push("/my-trips" as any)}
-                  variant="outline"
-                  style={styles.actionButton}
-                />
-              </AngelCard>
+                >
+                  <Text style={styles.goldButtonText}>View My Trips</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               trips.map((trip) => {
                 const passengerName =
@@ -256,10 +306,10 @@ ${trip.notes || "No notes added."}`;
                   Boolean(trip.student_verified);
 
                 return (
-                  <AngelCard key={String(trip.id)} style={styles.card}>
+                  <View key={String(trip.id)} style={styles.card}>
                     <View style={styles.passengerHeader}>
                       <View style={styles.avatar}>
-                        <UserRound size={26} color={GOLD} />
+                        <UserRound size={27} color={colors.gold} />
                       </View>
 
                       <View style={{ flex: 1 }}>
@@ -272,96 +322,106 @@ ${trip.notes || "No notes added."}`;
 
                     <View style={styles.badgeRow}>
                       <Badge
-                        icon={<Star size={15} color={GOLD} />}
-                        text={`${profile?.rating || "5.0"} Rating`}
+                        icon={<Star size={15} color={colors.gold} />}
+                        text={`${getLiveRating()} Rating • ${getReviewCount()} Review${getReviewCount() === 1 ? "" : "s"}`}
+                        styles={styles}
                       />
                       <Badge
-                        icon={<CarFront size={15} color={GOLD} />}
+                        icon={<CarFront size={15} color={colors.gold} />}
                         text={`${profile?.total_trips || 0} Trips`}
+                        styles={styles}
                       />
                       <Badge
-                        icon={<BadgeCheck size={15} color={GOLD} />}
+                        icon={<BadgeCheck size={15} color={colors.gold} />}
                         text={studentVerified ? "Verified Student" : "Standard Passenger"}
+                        styles={styles}
                       />
                     </View>
 
-                    <SectionTitle title="Trip Details" />
+                    <SectionTitle title="Trip Details" styles={styles} />
 
                     <InfoLine
-                      icon={<MapPinned size={18} color={GOLD} />}
+                      icon={<MapPinned size={18} color={colors.gold} />}
                       label="Pickup"
                       value={trip.pickup_address || trip.pickup || "N/A"}
+                      styles={styles}
                     />
 
                     <InfoLine
-                      icon={<MapPinned size={18} color={GOLD} />}
+                      icon={<MapPinned size={18} color={colors.gold} />}
                       label="Drop-off"
                       value={trip.dropoff_address || trip.dropoff || "N/A"}
+                      styles={styles}
                     />
 
                     <InfoLine
-                      icon={<FileText size={18} color={GOLD} />}
+                      icon={<FileText size={18} color={colors.gold} />}
                       label="Date & Time"
                       value={`${trip.ride_date || trip.date || "N/A"} • ${
                         trip.ride_time || trip.time || "N/A"
                       }`}
+                      styles={styles}
                     />
 
-                    <SectionTitle title="Passenger Details" />
+                    <SectionTitle title="Passenger Details" styles={styles} />
 
                     <InfoLine
-                      icon={<Phone size={18} color={GOLD} />}
+                      icon={<Phone size={18} color={colors.gold} />}
                       label="Phone"
                       value={profile?.phone || trip.phone || "N/A"}
+                      styles={styles}
                     />
 
                     <InfoLine
-                      icon={<Luggage size={18} color={GOLD} />}
+                      icon={<Luggage size={18} color={colors.gold} />}
                       label="Luggage"
                       value={`${trip.luggage_count || 0} item(s)`}
+                      styles={styles}
                     />
 
                     <InfoLine
-                      icon={<ShieldCheck size={18} color={GOLD} />}
+                      icon={<ShieldCheck size={18} color={colors.gold} />}
                       label="Emergency Contact"
                       value={
                         profile?.emergency_name && profile?.emergency_phone
                           ? "Added"
                           : "Not Added"
                       }
+                      styles={styles}
                     />
 
-                    <SectionTitle title="Ride Preferences" />
+                    <SectionTitle title="Ride Preferences" styles={styles} />
 
                     <PreferenceGrid
+                      styles={styles}
                       items={[
                         {
-                          icon: <MapPinned size={17} color={GOLD} />,
+                          icon: <MapPinned size={17} color={colors.gold} />,
                           label: "Route",
                           value: profile?.preferred_route || "N/A",
                         },
                         {
-                          icon: <Luggage size={17} color={GOLD} />,
+                          icon: <Luggage size={17} color={colors.gold} />,
                           label: "Luggage",
                           value: profile?.luggage_preference || "N/A",
                         },
                         {
-                          icon: <Music size={17} color={GOLD} />,
+                          icon: <Music size={17} color={colors.gold} />,
                           label: "Music",
                           value: profile?.music_preference || "N/A",
                         },
                         {
-                          icon: <Snowflake size={17} color={GOLD} />,
+                          icon: <Snowflake size={17} color={colors.gold} />,
                           label: "AC",
                           value: profile?.ac_preference || "N/A",
                         },
                         {
-                          icon: <MessageCircle size={17} color={GOLD} />,
+                          icon: <MessageCircle size={17} color={colors.gold} />,
                           label: "Conversation",
                           value: profile?.conversation_preference || "N/A",
                         },
                         {
-                          icon: <FileText size={17} color={GOLD} />,
+                          icon: <FileText size={17} color={colors.gold} />,
                           label: "Notes",
                           value: trip.notes || "No notes",
                         },
@@ -369,27 +429,29 @@ ${trip.notes || "No notes added."}`;
                     />
 
                     <View style={styles.noticeBox}>
-                      <ShieldCheck size={18} color={GOLD} />
+                      <ShieldCheck size={18} color={colors.gold} />
                       <Text style={styles.noticeText}>
                         Driver sees ride-relevant details only. Emergency contact details
                         stay protected unless needed for safety.
                       </Text>
                     </View>
 
-                    <AngelHeroButton
-                      title="Send Card to Driver"
+                    <TouchableOpacity
+                      style={styles.goldButton}
                       onPress={() => sendToDriver(trip)}
-                      variant="gold"
-                      style={styles.actionButton}
-                    />
+                    >
+                      <Text style={styles.goldButtonText}>Send Card to Driver</Text>
+                    </TouchableOpacity>
 
-                    <AngelHeroButton
-                      title="Edit Profile Preferences"
+                    <TouchableOpacity
+                      style={styles.outlineButton}
                       onPress={() => router.push("/profile" as any)}
-                      variant="outline"
-                      style={styles.secondaryAction}
-                    />
-                  </AngelCard>
+                    >
+                      <Text style={styles.outlineButtonText}>
+                        Edit Profile Preferences
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 );
               })
             )}
@@ -398,7 +460,7 @@ ${trip.notes || "No notes added."}`;
               style={styles.supportButton}
               onPress={() => router.push("/support" as any)}
             >
-              <Headphones size={18} color={GOLD} />
+              <Headphones size={18} color={colors.gold} />
               <Text style={styles.supportText}>Get Support</Text>
             </TouchableOpacity>
           </Animated.View>
@@ -408,11 +470,19 @@ ${trip.notes || "No notes added."}`;
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
+function SectionTitle({ title, styles }: { title: string; styles: any }) {
   return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
-function Badge({ icon, text }: { icon: React.ReactNode; text: string }) {
+function Badge({
+  icon,
+  text,
+  styles,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  styles: any;
+}) {
   return (
     <View style={styles.badge}>
       {icon}
@@ -425,10 +495,12 @@ function InfoLine({
   icon,
   label,
   value,
+  styles,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
+  styles: any;
 }) {
   return (
     <View style={styles.infoLine}>
@@ -444,8 +516,10 @@ function InfoLine({
 
 function PreferenceGrid({
   items,
+  styles,
 }: {
   items: { icon: React.ReactNode; label: string; value: string }[];
+  styles: any;
 }) {
   return (
     <View style={styles.preferenceGrid}>
@@ -460,302 +534,270 @@ function PreferenceGrid({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
-
-  center: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  loadingText: {
-    color: AE_COLORS.white,
-    marginTop: 12,
-  },
-
-  backButton: { alignSelf: "flex-start", marginBottom: 18 },
-
-  backText: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
-
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-
-  heroCard: {
-    minHeight: 124,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-
-  heroCopy: { flex: 1 },
-
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-
-  card: {
-    padding: 20,
-    marginBottom: 18,
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
-
-  text: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-
-  passengerHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 16,
-  },
-
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.42)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  passengerName: {
-    color: AE_COLORS.white,
-    fontSize: 24,
-    fontWeight: "900",
-  },
-
-  passengerSub: {
-    color: GOLD,
-    fontSize: 13,
-    fontWeight: "800",
-    marginTop: 4,
-  },
-
-  badgeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 18,
-  },
-
-  badge: {
-    flexDirection: "row",
-    gap: 6,
-    alignItems: "center",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-
-  badgeText: {
-    color: GOLD,
-    fontSize: 12,
-    fontWeight: "900",
-  },
-
-  sectionTitle: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-    marginTop: 12,
-    marginBottom: 14,
-  },
-
-  infoLine: {
-    flexDirection: "row",
-    gap: 11,
-    alignItems: "flex-start",
-    marginBottom: 14,
-  },
-
-  infoIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  infoLabel: {
-    color: GOLD,
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-
-  infoValue: {
-    color: AE_COLORS.white,
-    fontSize: 15.5,
-    lineHeight: 22,
-  },
-
-  preferenceGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-
-  preferenceCard: {
-    width: "48%",
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.16)",
-    backgroundColor: "rgba(255,255,255,0.055)",
-    padding: 12,
-  },
-
-  preferenceIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.32)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 9,
-  },
-
-  preferenceLabel: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-
-  preferenceValue: {
-    color: AE_COLORS.white,
-    fontSize: 13.5,
-    lineHeight: 19,
-  },
-
-  noticeBox: {
-    flexDirection: "row",
-    gap: 9,
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: "rgba(212,175,55,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    marginTop: 18,
-    marginBottom: 16,
-  },
-
-  noticeText: {
-    color: GOLD,
-    fontSize: 13.5,
-    lineHeight: 20,
-    fontWeight: "700",
-    flex: 1,
-  },
-
-  actionButton: {
-    marginTop: 4,
-  },
-
-  secondaryAction: {
-    marginTop: 14,
-  },
-
-  supportButton: {
-    minHeight: 54,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-
-  supportText: {
-    color: GOLD,
-    fontSize: 15,
-    fontWeight: "900",
-  },
-});
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
+    bgWrap: { ...StyleSheet.absoluteFillObject },
+    background: { flex: 1 },
+    overlay: { flex: 1, backgroundColor: c.overlay },
+    container: { flex: 1 },
+    content: { padding: 22, paddingTop: 58, paddingBottom: 52 },
+    center: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    loadingText: { color: c.text, marginTop: 12, fontWeight: "800" },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: { color: c.gold, fontSize: 12, fontWeight: "900" },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 8,
+    },
+    title: {
+      color: c.text,
+      fontSize: 37,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
+    heroCard: {
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 14,
+    },
+    heroCopy: { flex: 1 },
+    heroLabel: { color: c.navy, fontSize: 16, fontWeight: "900" },
+    heroRating: {
+      color: c.navy,
+      fontSize: 34,
+      fontWeight: "900",
+      marginTop: 2,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 13.5,
+      lineHeight: 19,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
+    card: {
+      backgroundColor: c.card,
+      padding: 20,
+      marginBottom: 18,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      ...v5Shadow(c),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: { color: c.gold, fontSize: 22, fontWeight: "900", flex: 1 },
+    text: { color: c.text, fontSize: 16, lineHeight: 24 },
+    passengerHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      marginBottom: 16,
+    },
+    avatar: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    passengerName: { color: c.text, fontSize: 24, fontWeight: "900" },
+    passengerSub: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "800",
+      marginTop: 4,
+    },
+    badgeRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 18,
+    },
+    badge: {
+      flexDirection: "row",
+      gap: 6,
+      alignItems: "center",
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+    },
+    badgeText: { color: c.gold, fontSize: 12, fontWeight: "900" },
+    sectionTitle: {
+      color: c.gold,
+      fontSize: 18,
+      fontWeight: "900",
+      marginTop: 12,
+      marginBottom: 14,
+    },
+    infoLine: {
+      flexDirection: "row",
+      gap: 11,
+      alignItems: "flex-start",
+      marginBottom: 14,
+    },
+    infoIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoLabel: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    infoValue: { color: c.text, fontSize: 15.5, lineHeight: 22 },
+    preferenceGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    preferenceCard: {
+      width: "48%",
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card2,
+      padding: 12,
+    },
+    preferenceIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 9,
+    },
+    preferenceLabel: {
+      color: c.gold,
+      fontSize: 11,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    preferenceValue: { color: c.text, fontSize: 13.5, lineHeight: 19 },
+    noticeBox: {
+      flexDirection: "row",
+      gap: 9,
+      padding: 14,
+      borderRadius: 16,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginTop: 18,
+      marginBottom: 16,
+    },
+    noticeText: {
+      color: c.gold,
+      fontSize: 13.5,
+      lineHeight: 20,
+      fontWeight: "700",
+      flex: 1,
+    },
+    goldButton: {
+      minHeight: 52,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+    },
+    goldButtonText: { color: c.navy, fontSize: 15, fontWeight: "900" },
+    outlineButton: {
+      minHeight: 52,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 14,
+      backgroundColor: c.card,
+    },
+    outlineButtonText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+    supportButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    supportText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+  });
+}

@@ -1,7 +1,8 @@
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Image,
@@ -14,6 +15,7 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   BadgeCheck,
   Camera,
   GraduationCap,
@@ -23,18 +25,12 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 export default function StudentVerificationScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [university, setUniversity] = useState("");
   const [studentEmail, setStudentEmail] = useState("");
   const [campus, setCampus] = useState("");
@@ -49,8 +45,26 @@ export default function StudentVerificationScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   async function pickStudentId() {
@@ -75,33 +89,32 @@ export default function StudentVerificationScreen() {
     }
   }
 
- async function uploadStudentId(userId: string) {
-  if (!idImage?.uri) return { path: null, publicUrl: null };
+  async function uploadStudentId(userId: string) {
+    if (!idImage?.uri) return { path: null, publicUrl: null };
 
-  const fileExt = "jpg";
-  const filePath = `${userId}/student-id-${Date.now()}.${fileExt}`;
+    const fileExt = "jpg";
+    const filePath = `${userId}/student-id-${Date.now()}.${fileExt}`;
 
-  const response = await fetch(idImage.uri);
-  const arrayBuffer = await response.arrayBuffer();
+    const response = await fetch(idImage.uri);
+    const arrayBuffer = await response.arrayBuffer();
 
-  const { error: uploadError } = await supabase.storage
-    .from("student-ids")
-    .upload(filePath, arrayBuffer, {
-      contentType: "image/jpeg",
-      upsert: true,
-    });
+    const { error: uploadError } = await supabase.storage
+      .from("student-ids")
+      .upload(filePath, arrayBuffer, {
+        contentType: "image/jpeg",
+        upsert: true,
+      });
 
-  if (uploadError) throw uploadError;
+    if (uploadError) throw uploadError;
 
-  const { data } = supabase.storage
-    .from("student-ids")
-    .getPublicUrl(filePath);
+    const { data } = supabase.storage.from("student-ids").getPublicUrl(filePath);
 
-  return {
-    path: filePath,
-    publicUrl: data?.publicUrl || null,
-  };
-}
+    return {
+      path: filePath,
+      publicUrl: data?.publicUrl || null,
+    };
+  }
+
   async function submitVerification() {
     if (
       !university.trim() ||
@@ -136,18 +149,16 @@ export default function StudentVerificationScreen() {
       if (userError) throw userError;
       if (!user) throw new Error("Please sign in again.");
 
-      const { data: passengerProfile, error: profileFetchError } =
-        await supabase
-          .from("passenger_profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .single();
+      const { data: passengerProfile, error: profileFetchError } = await supabase
+        .from("passenger_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
 
       if (profileFetchError) throw profileFetchError;
       if (!passengerProfile) throw new Error("Passenger profile not found.");
 
       const uploadedId = await uploadStudentId(user.id);
-
       const submittedAt = new Date().toISOString();
 
       const { error: profileUpdateError } = await supabase
@@ -230,9 +241,18 @@ export default function StudentVerificationScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -240,9 +260,7 @@ export default function StudentVerificationScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  STUDENT IDENTITY REVIEW</Text>
-            </View>
+            <Text style={styles.kicker}>STUDENT IDENTITY REVIEW</Text>
 
             <Text style={styles.title}>Student Verification</Text>
 
@@ -251,9 +269,9 @@ export default function StudentVerificationScreen() {
               pickup priority, ride pooling, and verified student status.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <GraduationCap size={30} color={AE_COLORS.navy2} />
+                <GraduationCap size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -263,65 +281,65 @@ export default function StudentVerificationScreen() {
                   are activated.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <BadgeCheck size={23} color={GOLD} />
+                <BadgeCheck size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>School Information</Text>
               </View>
 
-              <Label text="University / School" />
+              <Label text="University / School" styles={styles} />
               <TextInput
                 style={styles.input}
                 placeholder="e.g. University of Texas at Dallas"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={university}
                 onChangeText={setUniversity}
               />
 
-              <Label text="Student Email" />
+              <Label text="Student Email" styles={styles} />
               <TextInput
                 style={styles.input}
                 placeholder="e.g. name@utdallas.edu"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={studentEmail}
                 onChangeText={setStudentEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
 
-              <Label text="Campus / Main Pickup Area" />
+              <Label text="Campus / Main Pickup Area" styles={styles} />
               <TextInput
                 style={styles.input}
                 placeholder="e.g. UTD Richardson Campus"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={campus}
                 onChangeText={setCampus}
               />
 
-              <Label text="Student Level" />
+              <Label text="Student Level" styles={styles} />
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Undergraduate, Masters, PhD"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={studentLevel}
                 onChangeText={setStudentLevel}
               />
 
-              <Label text="Expected Graduation" />
+              <Label text="Expected Graduation" styles={styles} />
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Fall 2026"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={expectedGraduation}
                 onChangeText={setExpectedGraduation}
               />
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <IdCard size={23} color={GOLD} />
+                <IdCard size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Student ID Upload</Text>
               </View>
 
@@ -339,7 +357,7 @@ export default function StudentVerificationScreen() {
                   <Image source={{ uri: idImage.uri }} style={styles.previewImage} />
                 ) : (
                   <>
-                    <Camera size={34} color={GOLD} />
+                    <Camera size={34} color={colors.gold} />
                     <Text style={styles.uploadTitle}>Upload Student ID</Text>
                     <Text style={styles.uploadText}>
                       Tap to select from your photos
@@ -350,34 +368,34 @@ export default function StudentVerificationScreen() {
 
               {idImage?.uri && (
                 <TouchableOpacity style={styles.changeButton} onPress={pickStudentId}>
-                  <Upload size={17} color={GOLD} />
+                  <Upload size={17} color={colors.gold} />
                   <Text style={styles.changeButtonText}>
                     Change Student ID Photo
                   </Text>
                 </TouchableOpacity>
               )}
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <ShieldCheck size={23} color={GOLD} />
+                <ShieldCheck size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Verification Questions</Text>
               </View>
 
-              <Label text="Student ID Number / Last 4 Digits" />
+              <Label text="Student ID Number / Last 4 Digits" styles={styles} />
               <TextInput
                 style={styles.input}
                 placeholder="Optional, if available"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={studentIdNumber}
                 onChangeText={setStudentIdNumber}
               />
 
-              <Label text="Notes for Angel Express Review" />
+              <Label text="Notes for Angel Express Review" styles={styles} />
               <TextInput
                 style={[styles.input, styles.textArea]}
                 placeholder="e.g. Fall 2026 student, campus pickup preference, class schedule, or ID details"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={notes}
                 onChangeText={setNotes}
                 multiline
@@ -390,21 +408,28 @@ export default function StudentVerificationScreen() {
                   approval, not your ID image.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelHeroButton
-              title={saving ? "Submitting..." : "Submit Verification"}
+            <TouchableOpacity
+              style={[styles.mainButton, saving && styles.disabledButton]}
               onPress={submitVerification}
-              variant="gold"
-              style={saving ? styles.disabledButton : styles.mainButton}
-            />
+              disabled={saving}
+              activeOpacity={0.88}
+            >
+              {saving ? (
+                <ActivityIndicator color={colors.navy} />
+              ) : (
+                <Text style={styles.mainButtonText}>Submit Verification</Text>
+              )}
+            </TouchableOpacity>
 
-            <AngelHeroButton
-              title="Go Back"
-              onPress={() => router.back()}
-              variant="outline"
+            <TouchableOpacity
               style={styles.secondaryButton}
-            />
+              onPress={() => router.back()}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.secondaryButtonText}>Go Back</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -412,213 +437,276 @@ export default function StudentVerificationScreen() {
   );
 }
 
-function Label({ text }: { text: string }) {
+function Label({ text, styles }: { text: string; styles: any }) {
   return <Text style={styles.label}>{text}</Text>;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
 
-  backButton: { alignSelf: "flex-start", marginBottom: 18 },
-  backText: { color: GOLD, fontSize: 18, fontWeight: "900" },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
+    title: {
+      color: c.text,
+      fontSize: 36,
+      fontWeight: "900",
+      marginBottom: 10,
+      letterSpacing: -0.7,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    heroCard: {
+      minHeight: 120,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 24,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-    letterSpacing: -0.7,
-  },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    label: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "900",
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: c.input,
+      color: c.inputText,
+      padding: 17,
+      borderRadius: 16,
+      fontSize: 16,
+      marginBottom: 18,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      fontWeight: "700",
+    },
+    textArea: {
+      height: 120,
+      textAlignVertical: "top",
+    },
 
-  heroCard: {
-    minHeight: 120,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
+    helperText: {
+      color: c.text2,
+      fontSize: 15,
+      lineHeight: 23,
+      marginBottom: 16,
+      fontWeight: "700",
+    },
+    uploadBox: {
+      minHeight: 190,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderStyle: "dashed",
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 18,
+      overflow: "hidden",
+    },
+    uploadTitle: {
+      color: c.gold,
+      fontSize: 19,
+      fontWeight: "900",
+      marginTop: 12,
+      marginBottom: 6,
+    },
+    uploadText: {
+      color: c.text2,
+      fontSize: 14,
+      fontWeight: "700",
+    },
+    previewImage: {
+      width: "100%",
+      height: 220,
+      borderRadius: 18,
+    },
+    changeButton: {
+      marginTop: 14,
+      minHeight: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      backgroundColor: c.soft,
+    },
+    changeButtonText: {
+      color: c.gold,
+      fontWeight: "900",
+    },
 
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
+    noticeBox: {
+      padding: 14,
+      borderRadius: 14,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    noticeText: {
+      color: c.gold,
+      fontSize: 13.5,
+      lineHeight: 21,
+      fontWeight: "800",
+    },
 
-  heroCopy: { flex: 1 },
-
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-
-  card: {
-    padding: 20,
-    marginBottom: 18,
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
-
-  label: {
-    color: GOLD,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-
-  input: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    color: AE_COLORS.white,
-    padding: 17,
-    borderRadius: 16,
-    fontSize: 16,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-
-  textArea: {
-    height: 120,
-    textAlignVertical: "top",
-  },
-
-  helperText: {
-    color: AE_COLORS.textSoft,
-    fontSize: 15,
-    lineHeight: 23,
-    marginBottom: 16,
-  },
-
-  uploadBox: {
-    minHeight: 190,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-    borderColor: "rgba(212,175,55,0.55)",
-    backgroundColor: "rgba(212,175,55,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 18,
-    overflow: "hidden",
-  },
-
-  uploadTitle: {
-    color: GOLD,
-    fontSize: 19,
-    fontWeight: "900",
-    marginTop: 12,
-    marginBottom: 6,
-  },
-
-  uploadText: {
-    color: AE_COLORS.muted,
-    fontSize: 14,
-  },
-
-  previewImage: {
-    width: "100%",
-    height: 220,
-    borderRadius: 18,
-  },
-
-  changeButton: {
-    marginTop: 14,
-    minHeight: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-    backgroundColor: "rgba(212,175,55,0.08)",
-  },
-
-  changeButtonText: {
-    color: GOLD,
-    fontWeight: "900",
-  },
-
-  noticeBox: {
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(212,175,55,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-  },
-
-  noticeText: {
-    color: GOLD,
-    fontSize: 13.5,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-
-  mainButton: {
-    marginTop: 6,
-  },
-
-  disabledButton: {
-    opacity: 0.7,
-    marginTop: 6,
-  },
-
-  secondaryButton: {
-    marginTop: 14,
-  },
-});
+    mainButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 6,
+      ...v5Shadow(c),
+    },
+    mainButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+    disabledButton: {
+      opacity: 0.7,
+    },
+    secondaryButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 14,
+    },
+    secondaryButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}

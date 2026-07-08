@@ -1,11 +1,12 @@
 import { useLocalSearchParams, router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   ImageBackground,
   Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,24 +15,21 @@ import {
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import {
+  ArrowLeft,
   CarFront,
+  Clock3,
   ExternalLink,
+  MapPinned,
+  Navigation,
   Phone,
+  RefreshCcw,
+  Route,
   ShieldCheck,
   UserRound,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 const LIVE_STATUSES = [
   "confirmed",
@@ -46,10 +44,15 @@ const LIVE_STATUSES = [
 export default function LiveTripScreen() {
   const params = useLocalSearchParams();
 
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const invoiceNo = String(params.invoice_no || "");
   const bookingId = String(params.booking_id || "");
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [trip, setTrip] = useState<any>(null);
   const [location, setLocation] = useState<any>(null);
   const [driverProfile, setDriverProfile] = useState<any>(null);
@@ -58,10 +61,28 @@ export default function LiveTripScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
 
-    loadLiveTrip();
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
+
+    loadLiveTrip(true);
 
     const interval = setInterval(() => {
       loadLiveTrip(false);
@@ -96,14 +117,35 @@ export default function LiveTripScreen() {
     if (status === "driver_arrived") return "Driver Arrived";
     if (status === "in_progress") return "In Progress";
     if (status === "completed") return "Completed";
-    if (status === "cancelled") return "Cancelled";
+    if (status === "cancelled" || status === "canceled") return "Cancelled";
 
     return String(value || "Pending").replace(/_/g, " ");
+  }
+
+  function getStatusMessage() {
+    const status = cleanStatus(trip?.status);
+
+    if (hasDriverLocation) return "Your chauffeur is sharing live GPS.";
+
+    if (status === "driver_assigned" || status === "assigned") {
+      return "Your chauffeur has accepted the ride. GPS will appear once the driver opens Active Trip.";
+    }
+
+    if (status === "driver_arrived") {
+      return "Your chauffeur has arrived. Live GPS will update as the trip continues.";
+    }
+
+    if (status === "in_progress") {
+      return "Your trip is in progress. Waiting for the latest GPS update.";
+    }
+
+    return "Waiting for chauffeur GPS location.";
   }
 
   async function loadLiveTrip(showLoader = true) {
     try {
       if (showLoader) setLoading(true);
+      if (!showLoader) setRefreshing(true);
 
       const {
         data: { user },
@@ -114,6 +156,7 @@ export default function LiveTripScreen() {
 
       if (!user) {
         Alert.alert("Not Logged In", "Please sign in again.");
+        router.replace("/login" as any);
         return;
       }
 
@@ -176,6 +219,7 @@ export default function LiveTripScreen() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -254,7 +298,7 @@ export default function LiveTripScreen() {
       driverProfile?.name,
       first && last ? `${first} ${last}` : "",
       first,
-      "Angel Express Driver"
+      "Angel Express Chauffeur"
     );
   }
 
@@ -270,11 +314,20 @@ export default function LiveTripScreen() {
   }
 
   function getVehicle() {
+    const driverVehicle = [
+      driverProfile?.vehicle_year,
+      driverProfile?.vehicle_make,
+      driverProfile?.vehicle_model,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
     return firstAvailable(
       location?.vehicle,
       location?.vehicle_type,
       trip?.vehicle,
       trip?.vehicle_type,
+      driverVehicle,
       driverProfile?.vehicle,
       driverProfile?.vehicle_type,
       driverProfile?.car,
@@ -378,7 +431,9 @@ export default function LiveTripScreen() {
   const hasDriverLocation = Boolean(driverCoordinate);
 
   const mapCenter =
-    driverCoordinate || pickupCoordinate || dropoffCoordinate || {
+    driverCoordinate ||
+    pickupCoordinate ||
+    dropoffCoordinate || {
       latitude: 32.7767,
       longitude: -96.797,
     };
@@ -386,7 +441,7 @@ export default function LiveTripScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator color={GOLD} size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.loadingText}>Loading live trip...</Text>
       </View>
     );
@@ -395,14 +450,27 @@ export default function LiveTripScreen() {
   if (!trip) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.title}>Trip Not Found</Text>
-        <Text style={styles.text}>
-          No active accepted trip was found for your account yet.
-        </Text>
+        <View style={styles.emptyCard}>
+          <MapPinned size={38} color={colors.gold} />
+          <Text style={styles.emptyTitle}>Trip Not Found</Text>
+          <Text style={styles.emptyText}>
+            No active accepted trip was found for your account yet.
+          </Text>
 
-        <TouchableOpacity style={styles.backHomeButton} onPress={() => router.back()}>
-          <Text style={styles.backHomeText}>Go Back</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.goldButton}
+            onPress={() => router.push("/my-trips" as any)}
+          >
+            <Text style={styles.goldButtonText}>View My Trips</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.outlineButton}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.outlineButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -422,10 +490,26 @@ export default function LiveTripScreen() {
           style={styles.container}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadLiveTrip(false)}
+              tintColor={colors.gold}
+            />
+          }
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -433,30 +517,53 @@ export default function LiveTripScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <Text style={styles.title}>Live Trip Tracking</Text>
+            <Text style={styles.kicker}>LIVE TRIP TRACKING</Text>
+            <Text style={styles.title}>Track Live Trip</Text>
 
             <Text style={styles.subtitle}>
-              Track your Angel Express driver in real time.
+              Track your Angel Express chauffeur, pickup, drop-off, vehicle, and trip
+              phase in real time.
             </Text>
 
-            <AngelCard style={styles.statusCard}>
+            <View style={styles.heroCard}>
+              <View style={styles.heroIcon}>
+                <Navigation size={31} color={colors.navy} />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.heroTitle}>{getStatusLabel(trip.status)}</Text>
+                <Text style={styles.heroText}>
+                  {hasDriverLocation
+                    ? "Live GPS connected"
+                    : "Waiting for chauffeur GPS"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.quickRow}>
+              <TouchableOpacity style={styles.quickButton} onPress={() => loadLiveTrip(false)}>
+                <RefreshCcw size={18} color={colors.gold} />
+                <Text style={styles.quickText}>Refresh</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickButton} onPress={callDriver}>
+                <Phone size={18} color={colors.gold} />
+                <Text style={styles.quickText}>Call Driver</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.statusCard}>
               <View style={styles.cardHeader}>
-                <ShieldCheck size={22} color={GOLD} />
+                <ShieldCheck size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Ride Status</Text>
               </View>
 
               <Text style={styles.statusText}>{getStatusLabel(trip.status)}</Text>
 
-              <Text style={styles.text}>
-                {hasDriverLocation
-                  ? "Your driver is sharing live GPS."
-                  : cleanStatus(trip.status) === "driver_assigned"
-                  ? "Your driver has accepted the ride. GPS will appear once the driver opens Active Trip."
-                  : "Waiting for driver GPS location."}
-              </Text>
-            </AngelCard>
+              <Text style={styles.text}>{getStatusMessage()}</Text>
+            </View>
 
-            <AngelCard style={styles.mapShell}>
+            <View style={styles.mapShell}>
               <MapView
                 style={styles.map}
                 initialRegion={{
@@ -504,7 +611,7 @@ export default function LiveTripScreen() {
                     <Polyline
                       coordinates={[driverCoordinate, pickupCoordinate]}
                       strokeWidth={4}
-                      strokeColor={GOLD}
+                      strokeColor={colors.gold}
                     />
                   )}
 
@@ -514,22 +621,22 @@ export default function LiveTripScreen() {
                     <Polyline
                       coordinates={[driverCoordinate, dropoffCoordinate]}
                       strokeWidth={4}
-                      strokeColor={GOLD}
+                      strokeColor={colors.gold}
                     />
                   )}
               </MapView>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <UserRound size={22} color={GOLD} />
+                <UserRound size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Driver Details</Text>
               </View>
 
-              <Row label="Driver" value={getDriverName()} />
-              <Row label="Phone" value={getDriverPhone() || "Not available yet"} />
-              <Row label="Vehicle" value={getVehicle()} />
-              <Row label="Plate Number" value={getPlateNumber()} />
+              <Row label="Driver" value={getDriverName()} styles={styles} />
+              <Row label="Phone" value={getDriverPhone() || "Not available yet"} styles={styles} />
+              <Row label="Vehicle" value={getVehicle()} styles={styles} />
+              <Row label="Plate Number" value={getPlateNumber()} styles={styles} />
               <Row
                 label="ETA"
                 value={
@@ -537,10 +644,12 @@ export default function LiveTripScreen() {
                     ? `${Math.round(Number(location.eta_minutes))} minutes`
                     : "Calculating"
                 }
+                styles={styles}
               />
               <Row
                 label="Trip Phase"
                 value={location?.trip_phase || getStatusLabel(trip.status)}
+                styles={styles}
               />
               <Row
                 label="Last Updated"
@@ -551,6 +660,7 @@ export default function LiveTripScreen() {
                     ? new Date(location.updated_at).toLocaleString()
                     : "Waiting for GPS update"
                 }
+                styles={styles}
               />
 
               <View style={styles.driverActions}>
@@ -559,7 +669,7 @@ export default function LiveTripScreen() {
                   onPress={callDriver}
                   activeOpacity={0.85}
                 >
-                  <Phone size={17} color={GOLD} />
+                  <Phone size={17} color={colors.gold} />
                   <Text style={styles.secondaryActionText}>Call Driver</Text>
                 </TouchableOpacity>
 
@@ -568,38 +678,57 @@ export default function LiveTripScreen() {
                   onPress={openInMaps}
                   activeOpacity={0.85}
                 >
-                  <ExternalLink size={17} color={GOLD} />
+                  <ExternalLink size={17} color={colors.gold} />
                   <Text style={styles.secondaryActionText}>Open Maps</Text>
                 </TouchableOpacity>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <CarFront size={22} color={GOLD} />
+                <CarFront size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Trip Details</Text>
               </View>
 
-              <Row label="Invoice" value={trip.invoice_no || "N/A"} />
-              <Row label="Status" value={getStatusLabel(trip.status)} />
-              <Row label="Pickup" value={getPickup()} />
-              <Row label="Drop-off" value={getDropoff()} />
+              <Row label="Invoice" value={trip.invoice_no || "N/A"} styles={styles} />
+              <Row label="Status" value={getStatusLabel(trip.status)} styles={styles} />
+              <Row label="Pickup" value={getPickup()} styles={styles} />
+              <Row label="Drop-off" value={getDropoff()} styles={styles} />
               <Row
                 label="Date"
                 value={trip.date || trip.ride_date || trip.pickup_date || "N/A"}
+                styles={styles}
               />
               <Row
                 label="Time"
                 value={trip.time || trip.ride_time || trip.pickup_time || "N/A"}
+                styles={styles}
               />
-            </AngelCard>
+            </View>
 
-            <AngelHeroButton
-              title="Open Driver Location in Maps"
-              onPress={openInMaps}
-              variant="gold"
-              style={styles.openMapButton}
-            />
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Route size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>Route</Text>
+              </View>
+
+              <View style={styles.routeLine}>
+                <MapPinned size={18} color={colors.gold} />
+                <Text style={styles.routeText}>{getPickup()}</Text>
+              </View>
+
+              <Text style={styles.routeArrow}>↓</Text>
+
+              <View style={styles.routeLine}>
+                <CarFront size={18} color={colors.gold} />
+                <Text style={styles.routeText}>{getDropoff()}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.goldButton} onPress={openInMaps}>
+              <ExternalLink size={18} color={colors.navy} />
+              <Text style={styles.goldButtonText}>Open Driver Location in Maps</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -607,7 +736,15 @@ export default function LiveTripScreen() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
@@ -616,181 +753,329 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    overflow: "hidden",
-  },
-
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  background: {
-    flex: 1,
-  },
-
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.91)",
-  },
-
-  container: {
-    flex: 1,
-  },
-
-  content: {
-    padding: 22,
-    paddingTop: 56,
-    paddingBottom: 50,
-  },
-
-  centerContainer: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: 18,
-  },
-
-  backText: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-
-  title: {
-    color: GOLD,
-    fontSize: 34,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-
-  loadingText: {
-    color: AE_COLORS.white,
-    marginTop: 14,
-    fontSize: 16,
-  },
-
-  text: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-
-  statusCard: {
-    padding: 18,
-    marginBottom: 18,
-  },
-
-  statusText: {
-    color: GOLD,
-    fontSize: 26,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 10,
-  },
-
-  card: {
-    padding: 18,
-    marginBottom: 18,
-  },
-
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
-
-  mapShell: {
-    height: 330,
-    padding: 0,
-    overflow: "hidden",
-    marginBottom: 18,
-  },
-
-  map: {
-    flex: 1,
-  },
-
-  row: {
-    marginBottom: 14,
-  },
-
-  label: {
-    color: GOLD,
-    fontSize: 14,
-    fontWeight: "800",
-    marginBottom: 4,
-  },
-
-  value: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-
-  driverActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 6,
-  },
-
-  secondaryAction: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 7,
-    backgroundColor: "rgba(212,175,55,0.08)",
-  },
-
-  secondaryActionText: {
-    color: GOLD,
-    fontSize: 14,
-    fontWeight: "900",
-  },
-
-  openMapButton: {
-    marginTop: 4,
-  },
-
-  backHomeButton: {
-    marginTop: 24,
-    backgroundColor: GOLD,
-    borderRadius: 16,
-    paddingVertical: 15,
-    paddingHorizontal: 22,
-  },
-
-  backHomeText: {
-    color: AE_COLORS.navy2,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-});
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
+    centerContainer: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 8,
+    },
+    title: {
+      color: c.text,
+      fontSize: 37,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
+    loadingText: {
+      color: c.text,
+      marginTop: 14,
+      fontSize: 16,
+      fontWeight: "800",
+    },
+    text: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      fontWeight: "700",
+    },
+    heroCard: {
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      marginBottom: 17,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 22,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 14,
+      fontWeight: "800",
+      lineHeight: 20,
+      opacity: 0.82,
+    },
+    quickRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 18,
+    },
+    quickButton: {
+      flex: 1,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      borderRadius: 16,
+      paddingVertical: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+    },
+    quickText: {
+      color: c.gold,
+      fontWeight: "900",
+      fontSize: 13,
+    },
+    statusCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 18,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    statusText: {
+      color: c.gold,
+      fontSize: 25,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 10,
+    },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 18,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 21,
+      fontWeight: "900",
+      flex: 1,
+    },
+    mapShell: {
+      height: 330,
+      padding: 0,
+      overflow: "hidden",
+      marginBottom: 18,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      ...v5Shadow(c),
+    },
+    map: {
+      flex: 1,
+    },
+    row: {
+      marginBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: c.borderSoft,
+      paddingBottom: 11,
+    },
+    label: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "900",
+      marginBottom: 4,
+      textTransform: "uppercase",
+    },
+    value: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+    driverActions: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 6,
+    },
+    secondaryAction: {
+      flex: 1,
+      minHeight: 48,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 7,
+      backgroundColor: c.soft,
+    },
+    secondaryActionText: {
+      color: c.gold,
+      fontSize: 14,
+      fontWeight: "900",
+    },
+    goldButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      marginTop: 4,
+      ...v5Shadow(c),
+    },
+    goldButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      textAlign: "center",
+    },
+    outlineButton: {
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      marginTop: 12,
+    },
+    outlineButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+    emptyCard: {
+      backgroundColor: c.card,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 24,
+      alignItems: "center",
+      width: "100%",
+      ...v5Shadow(c),
+    },
+    emptyTitle: {
+      color: c.text,
+      fontSize: 25,
+      fontWeight: "900",
+      marginTop: 14,
+      marginBottom: 8,
+      textAlign: "center",
+    },
+    emptyText: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      textAlign: "center",
+      fontWeight: "700",
+      marginBottom: 10,
+    },
+    routeLine: {
+      flexDirection: "row",
+      gap: 10,
+      alignItems: "flex-start",
+    },
+    routeText: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 23,
+      flex: 1,
+      fontWeight: "700",
+    },
+    routeArrow: {
+      color: c.gold,
+      fontSize: 20,
+      marginVertical: 5,
+      marginLeft: 4,
+    },
+  });
+}

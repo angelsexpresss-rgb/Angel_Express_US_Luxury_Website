@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   ImageBackground,
@@ -11,12 +11,13 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   Building2,
+  Camera,
   CarFront,
   CheckCircle,
   Globe2,
   HeartHandshake,
- Camera,
   Mail,
   MapPinned,
   Phone,
@@ -25,23 +26,41 @@ import {
   Star,
 } from "lucide-react-native";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
-const GOLD = AE_COLORS.gold;
+const SUPPORT_EMAIL = "support@angelexpressus.com";
+const SUPPORT_PHONE_DISPLAY = "(972) 836-7910";
+const SUPPORT_PHONE_RAW = "19728367910";
+const SOCIAL_HANDLE = "@angelexpresss";
 
 export default function AboutScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   const pageTranslate = pageFade.interpolate({
@@ -65,9 +84,18 @@ export default function AboutScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -75,9 +103,7 @@ export default function AboutScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  ABOUT ANGEL EXPRESS</Text>
-            </View>
+            <Text style={styles.kicker}>ABOUT ANGEL EXPRESS</Text>
 
             <Text style={styles.title}>About Angel Express</Text>
 
@@ -86,9 +112,9 @@ export default function AboutScreen() {
               excellence, reliability, safety, and clean professional service.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <CarFront size={30} color={AE_COLORS.navy2} />
+                <CarFront size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -97,12 +123,13 @@ export default function AboutScreen() {
                   Safe, comfortable, and reliable travel across Texas and beyond.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<Building2 size={24} color={GOLD} />}
+                icon={<Building2 size={24} color={colors.gold} />}
                 title="Who We Are"
+                styles={styles}
               />
 
               <Text style={styles.text}>
@@ -117,12 +144,13 @@ export default function AboutScreen() {
                 delivers a personalized transportation experience focused on
                 convenience, professionalism, and peace of mind.
               </Text>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<Sparkles size={24} color={GOLD} />}
+                icon={<Sparkles size={24} color={colors.gold} />}
                 title="Our Mission"
+                styles={styles}
               />
 
               <Text style={styles.text}>
@@ -130,15 +158,18 @@ export default function AboutScreen() {
                 safety, and exceptional customer service while making travel simple,
                 organized, and stress-free.
               </Text>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<Star size={24} color={GOLD} />}
+                icon={<Star size={24} color={colors.gold} />}
                 title="Why Ride With Us?"
+                styles={styles}
               />
 
               <FeatureGrid
+                styles={styles}
+                colors={colors}
                 items={[
                   "Professional drivers",
                   "Safe transportation",
@@ -150,15 +181,18 @@ export default function AboutScreen() {
                   "Transparent pricing",
                 ]}
               />
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<MapPinned size={24} color={GOLD} />}
+                icon={<MapPinned size={24} color={colors.gold} />}
                 title="Service Areas"
+                styles={styles}
               />
 
               <FeatureGrid
+                styles={styles}
+                colors={colors}
                 items={[
                   "Dallas",
                   "Fort Worth",
@@ -170,39 +204,45 @@ export default function AboutScreen() {
                   "Custom destinations",
                 ]}
               />
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<ShieldCheck size={24} color={GOLD} />}
+                icon={<ShieldCheck size={24} color={colors.gold} />}
                 title="Our Core Values"
+                styles={styles}
               />
 
               <ValueCard
                 title="Comfort"
                 text="Travel in clean, comfortable vehicles designed for a relaxing journey."
+                styles={styles}
               />
 
               <ValueCard
                 title="Operational Excellence"
                 text="Every ride is managed with professionalism and attention to detail."
+                styles={styles}
               />
 
               <ValueCard
                 title="Reliability"
                 text="Dependable service you can trust when it matters most."
+                styles={styles}
               />
 
               <ValueCard
                 title="Safety"
                 text="Your safety remains our highest priority from pickup to drop-off."
+                styles={styles}
               />
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<Globe2 size={24} color={GOLD} />}
+                icon={<Globe2 size={24} color={colors.gold} />}
                 title="Angel Express Ecosystem"
+                styles={styles}
               />
 
               <Text style={styles.text}>
@@ -211,6 +251,8 @@ export default function AboutScreen() {
               </Text>
 
               <FeatureGrid
+                styles={styles}
+                colors={colors}
                 items={[
                   "Passenger App",
                   "Driver App",
@@ -222,58 +264,64 @@ export default function AboutScreen() {
                   "Safety Share",
                 ]}
               />
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<HeartHandshake size={24} color={GOLD} />}
+                icon={<HeartHandshake size={24} color={colors.gold} />}
                 title="Contact Us"
+                styles={styles}
               />
 
               <ContactButton
-                icon={<Globe2 size={18} color={GOLD} />}
+                icon={<Globe2 size={18} color={colors.gold} />}
                 title="Website"
                 onPress={() => Linking.openURL("https://angelexpressus.com")}
+                styles={styles}
               />
 
               <ContactButton
-                icon={<Phone size={18} color={GOLD} />}
-                title="Call (972) 836-7910"
-                onPress={() => Linking.openURL("tel:+19728367910")}
+                icon={<Phone size={18} color={colors.gold} />}
+                title={`Call ${SUPPORT_PHONE_DISPLAY}`}
+                onPress={() => Linking.openURL(`tel:+${SUPPORT_PHONE_RAW}`)}
+                styles={styles}
               />
 
               <ContactButton
-                icon={<Mail size={18} color={GOLD} />}
-                title="Email Support"
-                onPress={() => Linking.openURL("mailto:angelsexpresss@gmail.com")}
+                icon={<Mail size={18} color={colors.gold} />}
+                title={SUPPORT_EMAIL}
+                onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
+                styles={styles}
               />
 
               <ContactButton
-  icon={<Camera size={18} color={GOLD} />}
-  title="Instagram @angelexpresss"
-  onPress={() => Linking.openURL("https://instagram.com/angelexpresss")}
-/>
-            </AngelCard>
+                icon={<Camera size={18} color={colors.gold} />}
+                title={`Instagram ${SOCIAL_HANDLE}`}
+                onPress={() => Linking.openURL("https://instagram.com/angelexpresss")}
+                styles={styles}
+              />
+            </View>
 
-            <AngelCard style={styles.infoCard}>
+            <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>App Information</Text>
               <Text style={styles.infoText}>Version: 1.0.0</Text>
               <Text style={styles.infoText}>© 2026 Angel Express Mobility</Text>
               <Text style={styles.infoText}>All Rights Reserved.</Text>
-            </AngelCard>
+            </View>
 
-            <AngelCard variant="gold" style={styles.footerCard}>
+            <View style={styles.footerCard}>
               <Text style={styles.footerText}>
                 “Your journey matters. Thank you for choosing Angel Express Mobility.”
               </Text>
-            </AngelCard>
+            </View>
 
-            <AngelHeroButton
-              title="Back to Dashboard"
-              onPress={() => router.push("/dashboard" as any)}
-              variant="outline"
+            <TouchableOpacity
               style={styles.dashboardButton}
-            />
+              onPress={() => router.push("/dashboard" as any)}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.dashboardButtonText}>Back to Dashboard</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -281,7 +329,15 @@ export default function AboutScreen() {
   );
 }
 
-function CardHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+function CardHeader({
+  icon,
+  title,
+  styles,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  styles: any;
+}) {
   return (
     <View style={styles.cardHeader}>
       <View style={styles.iconBox}>{icon}</View>
@@ -290,12 +346,20 @@ function CardHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   );
 }
 
-function FeatureGrid({ items }: { items: string[] }) {
+function FeatureGrid({
+  items,
+  styles,
+  colors,
+}: {
+  items: string[];
+  styles: any;
+  colors: any;
+}) {
   return (
     <View style={styles.featureGrid}>
       {items.map((item) => (
         <View key={item} style={styles.featurePill}>
-          <CheckCircle size={15} color={GOLD} />
+          <CheckCircle size={15} color={colors.gold} />
           <Text style={styles.featureText}>{item}</Text>
         </View>
       ))}
@@ -303,7 +367,15 @@ function FeatureGrid({ items }: { items: string[] }) {
   );
 }
 
-function ValueCard({ title, text }: { title: string; text: string }) {
+function ValueCard({
+  title,
+  text,
+  styles,
+}: {
+  title: string;
+  text: string;
+  styles: any;
+}) {
   return (
     <View style={styles.valueCard}>
       <Text style={styles.valueTitle}>{title}</Text>
@@ -316,10 +388,12 @@ function ContactButton({
   icon,
   title,
   onPress,
+  styles,
 }: {
   icon: React.ReactNode;
   title: string;
   onPress: () => void;
+  styles: any;
 }) {
   return (
     <TouchableOpacity style={styles.contactButton} onPress={onPress} activeOpacity={0.85}>
@@ -330,203 +404,285 @@ function ContactButton({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
 
-  backButton: { alignSelf: "flex-start", marginBottom: 18 },
-  backText: { color: GOLD, fontSize: 18, fontWeight: "900" },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
+    title: {
+      color: c.text,
+      fontSize: 36,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    heroCard: {
+      minHeight: 132,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 22,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 14.5,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  heroCard: {
-    minHeight: 132,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  heroCopy: { flex: 1 },
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 14.5,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 14,
+    },
+    iconBox: {
+      width: 46,
+      height: 46,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  card: { padding: 20, marginBottom: 18 },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
-  },
-  iconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
+    text: {
+      color: c.text,
+      fontSize: 15,
+      lineHeight: 24,
+      marginBottom: 12,
+      fontWeight: "700",
+    },
 
-  text: {
-    color: AE_COLORS.white,
-    fontSize: 15,
-    lineHeight: 24,
-    marginBottom: 12,
-  },
+    featureGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    featurePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card2,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    featureText: {
+      color: c.text,
+      fontSize: 13,
+      fontWeight: "800",
+    },
 
-  featureGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  featurePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(255,255,255,0.055)",
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  featureText: {
-    color: AE_COLORS.white,
-    fontSize: 13,
-    fontWeight: "800",
-  },
+    valueCard: {
+      backgroundColor: c.card2,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      borderRadius: 16,
+      padding: 15,
+      marginBottom: 12,
+    },
+    valueTitle: {
+      color: c.gold,
+      fontSize: 17,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    valueText: {
+      color: c.text2,
+      fontSize: 14.5,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
 
-  valueCard: {
-    backgroundColor: "rgba(255,255,255,0.055)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.16)",
-    borderRadius: 16,
-    padding: 15,
-    marginBottom: 12,
-  },
-  valueTitle: {
-    color: GOLD,
-    fontSize: 17,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  valueText: {
-    color: AE_COLORS.textSoft,
-    fontSize: 14.5,
-    lineHeight: 22,
-  },
+    contactButton: {
+      minHeight: 56,
+      backgroundColor: c.card2,
+      borderRadius: 15,
+      paddingHorizontal: 15,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+    },
+    contactButtonText: {
+      color: c.text,
+      fontSize: 15,
+      fontWeight: "800",
+      flex: 1,
+    },
+    contactArrow: {
+      color: c.gold,
+      fontSize: 30,
+      fontWeight: "300",
+      marginTop: -2,
+    },
 
-  contactButton: {
-    minHeight: 56,
-    backgroundColor: "rgba(255,255,255,0.055)",
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  contactButtonText: {
-    color: AE_COLORS.white,
-    fontSize: 15,
-    fontWeight: "800",
-    flex: 1,
-  },
-  contactArrow: {
-    color: GOLD,
-    fontSize: 30,
-    fontWeight: "300",
-    marginTop: -2,
-  },
+    infoCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    infoTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      marginBottom: 12,
+    },
+    infoText: {
+      color: c.text,
+      fontSize: 15,
+      marginBottom: 8,
+      fontWeight: "700",
+    },
 
-  infoCard: {
-    padding: 20,
-    marginBottom: 18,
-  },
-  infoTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 12,
-  },
-  infoText: {
-    color: AE_COLORS.white,
-    fontSize: 15,
-    marginBottom: 8,
-  },
+    footerCard: {
+      backgroundColor: c.gold,
+      borderRadius: 22,
+      padding: 22,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    footerText: {
+      color: c.navy,
+      fontSize: 18,
+      textAlign: "center",
+      fontWeight: "900",
+      lineHeight: 28,
+    },
 
-  footerCard: {
-    padding: 22,
-    marginBottom: 18,
-  },
-  footerText: {
-    color: AE_COLORS.navy2,
-    fontSize: 18,
-    textAlign: "center",
-    fontWeight: "900",
-    lineHeight: 28,
-  },
-
-  dashboardButton: {
-    marginTop: 4,
-  },
-});
+    dashboardButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
+    },
+    dashboardButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}

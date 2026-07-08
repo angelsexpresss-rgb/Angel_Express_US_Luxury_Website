@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Image,
@@ -18,7 +18,12 @@ import {
   slowBackgroundZoom,
 } from "../components/angel";
 
+import { usePassengerTheme } from "../lib/passengerTheme";
+
 export default function HomeScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const logoFade = useRef(new Animated.Value(0)).current;
   const headlineFade = useRef(new Animated.Value(0)).current;
   const subtitleFade = useRef(new Animated.Value(0)).current;
@@ -75,6 +80,12 @@ export default function HomeScreen() {
 
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safeArea}>
+          <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <Text style={styles.themeText}>
+              {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+            </Text>
+          </TouchableOpacity>
+
           <View style={styles.content}>
             <Animated.View
               style={{
@@ -150,105 +161,135 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    overflow: "hidden",
-  },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg || AE_COLORS.navy,
+      overflow: "hidden",
+    },
 
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
 
-  background: {
-    flex: 1,
-  },
+    background: {
+      flex: 1,
+    },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.84)",
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor:
+        c.mode === "dark" ? "rgba(5,11,22,0.84)" : "rgba(255,255,255,0.58)",
+    },
 
-  safeArea: {
-    flex: 1,
-  },
+    safeArea: {
+      flex: 1,
+    },
 
-  content: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 26,
-  },
+    themePill: {
+      position: "absolute",
+      top: 58,
+      right: 22,
+      zIndex: 10,
+      borderWidth: 1,
+      borderColor:
+        c.mode === "dark"
+          ? "rgba(212,175,55,0.35)"
+          : "rgba(7,20,38,0.18)",
+      backgroundColor:
+        c.mode === "dark" ? "rgba(7,20,38,0.82)" : "rgba(255,255,255,0.82)",
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  logo: {
-    width: 330,
-    height: 190,
-    marginBottom: 16,
-  },
+    themeText: {
+      color: c.gold || AE_COLORS.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  headline: {
-    color: AE_COLORS.white,
-    fontSize: 38,
-    fontWeight: "900",
-    textAlign: "center",
-    lineHeight: 46,
-    letterSpacing: 0.4,
-    marginBottom: 20,
-    textShadowColor: "rgba(0,0,0,0.85)",
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 6,
-  },
+    content: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 26,
+    },
 
-  divider: {
-    alignSelf: "center",
-    width: 120,
-    height: 3,
-    borderRadius: 20,
-    backgroundColor: AE_COLORS.gold,
-    marginBottom: 24,
-  },
+    logo: {
+      width: 330,
+      height: 190,
+      marginBottom: 16,
+    },
 
-  subtitle: {
-    color: "#E8EDF3",
-    fontSize: 18,
-    textAlign: "center",
-    lineHeight: 28,
-    marginBottom: 44,
-    textShadowColor: "rgba(0,0,0,0.7)",
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 4,
-  },
+    headline: {
+      color: c.mode === "dark" ? AE_COLORS.white : "#071426",
+      fontSize: 38,
+      fontWeight: "900",
+      textAlign: "center",
+      lineHeight: 46,
+      letterSpacing: 0.4,
+      marginBottom: 20,
+      textShadowColor:
+        c.mode === "dark" ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.75)",
+      textShadowOffset: { width: 1, height: 2 },
+      textShadowRadius: 6,
+    },
 
-  buttonArea: {
-    width: "100%",
-    alignItems: "center",
-  },
+    divider: {
+      alignSelf: "center",
+      width: 120,
+      height: 3,
+      borderRadius: 20,
+      backgroundColor: c.gold || AE_COLORS.gold,
+      marginBottom: 24,
+    },
 
-  heroButton: {
-    marginBottom: 16,
-  },
+    subtitle: {
+      color: c.mode === "dark" ? "#E8EDF3" : "#071426",
+      fontSize: 18,
+      textAlign: "center",
+      lineHeight: 28,
+      marginBottom: 44,
+      fontWeight: c.mode === "dark" ? "400" : "800",
+      textShadowColor:
+        c.mode === "dark" ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.75)",
+      textShadowOffset: { width: 1, height: 2 },
+      textShadowRadius: 4,
+    },
 
-  footerMark: {
-    color: AE_COLORS.gold,
-    fontSize: 34,
-    fontWeight: "900",
-    marginTop: 6,
-    marginBottom: 4,
-  },
+    buttonArea: {
+      width: "100%",
+      alignItems: "center",
+    },
 
-  footerText: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    marginBottom: 20,
-    textShadowColor: "rgba(0,0,0,0.7)",
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 4,
-  },
+    heroButton: {
+      marginBottom: 16,
+    },
 
-  privacy: {
-    color: AE_COLORS.gold,
-    fontSize: 16,
-    textDecorationLine: "underline",
-  },
-});
+    footerMark: {
+      color: c.gold || AE_COLORS.gold,
+      fontSize: 34,
+      fontWeight: "900",
+      marginTop: 6,
+      marginBottom: 4,
+    },
+
+    footerText: {
+      color: c.mode === "dark" ? AE_COLORS.white : "#071426",
+      fontSize: 16,
+      marginBottom: 20,
+      textShadowColor:
+        c.mode === "dark" ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.75)",
+      textShadowOffset: { width: 1, height: 2 },
+      textShadowRadius: 4,
+    },
+
+    privacy: {
+      color: c.gold || AE_COLORS.gold,
+      fontSize: 16,
+      textDecorationLine: "underline",
+    },
+  });
+}

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -10,8 +10,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useDriverTheme, v5Shadow } from "../lib/driverTheme";
 
 export default function ChauffeurWelcomeScreen() {
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [showBenefits, setShowBenefits] = useState(false);
   const [showWhyJoin, setShowWhyJoin] = useState(false);
   const [showStandards, setShowStandards] = useState(false);
@@ -70,6 +74,12 @@ export default function ChauffeurWelcomeScreen() {
               transform: [{ translateY: slideAnim }],
             }}
           >
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light Mode" : "🌙 Dark Mode"}
+              </Text>
+            </TouchableOpacity>
+
             <Image
               source={require("../assets/images/angel-logo-transparent.png")}
               style={styles.logo}
@@ -120,17 +130,18 @@ export default function ChauffeurWelcomeScreen() {
               title="Why Become an Angel Express Chauffeur?"
               open={showBenefits}
               onPress={() => setShowBenefits(!showBenefits)}
+              styles={styles}
             />
 
             {showBenefits && (
               <View style={styles.card}>
-                <Benefit text="Earn up to 70% of trip revenue" />
-                <Benefit text="Premium passengers and private bookings" />
-                <Benefit text="Regional and airport transportation" />
-                <Benefit text="Route preference matching" />
-                <Benefit text="Flexible scheduling" />
-                <Benefit text="Live trip management and GPS tracking" />
-                <Benefit text="Direct support from Angel Express operations" />
+                <Benefit text="Earn up to 70% of trip revenue" styles={styles} />
+                <Benefit text="Premium passengers and private bookings" styles={styles} />
+                <Benefit text="Regional and airport transportation" styles={styles} />
+                <Benefit text="Route preference matching" styles={styles} />
+                <Benefit text="Flexible scheduling" styles={styles} />
+                <Benefit text="Live trip management and GPS tracking" styles={styles} />
+                <Benefit text="Direct support from Angel Express operations" styles={styles} />
               </View>
             )}
 
@@ -139,16 +150,17 @@ export default function ChauffeurWelcomeScreen() {
               title="Why Join Angel Express Mobility?"
               open={showWhyJoin}
               onPress={() => setShowWhyJoin(!showWhyJoin)}
+              styles={styles}
             />
 
             {showWhyJoin && (
               <View style={styles.card}>
-                <Benefit text="Built for professional long-distance transportation" />
-                <Benefit text="Focused on comfort, reliability, security, and cleanliness" />
-                <Benefit text="Owner-managed dispatch and operational support" />
-                <Benefit text="Student, airport, event, and private ride demand" />
-                <Benefit text="Simple trip acceptance and active ride workflow" />
-                <Benefit text="Clear earnings with Stripe Connect payout support" />
+                <Benefit text="Built for professional long-distance transportation" styles={styles} />
+                <Benefit text="Focused on comfort, reliability, security, and cleanliness" styles={styles} />
+                <Benefit text="Owner-managed dispatch and operational support" styles={styles} />
+                <Benefit text="Student, airport, event, and private ride demand" styles={styles} />
+                <Benefit text="Simple trip acceptance and active ride workflow" styles={styles} />
+                <Benefit text="Clear earnings with Stripe Connect payout support" styles={styles} />
               </View>
             )}
 
@@ -157,6 +169,7 @@ export default function ChauffeurWelcomeScreen() {
               title="Chauffeur Expectations"
               open={showStandards}
               onPress={() => setShowStandards(!showStandards)}
+              styles={styles}
             />
 
             {showStandards && (
@@ -167,14 +180,14 @@ export default function ChauffeurWelcomeScreen() {
                   respect.
                 </Text>
 
-                <Benefit text="Arrive on time and communicate clearly with passengers." />
-                <Benefit text="Keep your vehicle clean, fresh, safe, and ride-ready." />
-                <Benefit text="Drive calmly, professionally, and follow all road safety rules." />
-                <Benefit text="Respect passenger privacy, comfort, music, and conversation preferences." />
-                <Benefit text="Treat students, families, tourists, and airport travelers with patience and care." />
-                <Benefit text="Use the Driver App during active trips for status updates and GPS tracking." />
-                <Benefit text="Never share passenger personal details outside Angel Express operations." />
-                <Benefit text="Report emergencies, delays, route issues, or passenger concerns immediately." />
+                <Benefit text="Arrive on time and communicate clearly with passengers." styles={styles} />
+                <Benefit text="Keep your vehicle clean, fresh, safe, and ride-ready." styles={styles} />
+                <Benefit text="Drive calmly, professionally, and follow all road safety rules." styles={styles} />
+                <Benefit text="Respect passenger privacy, comfort, music, and conversation preferences." styles={styles} />
+                <Benefit text="Treat students, families, tourists, and airport travelers with patience and care." styles={styles} />
+                <Benefit text="Use the Driver App during active trips for status updates and GPS tracking." styles={styles} />
+                <Benefit text="Never share passenger personal details outside Angel Express operations." styles={styles} />
+                <Benefit text="Report emergencies, delays, route issues, or passenger concerns immediately." styles={styles} />
 
                 <View style={styles.commitmentBox}>
                   <Text style={styles.commitmentTitle}>Angel Express Commitment</Text>
@@ -204,11 +217,13 @@ function Dropdown({
   title,
   open,
   onPress,
+  styles,
 }: {
   small: string;
   title: string;
   open: boolean;
   onPress: () => void;
+  styles: any;
 }) {
   return (
     <TouchableOpacity style={styles.dropdownHeader} onPress={onPress} activeOpacity={0.85}>
@@ -222,7 +237,7 @@ function Dropdown({
   );
 }
 
-function Benefit({ text }: { text: string }) {
+function Benefit({ text, styles }: { text: string; styles: any }) {
   return (
     <View style={styles.benefitRow}>
       <View style={styles.checkCircle}>
@@ -234,295 +249,311 @@ function Benefit({ text }: { text: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#050b16",
-  },
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
 
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
 
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
+    background: {
+      flex: 1,
+      width: "100%",
+      height: "100%",
+    },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.91)",
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+    },
 
-  container: {
-    flexGrow: 1,
-    padding: 22,
-    paddingTop: 58,
-    paddingBottom: 46,
-  },
+    container: {
+      flexGrow: 1,
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 46,
+    },
 
-  logo: {
-    width: "100%",
-    height: 150,
-    marginBottom: 18,
-  },
+    themePill: {
+      alignSelf: "flex-end",
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      marginBottom: 14,
+    },
 
-  title: {
-    color: "#D4AF37",
-    fontSize: 16,
-    fontWeight: "900",
-    textAlign: "center",
-    letterSpacing: 1.7,
-    textTransform: "uppercase",
-    marginBottom: 14,
-  },
+    themeText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  heading: {
-    color: "#ffffff",
-    fontSize: 40,
-    fontWeight: "900",
-    textAlign: "center",
-    letterSpacing: -1.3,
-    lineHeight: 46,
-    marginBottom: 14,
-  },
+    logo: {
+      width: "100%",
+      height: 150,
+      marginBottom: 18,
+    },
 
-  goldText: {
-    color: "#D4AF37",
-  },
+    title: {
+      color: colors.gold,
+      fontSize: 16,
+      fontWeight: "900",
+      textAlign: "center",
+      letterSpacing: 1.7,
+      textTransform: "uppercase",
+      marginBottom: 14,
+    },
 
-  subtitle: {
-    color: "#DDE3EA",
-    fontSize: 15.5,
-    lineHeight: 24,
-    textAlign: "center",
-    marginBottom: 24,
-  },
+    heading: {
+      color: colors.text,
+      fontSize: 40,
+      fontWeight: "900",
+      textAlign: "center",
+      letterSpacing: -1.3,
+      lineHeight: 46,
+      marginBottom: 14,
+    },
 
-  actionCard: {
-    backgroundColor: "rgba(13,20,34,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    borderRadius: 30,
-    padding: 16,
-    marginBottom: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 6,
-  },
+    goldText: {
+      color: colors.gold,
+    },
 
-  primaryButton: {
-    backgroundColor: "#D4AF37",
-    minHeight: 66,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+    subtitle: {
+      color: colors.text2,
+      fontSize: 15.5,
+      lineHeight: 24,
+      textAlign: "center",
+      marginBottom: 24,
+    },
 
-  buttonIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#050b16",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    actionCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 30,
+      padding: 16,
+      marginBottom: 18,
+      ...v5Shadow(colors),
+    },
 
-  buttonIcon: {
-    color: "#D4AF37",
-    fontSize: 25,
-    fontWeight: "900",
-  },
+    primaryButton: {
+      backgroundColor: colors.gold,
+      minHeight: 66,
+      borderRadius: 22,
+      paddingHorizontal: 14,
+      marginBottom: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
 
-  primaryButtonText: {
-    flex: 1,
-    color: "#050b16",
-    fontWeight: "900",
-    fontSize: 17,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginLeft: 14,
-  },
+    buttonIconBox: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: colors.navy,
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  buttonArrow: {
-    color: "#050b16",
-    fontSize: 38,
-    fontWeight: "700",
-  },
+    buttonIcon: {
+      color: colors.gold,
+      fontSize: 25,
+      fontWeight: "900",
+    },
 
-  secondaryButton: {
-    borderWidth: 1.5,
-    borderColor: "#D4AF37",
-    backgroundColor: "rgba(5,11,22,0.78)",
-    minHeight: 66,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+    primaryButtonText: {
+      flex: 1,
+      color: colors.navy,
+      fontWeight: "900",
+      fontSize: 17,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginLeft: 14,
+    },
 
-  outlineIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    buttonArrow: {
+      color: colors.navy,
+      fontSize: 38,
+      fontWeight: "700",
+    },
 
-  outlineIcon: {
-    color: "#D4AF37",
-    fontSize: 25,
-    fontWeight: "900",
-  },
+    secondaryButton: {
+      borderWidth: 1.5,
+      borderColor: colors.gold,
+      backgroundColor: colors.mode === "dark" ? "rgba(5,11,22,0.78)" : colors.card,
+      minHeight: 66,
+      borderRadius: 22,
+      paddingHorizontal: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
 
-  secondaryButtonText: {
-    flex: 1,
-    color: "#D4AF37",
-    fontWeight: "900",
-    fontSize: 16,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginLeft: 14,
-  },
+    outlineIconBox: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.08)" : "#FFF8E8",
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  secondaryArrow: {
-    color: "#D4AF37",
-    fontSize: 38,
-    fontWeight: "700",
-  },
+    outlineIcon: {
+      color: colors.gold,
+      fontSize: 25,
+      fontWeight: "900",
+    },
 
-  dropdownHeader: {
-    backgroundColor: "rgba(13,20,34,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+    secondaryButtonText: {
+      flex: 1,
+      color: colors.gold,
+      fontWeight: "900",
+      fontSize: 16,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginLeft: 14,
+    },
 
-  dropdownSmall: {
-    color: "#D4AF37",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-    marginBottom: 5,
-  },
+    secondaryArrow: {
+      color: colors.gold,
+      fontSize: 38,
+      fontWeight: "700",
+    },
 
-  dropdownTitle: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: "900",
-    lineHeight: 23,
-  },
+    dropdownHeader: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 24,
+      padding: 18,
+      marginBottom: 12,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
 
-  dropdownIcon: {
-    color: "#D4AF37",
-    fontSize: 30,
-    fontWeight: "900",
-    marginLeft: 16,
-  },
+    dropdownSmall: {
+      color: colors.gold,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.3,
+      marginBottom: 5,
+    },
 
-  card: {
-    backgroundColor: "rgba(13,20,34,0.95)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 18,
-  },
+    dropdownTitle: {
+      color: colors.text,
+      fontSize: 17,
+      fontWeight: "900",
+      lineHeight: 23,
+    },
 
-  standardIntro: {
-    color: "#DDE3EA",
-    fontSize: 15,
-    lineHeight: 23,
-    fontWeight: "700",
-    marginBottom: 16,
-  },
+    dropdownIcon: {
+      color: colors.gold,
+      fontSize: 30,
+      fontWeight: "900",
+      marginLeft: 16,
+    },
 
-  benefitRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 13,
-  },
+    card: {
+      backgroundColor: colors.card2,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 24,
+      padding: 18,
+      marginBottom: 18,
+    },
 
-  checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(212,175,55,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 1,
-  },
+    standardIntro: {
+      color: colors.text2,
+      fontSize: 15,
+      lineHeight: 23,
+      fontWeight: "700",
+      marginBottom: 16,
+    },
 
-  checkText: {
-    color: "#D4AF37",
-    fontWeight: "900",
-    fontSize: 13,
-  },
+    benefitRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      marginBottom: 13,
+    },
 
-  cardText: {
-    color: "#ffffff",
-    fontSize: 15,
-    lineHeight: 23,
-    flex: 1,
-    fontWeight: "700",
-  },
+    checkCircle: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.16)" : "#FFF8E8",
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+    },
 
-  commitmentBox: {
-    marginTop: 8,
-    padding: 16,
-    borderRadius: 18,
-    backgroundColor: "rgba(212,175,55,0.09)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-  },
+    checkText: {
+      color: colors.gold,
+      fontWeight: "900",
+      fontSize: 13,
+    },
 
-  commitmentTitle: {
-    color: "#D4AF37",
-    fontSize: 17,
-    fontWeight: "900",
-    textAlign: "center",
-    marginBottom: 8,
-  },
+    cardText: {
+      color: colors.text,
+      fontSize: 15,
+      lineHeight: 23,
+      flex: 1,
+      fontWeight: "700",
+    },
 
-  commitmentText: {
-    color: "#ffffff",
-    textAlign: "center",
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    lineHeight: 22,
-  },
+    commitmentBox: {
+      marginTop: 8,
+      padding: 16,
+      borderRadius: 18,
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.09)" : "#FFF8E8",
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
 
-  privacyText: {
-    color: "#D4AF37",
-    textAlign: "center",
-    fontWeight: "800",
-    textDecorationLine: "underline",
-    marginBottom: 18,
-    marginTop: 4,
-  },
+    commitmentTitle: {
+      color: colors.gold,
+      fontSize: 17,
+      fontWeight: "900",
+      textAlign: "center",
+      marginBottom: 8,
+    },
 
-  footer: {
-    color: "#ffffff",
-    textAlign: "center",
-    fontSize: 13,
-    fontWeight: "700",
-    opacity: 0.9,
-  },
-});
+    commitmentText: {
+      color: colors.text,
+      textAlign: "center",
+      fontWeight: "900",
+      letterSpacing: 0.5,
+      lineHeight: 22,
+    },
+
+    privacyText: {
+      color: colors.gold,
+      textAlign: "center",
+      fontWeight: "800",
+      textDecorationLine: "underline",
+      marginBottom: 18,
+      marginTop: 4,
+    },
+
+    footer: {
+      color: colors.text,
+      textAlign: "center",
+      fontSize: 13,
+      fontWeight: "700",
+      opacity: 0.9,
+    },
+  });
+}

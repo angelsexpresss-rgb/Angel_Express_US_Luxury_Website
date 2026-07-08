@@ -1,10 +1,26 @@
 import { router } from "expo-router";
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { CheckCircle2, Gift, Home, Ticket } from "lucide-react-native";
+import { useMemo } from "react";
+import {
+  ImageBackground,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  CheckCircle2,
+  Gift,
+  Home,
+  Ticket,
+  X,
+} from "lucide-react-native";
 
-const GOLD = "#D4AF37";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 export default function ModalScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <ImageBackground
       source={require("../assets/images/dashboard-bg.png")}
@@ -12,167 +28,233 @@ export default function ModalScreen() {
       resizeMode="cover"
     >
       <View style={styles.overlay}>
-        <View style={styles.card}>
+        <View style={styles.topRow}>
+          <TouchableOpacity style={styles.closePill} onPress={() => router.back()}>
+            <X size={18} color={colors.gold} />
+            <Text style={styles.closePillText}>Close</Text>
+          </TouchableOpacity>
 
+          <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <Text style={styles.themeText}>
+              {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
           <View style={styles.iconCircle}>
-            <CheckCircle2 size={60} color={GOLD} />
+            <CheckCircle2 size={62} color={colors.gold} />
           </View>
 
-          <Text style={styles.title}>
-            Angel Express
-          </Text>
+          <Text style={styles.kicker}>ANGEL EXPRESS MOBILITY</Text>
 
-          <Text style={styles.subtitle}>
-            Operation Completed Successfully
-          </Text>
+          <Text style={styles.title}>Angel Express</Text>
+
+          <Text style={styles.subtitle}>Operation Completed Successfully</Text>
 
           <Text style={styles.description}>
-            Your request has been processed successfully.
-            Continue exploring Angel Express.
+            Your request has been processed successfully. Continue exploring
+            Angel Express.
           </Text>
 
           <TouchableOpacity
             style={styles.goldButton}
             onPress={() => router.replace("/dashboard" as any)}
+            activeOpacity={0.88}
           >
-            <Home color="#071426" size={22} />
-            <Text style={styles.goldButtonText}>
-              Go To Dashboard
-            </Text>
+            <Home color={colors.navy} size={22} />
+            <Text style={styles.goldButtonText}>Go To Dashboard</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.outlineButton}
             onPress={() => router.push("/book-ride" as any)}
+            activeOpacity={0.88}
           >
-            <Ticket color={GOLD} size={22} />
-            <Text style={styles.outlineButtonText}>
-              Book Another Ride
-            </Text>
+            <Ticket color={colors.gold} size={22} />
+            <Text style={styles.outlineButtonText}>Book Another Ride</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.outlineButton}
             onPress={() => router.push("/rewards" as any)}
+            activeOpacity={0.88}
           >
-            <Gift color={GOLD} size={22} />
-            <Text style={styles.outlineButtonText}>
-              View Rewards
-            </Text>
+            <Gift color={colors.gold} size={22} />
+            <Text style={styles.outlineButtonText}>View Rewards</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => router.back()}
-          >
-            <Text style={styles.closeText}>
-              Close
-            </Text>
+          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85}>
+            <Text style={styles.closeText}>Close</Text>
           </TouchableOpacity>
-
         </View>
       </View>
     </ImageBackground>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(c: any) {
+  return StyleSheet.create({
+    background: {
+      flex: 1,
+    },
 
-  background:{
-    flex:1,
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 24,
+    },
 
-  overlay:{
-    flex:1,
-    backgroundColor:"rgba(4,12,24,.88)",
-    justifyContent:"center",
-    alignItems:"center",
-    padding:24,
-  },
+    topRow: {
+      position: "absolute",
+      top: 58,
+      left: 22,
+      right: 22,
+      zIndex: 5,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
 
-  card:{
-    width:"100%",
-    backgroundColor:"#071426",
-    borderRadius:30,
-    borderWidth:1,
-    borderColor:"rgba(212,175,55,.22)",
-    padding:28,
-    alignItems:"center",
-  },
+    closePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  iconCircle:{
-    width:90,
-    height:90,
-    borderRadius:45,
-    backgroundColor:"rgba(212,175,55,.12)",
-    justifyContent:"center",
-    alignItems:"center",
-    marginBottom:24,
-  },
+    closePillText: {
+      color: c.gold,
+      fontSize: 14,
+      fontWeight: "900",
+    },
 
-  title:{
-    color:GOLD,
-    fontSize:34,
-    fontWeight:"900",
-  },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  subtitle:{
-    color:"#FFFFFF",
-    fontSize:22,
-    fontWeight:"800",
-    marginTop:10,
-  },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  description:{
-    color:"#B9C5D3",
-    fontSize:16,
-    textAlign:"center",
-    lineHeight:25,
-    marginTop:18,
-    marginBottom:30,
-  },
+    card: {
+      width: "100%",
+      backgroundColor: c.card,
+      borderRadius: 30,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 28,
+      alignItems: "center",
+      ...v5Shadow(c),
+    },
 
-  goldButton:{
-    width:"100%",
-    height:60,
-    backgroundColor:GOLD,
-    borderRadius:18,
-    justifyContent:"center",
-    alignItems:"center",
-    flexDirection:"row",
-    marginBottom:14,
-  },
+    iconCircle: {
+      width: 94,
+      height: 94,
+      borderRadius: 47,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 22,
+    },
 
-  goldButtonText:{
-    color:"#071426",
-    fontSize:18,
-    fontWeight:"900",
-    marginLeft:10,
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.4,
+      marginBottom: 10,
+      textAlign: "center",
+    },
 
-  outlineButton:{
-    width:"100%",
-    height:58,
-    borderRadius:18,
-    borderWidth:1,
-    borderColor:"rgba(212,175,55,.25)",
-    justifyContent:"center",
-    alignItems:"center",
-    flexDirection:"row",
-    marginBottom:14,
-  },
+    title: {
+      color: c.gold,
+      fontSize: 34,
+      fontWeight: "900",
+      textAlign: "center",
+    },
 
-  outlineButtonText:{
-    color:GOLD,
-    fontSize:17,
-    fontWeight:"800",
-    marginLeft:10,
-  },
+    subtitle: {
+      color: c.text,
+      fontSize: 22,
+      fontWeight: "900",
+      marginTop: 10,
+      textAlign: "center",
+      lineHeight: 29,
+    },
 
-  closeText:{
-    color:"#9CA9B8",
-    fontSize:16,
-    marginTop:10,
-    fontWeight:"700",
-  },
+    description: {
+      color: c.text2,
+      fontSize: 16,
+      textAlign: "center",
+      lineHeight: 25,
+      marginTop: 18,
+      marginBottom: 30,
+      fontWeight: "700",
+    },
 
-});
+    goldButton: {
+      width: "100%",
+      minHeight: 60,
+      backgroundColor: c.gold,
+      borderRadius: 18,
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "row",
+      marginBottom: 14,
+      ...v5Shadow(c),
+    },
+
+    goldButtonText: {
+      color: c.navy,
+      fontSize: 17,
+      fontWeight: "900",
+      marginLeft: 10,
+      textTransform: "uppercase",
+    },
+
+    outlineButton: {
+      width: "100%",
+      minHeight: 58,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card2,
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "row",
+      marginBottom: 14,
+    },
+
+    outlineButtonText: {
+      color: c.gold,
+      fontSize: 16,
+      fontWeight: "900",
+      marginLeft: 10,
+      textTransform: "uppercase",
+    },
+
+    closeText: {
+      color: c.text2,
+      fontSize: 16,
+      marginTop: 10,
+      fontWeight: "800",
+    },
+  });
+}

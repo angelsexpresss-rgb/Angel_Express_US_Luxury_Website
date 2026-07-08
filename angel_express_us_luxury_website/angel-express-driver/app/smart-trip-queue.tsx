@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,8 +12,21 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+import {
+  getDriverPayoutAmount,
+  getDropoffValue,
+  getPassengerNameValue,
+  getPickupValue,
+  getTripMilesValue,
+  getTripTotal,
+  useDriverTheme,
+  v5Shadow,
+} from "../lib/driverTheme";
 
 export default function SmartTripQueueScreen() {
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [driver, setDriver] = useState<any>(null);
@@ -140,14 +153,15 @@ export default function SmartTripQueueScreen() {
               const { error } = await supabase
                 .from("bookings")
                 .update({
-                  driver_id: driver.id,
-                  status: "Confirmed",
-                  assigned_driver_name: driverName || "Angel Express Chauffeur",
-                  assigned_driver_phone: driver?.phone || null,
-                  assigned_driver_rating: driver?.rating || 5,
-                  assigned_driver_level: driver?.driver_level || "Bronze",
-                  claimed_at: new Date().toISOString(),
-                })
+  driver_id: driver.id,
+  assigned_driver_id: driver.id,
+  status: "Confirmed",
+  assigned_driver_name: driverName || "Angel Express Chauffeur",
+  assigned_driver_phone: driver?.phone || null,
+  assigned_driver_rating: driver?.rating || 5,
+  assigned_driver_level: driver?.driver_level || "Bronze",
+  claimed_at: new Date().toISOString(),
+})
                 .eq("id", trip.id)
                 .is("driver_id", null);
 
@@ -175,7 +189,7 @@ export default function SmartTripQueueScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#d4af37" />
+        <ActivityIndicator size="large" color={colors.gold} />
         <Text style={styles.loadingText}>Loading Smart Trip Queue...</Text>
       </View>
     );
@@ -191,12 +205,24 @@ export default function SmartTripQueueScreen() {
         <ScrollView
           contentContainerStyle={styles.container}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={refreshQueue} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refreshQueue}
+              tintColor={colors.gold}
+            />
           }
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backText}>← Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.title}>Smart Trip Queue</Text>
 
@@ -226,25 +252,21 @@ export default function SmartTripQueueScreen() {
             </View>
           ) : (
             trips.map((trip) => {
-              const tripTotal = Number(
-                trip.total || trip.total_price || trip.price || 0
-              );
-              const driverPayout = tripTotal * 0.7;
-              const miles = Number(
-                trip.miles || trip.distance_miles || trip.trip_miles || 0
-              );
+              const tripTotal = getTripTotal(trip);
+              const driverPayout = getDriverPayoutAmount(trip);
+              const miles = getTripMilesValue(trip);
 
               return (
                 <View key={trip.id} style={styles.tripCard}>
                   <View style={styles.tripHeader}>
                     <Text style={styles.tripRoute}>
-                      {trip.pickup || "Pickup"} → {trip.dropoff || "Dropoff"}
+                      {getPickupValue(trip)} → {getDropoffValue(trip)}
                     </Text>
                     <Text style={styles.tripBadge}>Available</Text>
                   </View>
 
                   <Text style={styles.tripText}>
-                    Passenger: {trip.name || trip.passenger_name || "Passenger"}
+                    Passenger: {getPassengerNameValue(trip)}
                   </Text>
 
                   <Text style={styles.tripText}>
@@ -255,11 +277,14 @@ export default function SmartTripQueueScreen() {
                     Time: {trip.time || trip.trip_time || "Not provided"}
                   </Text>
 
-                  <Text style={styles.tripText}>
-                    Miles: {miles.toFixed(1)}
-                  </Text>
+                  <Text style={styles.tripText}>Miles: {miles.toFixed(1)}</Text>
 
                   <View style={styles.payoutBox}>
+                    <Text style={styles.payoutLabel}>Trip Total</Text>
+                    <Text style={styles.tripAmount}>
+                      ${tripTotal.toFixed(2)}
+                    </Text>
+
                     <Text style={styles.payoutLabel}>Estimated 70% Payout</Text>
                     <Text style={styles.payoutAmount}>
                       ${driverPayout.toFixed(2)}
@@ -282,149 +307,188 @@ export default function SmartTripQueueScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.72)",
-  },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: "#07111f",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    color: "#e5e7eb",
-    marginTop: 14,
-  },
-  container: {
-    flexGrow: 1,
-    padding: 22,
-    paddingTop: 60,
-    paddingBottom: 45,
-  },
-  backButton: {
-    marginBottom: 20,
-  },
-  backText: {
-    color: "#d4af37",
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  title: {
-    color: "#ffffff",
-    fontSize: 33,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#cbd5e1",
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 18,
-  },
-  statusCard: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.55)",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 18,
-  },
-  statusTitle: {
-    color: "#ffffff",
-    fontSize: 19,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  statusText: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  emptyCard: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 20,
-    padding: 22,
-  },
-  emptyTitle: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    lineHeight: 22,
-  },
-  tripCard: {
-    backgroundColor: "rgba(15,23,42,0.94)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 22,
-    padding: 18,
-    marginBottom: 16,
-  },
-  tripHeader: {
-    marginBottom: 12,
-  },
-  tripRoute: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 24,
-    marginBottom: 8,
-  },
-  tripBadge: {
-    color: "#07111f",
-    backgroundColor: "#d4af37",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 999,
-    overflow: "hidden",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  tripText: {
-    color: "#cbd5e1",
-    fontSize: 14,
-    marginBottom: 6,
-  },
-  payoutBox: {
-    backgroundColor: "rgba(212,175,55,0.13)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.55)",
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 10,
-    marginBottom: 14,
-  },
-  payoutLabel: {
-    color: "#cbd5e1",
-    fontSize: 13,
-    marginBottom: 5,
-  },
-  payoutAmount: {
-    color: "#d4af37",
-    fontSize: 24,
-    fontWeight: "900",
-  },
-  claimButton: {
-    backgroundColor: "#d4af37",
-    borderRadius: 16,
-    padding: 15,
-  },
-  claimText: {
-    color: "#07111f",
-    fontSize: 16,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-});
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+    },
+    loadingContainer: {
+      flex: 1,
+      backgroundColor: colors.bg,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loadingText: {
+      color: colors.text2,
+      marginTop: 14,
+      fontWeight: "800",
+    },
+    container: {
+      flexGrow: 1,
+      padding: 22,
+      paddingTop: 60,
+      paddingBottom: 45,
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: colors.gold,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    title: {
+      color: colors.text,
+      fontSize: 33,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    subtitle: {
+      color: colors.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      marginBottom: 18,
+      fontWeight: "700",
+    },
+    statusCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 20,
+      padding: 18,
+      marginBottom: 18,
+      ...v5Shadow(colors),
+    },
+    statusTitle: {
+      color: colors.text,
+      fontSize: 19,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    statusText: {
+      color: colors.text2,
+      fontSize: 14,
+      lineHeight: 21,
+      fontWeight: "700",
+    },
+    emptyCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 20,
+      padding: 22,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    emptyText: {
+      color: colors.text2,
+      fontSize: 14,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+    tripCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 22,
+      padding: 18,
+      marginBottom: 16,
+    },
+    tripHeader: {
+      marginBottom: 12,
+    },
+    tripRoute: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: "900",
+      lineHeight: 24,
+      marginBottom: 8,
+    },
+    tripBadge: {
+      color: colors.navy,
+      backgroundColor: colors.gold,
+      alignSelf: "flex-start",
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      overflow: "hidden",
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    tripText: {
+      color: colors.text2,
+      fontSize: 14,
+      marginBottom: 6,
+      fontWeight: "700",
+    },
+    payoutBox: {
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.13)" : "#FFF8E8",
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      padding: 14,
+      marginTop: 10,
+      marginBottom: 14,
+    },
+    payoutLabel: {
+      color: colors.text2,
+      fontSize: 13,
+      marginBottom: 5,
+      fontWeight: "700",
+    },
+    tripAmount: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 12,
+    },
+    payoutAmount: {
+      color: colors.gold,
+      fontSize: 24,
+      fontWeight: "900",
+    },
+    claimButton: {
+      backgroundColor: colors.gold,
+      borderRadius: 16,
+      padding: 15,
+    },
+    claimText: {
+      color: colors.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textAlign: "center",
+    },
+  });
+}

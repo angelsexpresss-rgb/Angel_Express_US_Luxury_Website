@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -13,6 +13,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Eye, EyeOff } from "lucide-react-native";
+
 import { supabase } from "../lib/supabase";
 
 import {
@@ -23,10 +25,17 @@ import {
   slowBackgroundZoom,
 } from "../components/angel";
 
+import { usePassengerTheme } from "../lib/passengerTheme";
+
 export default function LoginScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const logoFade = useRef(new Animated.Value(0)).current;
   const titleFade = useRef(new Animated.Value(0)).current;
@@ -44,6 +53,10 @@ export default function LoginScreen() {
       fadeUp(linkFade, 40),
     ]).start();
   }, []);
+
+  function isValidEmail(value: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim().toLowerCase());
+  }
 
   async function syncWebsiteBookings(userId: string, userEmail: string) {
     const cleanEmail = userEmail.trim().toLowerCase();
@@ -87,8 +100,21 @@ export default function LoginScreen() {
   async function handleLogin() {
     if (loading) return;
 
-    if (!email || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       Alert.alert("Missing Information", "Please enter your email and password.");
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      Alert.alert("Invalid Email", "Please enter a valid email address.");
+      return;
+    }
+
+    if (cleanPassword.length < 6) {
+      Alert.alert("Invalid Password", "Password must be at least 6 characters.");
       return;
     }
 
@@ -96,8 +122,8 @@ export default function LoginScreen() {
       setLoading(true);
 
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+        email: cleanEmail,
+        password: cleanPassword,
       });
 
       if (error) throw error;
@@ -126,7 +152,10 @@ export default function LoginScreen() {
         router.replace("/dashboard" as any);
       }
     } catch (error: any) {
-      Alert.alert("Login Error", error.message || "Could not sign in.");
+      Alert.alert(
+        "Secure Login Failed",
+        error.message || "Could not sign in. Please check your email and password."
+      );
     } finally {
       setLoading(false);
     }
@@ -171,6 +200,12 @@ export default function LoginScreen() {
 
       <View style={styles.overlay}>
         <SafeAreaView style={styles.safeArea}>
+          <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <Text style={styles.themeText}>
+              {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+            </Text>
+          </TouchableOpacity>
+
           <ScrollView
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
@@ -220,23 +255,57 @@ export default function LoginScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your email"
-                  placeholderTextColor="rgba(255,255,255,0.45)"
+                  placeholderTextColor={
+                    colors.mode === "dark"
+                      ? "rgba(255,255,255,0.45)"
+                      : "rgba(7,20,38,0.45)"
+                  }
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                  editable={!loading}
                 />
 
                 <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your password"
-                  placeholderTextColor="rgba(255,255,255,0.45)"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                />
+                <View style={styles.passwordWrap}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Enter your password"
+                    placeholderTextColor={
+                      colors.mode === "dark"
+                        ? "rgba(255,255,255,0.45)"
+                        : "rgba(7,20,38,0.45)"
+                    }
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    textContentType="password"
+                    autoComplete="password"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!loading}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword((prev) => !prev)}
+                    activeOpacity={0.8}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={21} color={colors.gold || AE_COLORS.gold} />
+                    ) : (
+                      <Eye size={21} color={colors.gold || AE_COLORS.gold} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.secureNote}>
+                  Secure login protects your passenger account and trip history.
+                </Text>
 
                 <AngelHeroButton
                   title={loading ? "Signing In..." : "Sign In"}
@@ -267,117 +336,196 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    overflow: "hidden",
-  },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg || AE_COLORS.navy,
+      overflow: "hidden",
+    },
 
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
 
-  background: {
-    flex: 1,
-  },
+    background: {
+      flex: 1,
+    },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.88)",
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor:
+        c.mode === "dark" ? "rgba(5,11,22,0.88)" : "rgba(255,255,255,0.58)",
+    },
 
-  safeArea: {
-    flex: 1,
-  },
+    safeArea: {
+      flex: 1,
+    },
 
-  content: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 36,
-    justifyContent: "center",
-  },
+    themePill: {
+      position: "absolute",
+      top: 58,
+      right: 22,
+      zIndex: 10,
+      borderWidth: 1,
+      borderColor:
+        c.mode === "dark"
+          ? "rgba(212,175,55,0.35)"
+          : "rgba(7,20,38,0.18)",
+      backgroundColor:
+        c.mode === "dark" ? "rgba(7,20,38,0.82)" : "rgba(255,255,255,0.82)",
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: 18,
-  },
+    themeText: {
+      color: c.gold || AE_COLORS.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  backText: {
-    color: AE_COLORS.gold,
-    fontSize: 18,
-    fontWeight: "900",
-  },
+    content: {
+      flexGrow: 1,
+      paddingHorizontal: 24,
+      paddingTop: 20,
+      paddingBottom: 36,
+      justifyContent: "center",
+    },
 
-  logo: {
-    width: "100%",
-    height: 145,
-    marginBottom: 8,
-  },
+    backButton: {
+      alignSelf: "flex-start",
+      marginBottom: 18,
+    },
 
-  title: {
-    color: AE_COLORS.white,
-    fontSize: 48,
-    fontWeight: "900",
-    lineHeight: 50,
-    letterSpacing: -1.3,
-    marginBottom: 14,
-    textShadowColor: "rgba(0,0,0,0.85)",
-    textShadowOffset: { width: 1, height: 2 },
-    textShadowRadius: 6,
-  },
+    backText: {
+      color: c.gold || AE_COLORS.gold,
+      fontSize: 18,
+      fontWeight: "900",
+    },
 
-  gold: {
-    color: AE_COLORS.gold,
-  },
+    logo: {
+      width: "100%",
+      height: 145,
+      marginBottom: 8,
+    },
 
-  subtitle: {
-    color: "#dce5ee",
-    fontSize: 16,
-    lineHeight: 25,
-    marginBottom: 24,
-  },
+    title: {
+      color: c.mode === "dark" ? AE_COLORS.white : "#071426",
+      fontSize: 48,
+      fontWeight: "900",
+      lineHeight: 50,
+      letterSpacing: -1.3,
+      marginBottom: 14,
+      textShadowColor:
+        c.mode === "dark" ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.75)",
+      textShadowOffset: { width: 1, height: 2 },
+      textShadowRadius: 6,
+    },
 
-  card: {
-    padding: 22,
-    marginBottom: 24,
-  },
+    gold: {
+      color: c.gold || AE_COLORS.gold,
+    },
 
-  label: {
-    color: AE_COLORS.gold,
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
+    subtitle: {
+      color: c.mode === "dark" ? "#dce5ee" : "#071426",
+      fontSize: 16,
+      lineHeight: 25,
+      marginBottom: 24,
+      fontWeight: c.mode === "dark" ? "400" : "800",
+    },
 
-  input: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    color: AE_COLORS.white,
-    padding: 17,
-    borderRadius: 16,
-    fontSize: 16,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
+    card: {
+      padding: 22,
+      marginBottom: 24,
+      backgroundColor:
+        c.mode === "dark" ? "rgba(7,20,38,0.92)" : "rgba(255,255,255,0.88)",
+      borderColor:
+        c.mode === "dark"
+          ? "rgba(212,175,55,0.20)"
+          : "rgba(7,20,38,0.12)",
+    },
 
-  buttonDisabled: {
-    opacity: 0.7,
-  },
+    label: {
+      color: c.gold || AE_COLORS.gold,
+      fontSize: 13,
+      fontWeight: "900",
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginBottom: 8,
+    },
 
-  signupText: {
-    color: AE_COLORS.white,
-    textAlign: "center",
-    fontSize: 15.5,
-    lineHeight: 24,
-  },
+    input: {
+      backgroundColor:
+        c.mode === "dark"
+          ? "rgba(255,255,255,0.07)"
+          : "rgba(255,255,255,0.92)",
+      color: c.mode === "dark" ? AE_COLORS.white : "#071426",
+      padding: 17,
+      borderRadius: 16,
+      fontSize: 16,
+      marginBottom: 18,
+      borderWidth: 1,
+      borderColor:
+        c.mode === "dark"
+          ? "rgba(255,255,255,0.12)"
+          : "rgba(7,20,38,0.15)",
+    },
 
-  signupGold: {
-    color: AE_COLORS.gold,
-    fontWeight: "900",
-    textDecorationLine: "underline",
-  },
-});
+    passwordWrap: {
+      backgroundColor:
+        c.mode === "dark"
+          ? "rgba(255,255,255,0.07)"
+          : "rgba(255,255,255,0.92)",
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor:
+        c.mode === "dark"
+          ? "rgba(255,255,255,0.12)"
+          : "rgba(7,20,38,0.15)",
+      marginBottom: 12,
+      flexDirection: "row",
+      alignItems: "center",
+    },
+
+    passwordInput: {
+      flex: 1,
+      color: c.mode === "dark" ? AE_COLORS.white : "#071426",
+      padding: 17,
+      fontSize: 16,
+    },
+
+    eyeButton: {
+      width: 52,
+      height: 52,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    secureNote: {
+      color: c.mode === "dark" ? "rgba(220,229,238,0.82)" : "rgba(7,20,38,0.7)",
+      fontSize: 12.5,
+      lineHeight: 19,
+      marginBottom: 18,
+      fontWeight: "700",
+    },
+
+    buttonDisabled: {
+      opacity: 0.7,
+    },
+
+    signupText: {
+      color: c.mode === "dark" ? AE_COLORS.white : "#071426",
+      textAlign: "center",
+      fontSize: 15.5,
+      lineHeight: 24,
+      fontWeight: c.mode === "dark" ? "400" : "800",
+    },
+
+    signupGold: {
+      color: c.gold || AE_COLORS.gold,
+      fontWeight: "900",
+      textDecorationLine: "underline",
+    },
+  });
+}

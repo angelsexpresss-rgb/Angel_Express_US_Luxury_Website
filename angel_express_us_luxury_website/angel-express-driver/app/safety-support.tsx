@@ -1,6 +1,6 @@
 import * as Linking from "expo-linking";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,9 +14,13 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+import { useDriverTheme, v5Shadow } from "../lib/driverTheme";
 
 export default function SafetySupportScreen() {
   const OWNER_PHONE = "19728367910";
+
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -280,7 +284,7 @@ export default function SafetySupportScreen() {
       >
         <View style={styles.overlay}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#d4af37" />
+            <ActivityIndicator size="large" color={colors.gold} />
             <Text style={styles.loadingText}>Loading Safety Support...</Text>
           </View>
         </View>
@@ -300,6 +304,7 @@ export default function SafetySupportScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
+              tintColor={colors.gold}
               onRefresh={() => {
                 setRefreshing(true);
                 loadSupportData();
@@ -307,9 +312,17 @@ export default function SafetySupportScreen() {
             />
           }
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backText}>← Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.title}>Safety & Support</Text>
 
@@ -436,7 +449,7 @@ export default function SafetySupportScreen() {
                         ? "Message passenger..."
                         : "Message owner/dispatch..."
                     }
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={colors.placeholder}
                     value={message}
                     onChangeText={setMessage}
                     multiline
@@ -448,7 +461,7 @@ export default function SafetySupportScreen() {
                     disabled={sending}
                   >
                     {sending ? (
-                      <ActivityIndicator color="#07111f" />
+                      <ActivityIndicator color={colors.navy} />
                     ) : (
                       <Text style={styles.sendButtonText}>Send</Text>
                     )}
@@ -534,243 +547,289 @@ export default function SafetySupportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.72)" },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 22,
-  },
-  loadingText: { color: "#fff", marginTop: 10 },
-  container: {
-    padding: 22,
-    paddingTop: 60,
-    paddingBottom: 50,
-  },
-  backButton: { marginBottom: 20 },
-  backText: {
-    color: "#d4af37",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-  title: {
-    color: "#ffffff",
-    fontSize: 32,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#cbd5e1",
-    lineHeight: 22,
-    marginBottom: 25,
-  },
-  chatCard: {
-    backgroundColor: "rgba(15,23,42,0.94)",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 25,
-    borderWidth: 1,
-    borderColor: "rgba(124,58,237,0.65)",
-  },
-  chatTitle: {
-    color: "#c4b5fd",
-    fontSize: 21,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  chatSubText: {
-    color: "#cbd5e1",
-    lineHeight: 21,
-    marginBottom: 14,
-  },
-  targetRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-  targetButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-  },
-  activeTargetButton: {
-    backgroundColor: "#7c3aed",
-    borderColor: "#7c3aed",
-  },
-  targetText: {
-    color: "#cbd5e1",
-    fontWeight: "900",
-  },
-  activeTargetText: { color: "#fff" },
-  quickRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-  quickButton: {
-    flex: 1,
-    backgroundColor: "#d4af37",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-  },
-  quickButtonText: {
-    color: "#07111f",
-    fontWeight: "900",
-    fontSize: 12,
-  },
-  messagesBox: {
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#1e293b",
-    marginBottom: 12,
-  },
-  noMessageText: {
-    color: "#94a3b8",
-    textAlign: "center",
-    padding: 12,
-  },
-  messageBubble: {
-    padding: 12,
-    borderRadius: 14,
-    marginBottom: 10,
-    maxWidth: "85%",
-  },
-  driverBubble: {
-    backgroundColor: "#d4af37",
-    alignSelf: "flex-end",
-  },
-  otherBubble: {
-    backgroundColor: "#0f172a",
-    borderWidth: 1,
-    borderColor: "#334155",
-    alignSelf: "flex-start",
-  },
-  messageSender: {
-    fontSize: 11,
-    fontWeight: "900",
-    marginBottom: 4,
-    color: "#64748b",
-    textTransform: "uppercase",
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  driverMessageText: {
-    color: "#07111f",
-    fontWeight: "700",
-  },
-  otherMessageText: {
-    color: "#fff",
-  },
-  messageTime: {
-    fontSize: 10,
-    color: "#64748b",
-    marginTop: 6,
-  },
-  inputRow: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "flex-end",
-  },
-  input: {
-    flex: 1,
-    minHeight: 45,
-    maxHeight: 100,
-    backgroundColor: "#0f172a",
-    color: "#fff",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#334155",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  sendButton: {
-    backgroundColor: "#d4af37",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 14,
-  },
-  disabledButton: { opacity: 0.6 },
-  sendButtonText: {
-    color: "#07111f",
-    fontWeight: "900",
-  },
-  section: { marginBottom: 25 },
-  sectionTitle: {
-    color: "#d4af37",
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 15,
-  },
-  statusButton: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderWidth: 1,
-    borderColor: "#334155",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 12,
-  },
-  statusTitle: {
-    color: "#ffffff",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 5,
-  },
-  statusText: { color: "#cbd5e1", lineHeight: 20 },
-  emergencySection: {
-    backgroundColor: "rgba(127,29,29,0.8)",
-    borderWidth: 1,
-    borderColor: "#ef4444",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 25,
-  },
-  emergencyTitle: {
-    color: "#ffffff",
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 15,
-  },
-  emergencyButton: {
-    backgroundColor: "#991b1b",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
-  },
-  emergencyButtonTitle: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: "900",
-  },
-  infoCard: {
-    backgroundColor: "rgba(15,23,42,0.92)",
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  infoTitle: {
-    color: "#d4af37",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 12,
-  },
-  infoText: {
-    color: "#cbd5e1",
-    lineHeight: 22,
-    marginBottom: 10,
-  },
-  bullet: {
-    color: "#ffffff",
-    marginBottom: 6,
-  },
-});
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    overlay: { flex: 1, backgroundColor: colors.overlay },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 22,
+      backgroundColor: colors.bg,
+    },
+    loadingText: {
+      color: colors.text,
+      marginTop: 10,
+      fontWeight: "800",
+    },
+    container: {
+      padding: 22,
+      paddingTop: 60,
+      paddingBottom: 50,
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: colors.gold,
+      fontWeight: "900",
+      fontSize: 14,
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    title: {
+      color: colors.text,
+      fontSize: 32,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    subtitle: {
+      color: colors.text2,
+      lineHeight: 22,
+      marginBottom: 25,
+      fontWeight: "700",
+    },
+    chatCard: {
+      backgroundColor: colors.card,
+      borderRadius: 22,
+      padding: 18,
+      marginBottom: 25,
+      borderWidth: 1,
+      borderColor: colors.blue,
+      ...v5Shadow(colors),
+    },
+    chatTitle: {
+      color: colors.blue,
+      fontSize: 21,
+      fontWeight: "900",
+      marginBottom: 8,
+    },
+    chatSubText: {
+      color: colors.text2,
+      lineHeight: 21,
+      marginBottom: 14,
+      fontWeight: "700",
+    },
+    targetRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 14,
+    },
+    targetButton: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 12,
+      padding: 12,
+      alignItems: "center",
+      backgroundColor: colors.card2,
+    },
+    activeTargetButton: {
+      backgroundColor: colors.blue,
+      borderColor: colors.blue,
+    },
+    targetText: {
+      color: colors.text2,
+      fontWeight: "900",
+    },
+    activeTargetText: { color: "#FFFFFF" },
+    quickRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 14,
+    },
+    quickButton: {
+      flex: 1,
+      backgroundColor: colors.gold,
+      borderRadius: 12,
+      padding: 12,
+      alignItems: "center",
+    },
+    quickButtonText: {
+      color: colors.navy,
+      fontWeight: "900",
+      fontSize: 12,
+    },
+    messagesBox: {
+      backgroundColor: colors.card2,
+      borderRadius: 14,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      marginBottom: 12,
+    },
+    noMessageText: {
+      color: colors.muted2,
+      textAlign: "center",
+      padding: 12,
+      fontWeight: "700",
+    },
+    messageBubble: {
+      padding: 12,
+      borderRadius: 14,
+      marginBottom: 10,
+      maxWidth: "85%",
+    },
+    driverBubble: {
+      backgroundColor: colors.gold,
+      alignSelf: "flex-end",
+    },
+    otherBubble: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      alignSelf: "flex-start",
+    },
+    messageSender: {
+      fontSize: 11,
+      fontWeight: "900",
+      marginBottom: 4,
+      color: colors.muted2,
+      textTransform: "uppercase",
+    },
+    messageText: {
+      fontSize: 15,
+      lineHeight: 21,
+    },
+    driverMessageText: {
+      color: colors.navy,
+      fontWeight: "700",
+    },
+    otherMessageText: {
+      color: colors.text,
+    },
+    messageTime: {
+      fontSize: 10,
+      color: colors.muted2,
+      marginTop: 6,
+    },
+    inputRow: {
+      flexDirection: "row",
+      gap: 10,
+      alignItems: "flex-end",
+    },
+    input: {
+      flex: 1,
+      minHeight: 45,
+      maxHeight: 100,
+      backgroundColor: colors.input,
+      color: colors.inputText,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontWeight: "700",
+    },
+    sendButton: {
+      backgroundColor: colors.gold,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      borderRadius: 14,
+    },
+    disabledButton: { opacity: 0.6 },
+    sendButtonText: {
+      color: colors.navy,
+      fontWeight: "900",
+    },
+    section: { marginBottom: 25 },
+    sectionTitle: {
+      color: colors.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      marginBottom: 15,
+    },
+    statusButton: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+      borderRadius: 18,
+      padding: 18,
+      marginBottom: 12,
+    },
+    statusTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
+    statusText: {
+      color: colors.text2,
+      lineHeight: 20,
+      fontWeight: "700",
+    },
+    emergencySection: {
+      backgroundColor:
+        colors.mode === "dark" ? "rgba(127,29,29,0.8)" : "#FEE2E2",
+      borderWidth: 1,
+      borderColor: colors.danger,
+      borderRadius: 22,
+      padding: 20,
+      marginBottom: 25,
+    },
+    emergencyTitle: {
+      color: colors.mode === "dark" ? "#FFFFFF" : "#991B1B",
+      fontSize: 22,
+      fontWeight: "900",
+      marginBottom: 15,
+    },
+    emergencyButton: {
+      backgroundColor: colors.danger,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 10,
+    },
+    emergencyButtonTitle: {
+      color: "#FFFFFF",
+      fontSize: 17,
+      fontWeight: "900",
+    },
+    infoCard: {
+      backgroundColor: colors.card,
+      borderRadius: 22,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.borderSoft,
+    },
+    infoTitle: {
+      color: colors.gold,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 12,
+    },
+    infoText: {
+      color: colors.text2,
+      lineHeight: 22,
+      marginBottom: 10,
+      fontWeight: "700",
+    },
+    bullet: {
+      color: colors.text,
+      marginBottom: 6,
+      fontWeight: "800",
+    },
+  });
+}

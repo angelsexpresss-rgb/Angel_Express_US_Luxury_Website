@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -12,9 +12,9 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   Bell,
   BriefcaseBusiness,
-  CalendarDays,
   CarFront,
   Clock,
   CreditCard,
@@ -29,15 +29,7 @@ import {
   UserRound,
 } from "lucide-react-native";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 const quickQuestions = [
   "How do I book a ride?",
@@ -63,6 +55,9 @@ const quickQuestions = [
 ];
 
 export default function AIRideAssistantScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<any[]>([
     {
@@ -78,8 +73,26 @@ export default function AIRideAssistantScreen() {
   const chatScrollRef = useRef<ScrollView | null>(null);
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   function localAnswer(userQuestion: string) {
@@ -89,7 +102,12 @@ export default function AIRideAssistantScreen() {
       return "To book a ride, go to Book a Ride, enter your pickup and drop-off address, choose your ride date and time, then continue to fare estimate. After reviewing the estimate, you can confirm the booking.";
     }
 
-    if (q.includes("price") || q.includes("cost") || q.includes("fare") || q.includes("dallas to austin")) {
+    if (
+      q.includes("price") ||
+      q.includes("cost") ||
+      q.includes("fare") ||
+      q.includes("dallas to austin")
+    ) {
       return "Angel Express calculates fares based on distance, trip type, airport/event demand, student discount eligibility, route timing, and special notes. For the most accurate price, use Book a Ride to generate a fare estimate.";
     }
 
@@ -109,7 +127,12 @@ export default function AIRideAssistantScreen() {
       return "Yes. You can book for someone else. Add the passenger name, phone number, pickup instructions, and emergency contact details in the booking notes.";
     }
 
-    if (q.includes("change") || q.includes("edit") || q.includes("pickup address") || q.includes("drop")) {
+    if (
+      q.includes("change") ||
+      q.includes("edit") ||
+      q.includes("pickup address") ||
+      q.includes("drop")
+    ) {
       return "For changes to pickup, drop-off, ride time, luggage, or notes, go to My Trips and use Manage Booking. If the ride is close to pickup time, contact Angel Express support immediately.";
     }
 
@@ -125,7 +148,11 @@ export default function AIRideAssistantScreen() {
       return "You can track an active ride from My Trips or Live Trip Tracking. Driver location appears once the chauffeur starts sharing GPS for the trip.";
     }
 
-    if (q.includes("contact my driver") || q.includes("call driver") || q.includes("text driver")) {
+    if (
+      q.includes("contact my driver") ||
+      q.includes("call driver") ||
+      q.includes("text driver")
+    ) {
       return "When your chauffeur is assigned, driver contact details may appear in My Trips or Live Trip Tracking. You can call or text the driver from the trip page when available.";
     }
 
@@ -133,7 +160,12 @@ export default function AIRideAssistantScreen() {
       return "If your driver is delayed, check Live Trip Tracking for ETA updates. Traffic, weather, airport congestion, and event routes may affect timing. For urgent delays, contact Angel Express support.";
     }
 
-    if (q.includes("pay") || q.includes("payment") || q.includes("receipt") || q.includes("invoice")) {
+    if (
+      q.includes("pay") ||
+      q.includes("payment") ||
+      q.includes("receipt") ||
+      q.includes("invoice")
+    ) {
       return "After your ride is completed, your trip page will show payment status and payment options. Receipts and invoices appear in My Trips when available.";
     }
 
@@ -149,7 +181,12 @@ export default function AIRideAssistantScreen() {
       return "If this is an emergency, call local emergency services immediately. You can also use Safety & Support, Family Check-In+, or Angel Express support for ride-related help.";
     }
 
-    if (q.includes("support") || q.includes("human") || q.includes("whatsapp") || q.includes("help")) {
+    if (
+      q.includes("support") ||
+      q.includes("human") ||
+      q.includes("whatsapp") ||
+      q.includes("help")
+    ) {
       return "For direct help, tap Get Support below. It will take you to the Angel Express Support Center.";
     }
 
@@ -207,9 +244,18 @@ export default function AIRideAssistantScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -217,9 +263,7 @@ export default function AIRideAssistantScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  RIDE SUPPORT ASSISTANT</Text>
-            </View>
+            <Text style={styles.kicker}>RIDE SUPPORT ASSISTANT</Text>
 
             <Text style={styles.title}>AI Ride Assistant</Text>
 
@@ -228,9 +272,9 @@ export default function AIRideAssistantScreen() {
               travel, live trips, payments, safety, and support.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Sparkles size={30} color={AE_COLORS.navy2} />
+                <Sparkles size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -239,18 +283,34 @@ export default function AIRideAssistantScreen() {
                   Fast answers for common ride questions before, during, and after your trip.
                 </Text>
               </View>
-            </AngelCard>
-
-            <View style={styles.featureGrid}>
-              <MiniFeature icon={<Plane size={19} color={GOLD} />} title="Airport" />
-              <MiniFeature icon={<Route size={19} color={GOLD} />} title="Routes" />
-              <MiniFeature icon={<CreditCard size={19} color={GOLD} />} title="Payment" />
-              <MiniFeature icon={<ShieldCheck size={19} color={GOLD} />} title="Safety" />
             </View>
 
-            <AngelCard style={styles.quickBox}>
+            <View style={styles.featureGrid}>
+              <MiniFeature
+                icon={<Plane size={19} color={colors.gold} />}
+                title="Airport"
+                styles={styles}
+              />
+              <MiniFeature
+                icon={<Route size={19} color={colors.gold} />}
+                title="Routes"
+                styles={styles}
+              />
+              <MiniFeature
+                icon={<CreditCard size={19} color={colors.gold} />}
+                title="Payment"
+                styles={styles}
+              />
+              <MiniFeature
+                icon={<ShieldCheck size={19} color={colors.gold} />}
+                title="Safety"
+                styles={styles}
+              />
+            </View>
+
+            <View style={styles.quickBox}>
               <View style={styles.cardHeader}>
-                <HelpCircle size={22} color={GOLD} />
+                <HelpCircle size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Quick Questions</Text>
               </View>
 
@@ -261,15 +321,17 @@ export default function AIRideAssistantScreen() {
                   onPress={() => handleQuickQuestion(item)}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.quickIcon}>{getQuestionIcon(item)}</View>
+                  <View style={styles.quickIcon}>
+                    {getQuestionIcon(item, colors)}
+                  </View>
                   <Text style={styles.quickText}>{item}</Text>
                 </TouchableOpacity>
               ))}
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.chatBox}>
+            <View style={styles.chatBox}>
               <View style={styles.cardHeader}>
-                <MessageCircle size={22} color={GOLD} />
+                <MessageCircle size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Conversation</Text>
               </View>
 
@@ -295,34 +357,36 @@ export default function AIRideAssistantScreen() {
                   </View>
                 ))}
               </ScrollView>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.askBox}>
+            <View style={styles.askBox}>
               <Text style={styles.inputLabel}>Ask your own question</Text>
 
               <TextInput
                 style={styles.input}
                 placeholder="Example: Can my driver wait if my flight is delayed?"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={question}
                 onChangeText={setQuestion}
                 multiline
               />
 
-              <AngelHeroButton
-                title="Ask Assistant"
+              <TouchableOpacity
+                style={styles.goldButton}
                 onPress={() => sendMessage()}
-                variant="gold"
-                style={styles.askButton}
-              />
+                activeOpacity={0.88}
+              >
+                <Text style={styles.goldButtonText}>Ask Assistant</Text>
+              </TouchableOpacity>
 
-              <AngelHeroButton
-                title="Get Support"
+              <TouchableOpacity
+                style={styles.outlineButton}
                 onPress={() => router.push("/support" as any)}
-                variant="outline"
-                style={styles.supportButton}
-              />
-            </AngelCard>
+                activeOpacity={0.88}
+              >
+                <Text style={styles.outlineButtonText}>Get Support</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         </ScrollView>
       </View>
@@ -330,7 +394,15 @@ export default function AIRideAssistantScreen() {
   );
 }
 
-function MiniFeature({ icon, title }: { icon: React.ReactNode; title: string }) {
+function MiniFeature({
+  icon,
+  title,
+  styles,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  styles: any;
+}) {
   return (
     <View style={styles.miniFeature}>
       {icon}
@@ -339,263 +411,348 @@ function MiniFeature({ icon, title }: { icon: React.ReactNode; title: string }) 
   );
 }
 
-function getQuestionIcon(question: string) {
+function getQuestionIcon(question: string, c: any) {
   const q = question.toLowerCase();
 
   if (q.includes("airport") || q.includes("dfw") || q.includes("love field")) {
-    return <Plane size={18} color={GOLD} />;
+    return <Plane size={18} color={c.gold} />;
   }
 
-  if (q.includes("price") || q.includes("pay") || q.includes("receipt") || q.includes("cost")) {
-    return <CreditCard size={18} color={GOLD} />;
+  if (
+    q.includes("price") ||
+    q.includes("pay") ||
+    q.includes("receipt") ||
+    q.includes("cost")
+  ) {
+    return <CreditCard size={18} color={c.gold} />;
   }
 
   if (q.includes("luggage")) {
-    return <Luggage size={18} color={GOLD} />;
+    return <Luggage size={18} color={c.gold} />;
   }
 
   if (q.includes("student")) {
-    return <UserRound size={18} color={GOLD} />;
+    return <UserRound size={18} color={c.gold} />;
   }
 
   if (q.includes("track") || q.includes("driver")) {
-    return <MapPinned size={18} color={GOLD} />;
+    return <MapPinned size={18} color={c.gold} />;
   }
 
   if (q.includes("late") || q.includes("delay")) {
-    return <Clock size={18} color={GOLD} />;
+    return <Clock size={18} color={c.gold} />;
   }
 
   if (q.includes("world cup") || q.includes("hotel")) {
-    return <BriefcaseBusiness size={18} color={GOLD} />;
+    return <BriefcaseBusiness size={18} color={c.gold} />;
   }
 
   if (q.includes("support") || q.includes("emergency")) {
-    return <Bell size={18} color={GOLD} />;
+    return <Bell size={18} color={c.gold} />;
   }
 
-  return <CarFront size={18} color={GOLD} />;
+  return <CarFront size={18} color={c.gold} />;
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    overflow: "hidden",
-  },
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.91)",
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 22,
-    paddingTop: 56,
-    paddingBottom: 50,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: 18,
-  },
-  backText: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-    letterSpacing: -0.7,
-  },
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  heroCard: {
-    minHeight: 124,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-  featureGrid: {
-    flexDirection: "row",
-    gap: 9,
-    marginBottom: 18,
-  },
-  miniFeature: {
-    flex: 1,
-    minHeight: 76,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(13,20,34,0.84)",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-  },
-  miniFeatureText: {
-    color: AE_COLORS.white,
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  quickBox: {
-    padding: 20,
-    marginBottom: 18,
-  },
-  chatBox: {
-    padding: 20,
-    marginBottom: 18,
-  },
-  chatScroll: {
-    maxHeight: 360,
-  },
-  chatContent: {
-    paddingBottom: 6,
-  },
-  askBox: {
-    padding: 20,
-    marginBottom: 18,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
-  quickButton: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    padding: 15,
-    borderRadius: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.14)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  quickIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 13,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quickText: {
-    color: AE_COLORS.white,
-    fontSize: 15.5,
-    lineHeight: 22,
-    flex: 1,
-    fontWeight: "700",
-  },
-  messageBubble: {
-    padding: 15,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  aiBubble: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.14)",
-  },
-  userBubble: {
-    backgroundColor: "rgba(212,175,55,0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.24)",
-  },
-  messageRole: {
-    color: GOLD,
-    fontWeight: "900",
-    marginBottom: 6,
-    fontSize: 13,
-    textTransform: "uppercase",
-  },
-  messageText: {
-    color: AE_COLORS.white,
-    fontSize: 15.5,
-    lineHeight: 23,
-  },
-  inputLabel: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    color: AE_COLORS.white,
-    padding: 16,
-    borderRadius: 16,
-    fontSize: 16,
-    minHeight: 105,
-    textAlignVertical: "top",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    marginBottom: 16,
-  },
-  askButton: {
-    marginTop: 2,
-  },
-  supportButton: {
-    marginTop: 14,
-  },
-});
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
+
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
+    title: {
+      color: c.text,
+      fontSize: 36,
+      fontWeight: "900",
+      marginBottom: 10,
+      letterSpacing: -0.7,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
+
+    heroCard: {
+      minHeight: 124,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 24,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
+
+    featureGrid: {
+      flexDirection: "row",
+      gap: 9,
+      marginBottom: 18,
+    },
+    miniFeature: {
+      flex: 1,
+      minHeight: 76,
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+      ...v5Shadow(c),
+    },
+    miniFeatureText: {
+      color: c.text,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+
+    quickBox: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    chatBox: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    askBox: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+
+    chatScroll: {
+      maxHeight: 360,
+    },
+    chatContent: {
+      paddingBottom: 6,
+    },
+
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
+
+    quickButton: {
+      backgroundColor: c.card2,
+      padding: 15,
+      borderRadius: 16,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    quickIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 13,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    quickText: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 22,
+      flex: 1,
+      fontWeight: "700",
+    },
+
+    messageBubble: {
+      padding: 15,
+      borderRadius: 16,
+      marginBottom: 12,
+    },
+    aiBubble: {
+      backgroundColor: c.card2,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+    },
+    userBubble: {
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    messageRole: {
+      color: c.gold,
+      fontWeight: "900",
+      marginBottom: 6,
+      fontSize: 13,
+      textTransform: "uppercase",
+    },
+    messageText: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 23,
+      fontWeight: "700",
+    },
+
+    inputLabel: {
+      color: c.gold,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 12,
+    },
+    input: {
+      backgroundColor: c.input,
+      color: c.inputText,
+      padding: 16,
+      borderRadius: 16,
+      fontSize: 16,
+      minHeight: 105,
+      textAlignVertical: "top",
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      marginBottom: 16,
+      fontWeight: "700",
+    },
+
+    goldButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      ...v5Shadow(c),
+    },
+    goldButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+    outlineButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 14,
+    },
+    outlineButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}

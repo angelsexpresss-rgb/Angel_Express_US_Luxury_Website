@@ -1,7 +1,8 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   ImageBackground,
@@ -14,6 +15,7 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   BadgeCheck,
   Gift,
   GraduationCap,
@@ -24,19 +26,14 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
 const REFERRAL_DISCOUNT = 10;
 
 export default function BookRideScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
 
@@ -77,8 +74,27 @@ export default function BookRideScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
+
     loadPassengerProfile();
   }, []);
 
@@ -369,9 +385,18 @@ export default function BookRideScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -389,9 +414,9 @@ export default function BookRideScreen() {
               Enter your trip details. Student discounts, shared rides, and referral rewards will be applied on the fare estimate.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Route size={30} color={AE_COLORS.navy2} />
+                <Route size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -400,30 +425,37 @@ export default function BookRideScreen() {
                   GPS pickup, referral rewards, student travel mode, and fare estimate in one flow.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
             <View style={styles.statusGrid}>
               <StatusPill
                 title="Student"
                 value={studentVerified ? "Verified" : studentStatus || "Not Submitted"}
+                styles={styles}
               />
               <StatusPill
                 title="Referral"
                 value={referralApplied ? "Applied" : "Optional"}
+                styles={styles}
               />
               <StatusPill
                 title="Shared Ride"
                 value={studentSharedRide ? "On" : "Off"}
+                styles={styles}
               />
             </View>
 
-            <AngelCard style={styles.card}>
-              <Section title="Pickup Address" icon={<MapPinned size={19} color={GOLD} />} />
+            <View style={styles.card}>
+              <Section
+                title="Pickup Address"
+                icon={<MapPinned size={19} color={colors.gold} />}
+                styles={styles}
+              />
 
               <TextInput
                 style={styles.input}
                 placeholder="Start typing pickup address"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={pickupAddress}
                 onChangeText={(text) => searchAddress(text, "pickup")}
               />
@@ -447,12 +479,16 @@ export default function BookRideScreen() {
                 <Text style={styles.gpsText}>✓ Pickup GPS saved</Text>
               ) : null}
 
-              <Section title="Drop-off Address" icon={<MapPinned size={19} color={GOLD} />} />
+              <Section
+                title="Drop-off Address"
+                icon={<MapPinned size={19} color={colors.gold} />}
+                styles={styles}
+              />
 
               <TextInput
                 style={styles.input}
                 placeholder="Start typing drop-off address"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={dropoffAddress}
                 onChangeText={(text) => searchAddress(text, "dropoff")}
               />
@@ -476,7 +512,11 @@ export default function BookRideScreen() {
                 <Text style={styles.gpsText}>✓ Drop-off GPS saved</Text>
               ) : null}
 
-              <Section title="Date & Time" icon={<ShieldCheck size={19} color={GOLD} />} />
+              <Section
+                title="Date & Time"
+                icon={<ShieldCheck size={19} color={colors.gold} />}
+                styles={styles}
+              />
 
               <TouchableOpacity
                 style={styles.input}
@@ -514,23 +554,33 @@ export default function BookRideScreen() {
                 />
               )}
 
-              <Section title="Trip Type" icon={<Route size={19} color={GOLD} />} />
+              <Section
+                title="Trip Type"
+                icon={<Route size={19} color={colors.gold} />}
+                styles={styles}
+              />
 
               <View style={styles.optionRow}>
                 <OptionButton
                   title="One Way"
                   active={tripType === "One Way"}
                   onPress={() => setTripType("One Way")}
+                  styles={styles}
                 />
 
                 <OptionButton
                   title="Round Trip"
                   active={tripType === "Round Trip"}
                   onPress={() => setTripType("Round Trip")}
+                  styles={styles}
                 />
               </View>
 
-              <Section title="Ride Category" icon={<CarIcon />} />
+              <Section
+                title="Ride Category"
+                icon={<CarIcon color={colors.gold} />}
+                styles={styles}
+              />
 
               {[
                 "Standard Ride",
@@ -547,6 +597,7 @@ export default function BookRideScreen() {
                     (item === "Student Shared Ride" && studentSharedRide)
                   }
                   onPress={() => selectRideCategory(item)}
+                  styles={styles}
                 />
               ))}
 
@@ -562,7 +613,7 @@ export default function BookRideScreen() {
                 </View>
               ) : (
                 <View style={styles.pendingStudentBox}>
-                  <GraduationCap size={20} color={GOLD} />
+                  <GraduationCap size={20} color={colors.gold} />
                   <View style={styles.studentBoxText}>
                     <Text style={styles.pendingStudentTitle}>
                       Student Verification: {studentStatus || "Not Submitted"}
@@ -586,12 +637,16 @@ export default function BookRideScreen() {
                 </View>
               ) : null}
 
-              <Section title="Passengers & Luggage" icon={<Users size={19} color={GOLD} />} />
+              <Section
+                title="Passengers & Luggage"
+                icon={<Users size={19} color={colors.gold} />}
+                styles={styles}
+              />
 
               <TextInput
                 style={styles.input}
                 placeholder="Number of Passengers"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={passengers}
                 onChangeText={setPassengers}
                 keyboardType="numeric"
@@ -600,29 +655,37 @@ export default function BookRideScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Luggage Count"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={luggageCount}
                 onChangeText={setLuggageCount}
                 keyboardType="numeric"
               />
 
-              <Section title="Extra Details" icon={<ShieldCheck size={19} color={GOLD} />} />
+              <Section
+                title="Extra Details"
+                icon={<ShieldCheck size={19} color={colors.gold} />}
+                styles={styles}
+              />
 
               <TextInput
                 style={[styles.input, styles.notesInput]}
                 placeholder="Notes e.g. flight number, pickup instructions, luggage details"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={notes}
                 onChangeText={setNotes}
                 multiline
               />
 
-              <Section title="Referral Code" icon={<Gift size={19} color={GOLD} />} />
+              <Section
+                title="Referral Code"
+                icon={<Gift size={19} color={colors.gold} />}
+                styles={styles}
+              />
 
               <TextInput
                 style={styles.input}
                 placeholder="Enter referral code"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 value={referralCode}
                 onChangeText={(text) => {
                   setReferralCode(text.toUpperCase());
@@ -650,9 +713,11 @@ export default function BookRideScreen() {
                 onPress={applyReferralCode}
                 disabled={referralChecking}
               >
-                <Text style={styles.referralButtonText}>
-                  {referralChecking ? "Checking Code..." : "Apply Referral Code"}
-                </Text>
+                {referralChecking ? (
+                  <ActivityIndicator color={colors.gold} />
+                ) : (
+                  <Text style={styles.referralButtonText}>Apply Referral Code</Text>
+                )}
               </TouchableOpacity>
 
               {referralApplied ? (
@@ -664,13 +729,16 @@ export default function BookRideScreen() {
                 </View>
               ) : null}
 
-              <AngelHeroButton
-                title="Continue to Fare Estimate"
-                onPress={continueToFareEstimate}
-                variant="gold"
+              <TouchableOpacity
                 style={styles.submitButton}
-              />
-            </AngelCard>
+                onPress={continueToFareEstimate}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.submitButtonText}>
+                  Continue to Fare Estimate
+                </Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         </ScrollView>
       </View>
@@ -678,7 +746,15 @@ export default function BookRideScreen() {
   );
 }
 
-function Section({ title, icon }: { title: string; icon?: React.ReactNode }) {
+function Section({
+  title,
+  icon,
+  styles,
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  styles: any;
+}) {
   return (
     <View style={styles.sectionHeader}>
       {icon}
@@ -687,11 +763,19 @@ function Section({ title, icon }: { title: string; icon?: React.ReactNode }) {
   );
 }
 
-function CarIcon() {
-  return <Route size={19} color={GOLD} />;
+function CarIcon({ color }: { color: string }) {
+  return <Route size={19} color={color} />;
 }
 
-function StatusPill({ title, value }: { title: string; value: string }) {
+function StatusPill({
+  title,
+  value,
+  styles,
+}: {
+  title: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.statusPill}>
       <Text style={styles.statusValue}>{value}</Text>
@@ -705,11 +789,13 @@ function OptionButton({
   active,
   onPress,
   full,
+  styles,
 }: {
   title: string;
   active: boolean;
   onPress: () => void;
   full?: boolean;
+  styles: any;
 }) {
   return (
     <TouchableOpacity
@@ -728,309 +814,367 @@ function OptionButton({
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    overflow: "hidden",
-  },
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  background: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.91)",
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 22,
-    paddingTop: 56,
-    paddingBottom: 50,
-  },
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: 18,
-  },
-  backText: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
-  title: {
-    color: GOLD,
-    fontSize: 38,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  heroCard: {
-    minHeight: 126,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  heroCopy: {
-    flex: 1,
-  },
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 14.5,
-    lineHeight: 21,
-    fontWeight: "800",
-  },
-  statusGrid: {
-    flexDirection: "row",
-    gap: 9,
-    marginBottom: 18,
-  },
-  statusPill: {
-    flex: 1,
-    minHeight: 76,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(13,20,34,0.84)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 9,
-  },
-  statusValue: {
-    color: GOLD,
-    fontSize: 11.5,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  statusTitle: {
-    color: AE_COLORS.white,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 5,
-    textAlign: "center",
-  },
-  card: {
-    padding: 22,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    marginTop: 20,
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    color: GOLD,
-    fontSize: 19,
-    fontWeight: "900",
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    color: AE_COLORS.white,
-    padding: 17,
-    borderRadius: 16,
-    fontSize: 16,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-  },
-  inputText: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-  },
-  gpsText: {
-    color: "#22c55e",
-    fontSize: 13,
-    fontWeight: "900",
-    marginTop: -6,
-    marginBottom: 8,
-  },
-  suggestion: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    padding: 13,
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-  },
-  suggestionText: {
-    color: AE_COLORS.white,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  optionRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  optionButton: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    marginBottom: 12,
-    alignItems: "center",
-  },
-  halfOption: {
-    flex: 1,
-  },
-  fullOption: {
-    width: "100%",
-  },
-  optionButtonActive: {
-    backgroundColor: GOLD,
-    borderColor: AE_COLORS.goldLight,
-  },
-  optionText: {
-    color: AE_COLORS.white,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  optionTextActive: {
-    color: AE_COLORS.navy2,
-  },
-  studentBox: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "rgba(34,197,94,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.35)",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-  },
-  pendingStudentBox: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "rgba(212,175,55,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-  },
-  sharedRideBox: {
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "rgba(34,197,94,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.35)",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-  },
-  studentBoxText: {
-    flex: 1,
-  },
-  studentTitle: {
-    color: "#22c55e",
-    fontSize: 14,
-    fontWeight: "900",
-    marginBottom: 5,
-  },
-  pendingStudentTitle: {
-    color: GOLD,
-    fontSize: 14,
-    fontWeight: "900",
-    marginBottom: 5,
-  },
-  studentText: {
-    color: AE_COLORS.textSoft,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  notesInput: {
-    height: 105,
-    textAlignVertical: "top",
-  },
-  referralText: {
-    fontSize: 13,
-    fontWeight: "900",
-    marginTop: -6,
-    marginBottom: 10,
-  },
-  referralSuccess: {
-    color: "#22c55e",
-  },
-  referralError: {
-    color: "#FF6B6B",
-  },
-  referralButton: {
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    borderRadius: 15,
-    paddingVertical: 15,
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  referralButtonDisabled: {
-    opacity: 0.65,
-  },
-  referralButtonText: {
-    color: GOLD,
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  referralAppliedBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 9,
-    backgroundColor: "rgba(34,197,94,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.35)",
-    borderRadius: 14,
-    padding: 13,
-    marginBottom: 8,
-  },
-  referralAppliedText: {
-    color: "#22c55e",
-    fontSize: 13,
-    fontWeight: "900",
-    lineHeight: 19,
-    flex: 1,
-  },
-  submitButton: {
-    marginTop: 24,
-  },
-});
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    kicker: {
+      alignSelf: "flex-start",
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      borderRadius: 999,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      marginBottom: 18,
+    },
+    kickerText: {
+      color: c.gold,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.3,
+    },
+    title: {
+      color: c.text,
+      fontSize: 38,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
+    heroCard: {
+      minHeight: 126,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 22,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 14.5,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
+    statusGrid: {
+      flexDirection: "row",
+      gap: 9,
+      marginBottom: 18,
+    },
+    statusPill: {
+      flex: 1,
+      minHeight: 76,
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 9,
+      ...v5Shadow(c),
+    },
+    statusValue: {
+      color: c.gold,
+      fontSize: 11.5,
+      fontWeight: "900",
+      textAlign: "center",
+    },
+    statusTitle: {
+      color: c.text,
+      fontSize: 11,
+      fontWeight: "800",
+      marginTop: 5,
+      textAlign: "center",
+    },
+    card: {
+      padding: 22,
+      backgroundColor: c.card,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      ...v5Shadow(c),
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 9,
+      marginTop: 20,
+      marginBottom: 14,
+    },
+    sectionTitle: {
+      color: c.gold,
+      fontSize: 19,
+      fontWeight: "900",
+    },
+    input: {
+      backgroundColor: c.input,
+      color: c.inputText,
+      padding: 17,
+      borderRadius: 16,
+      fontSize: 16,
+      marginBottom: 15,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      fontWeight: "700",
+    },
+    inputText: {
+      color: c.inputText,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    gpsText: {
+      color: "#22c55e",
+      fontSize: 13,
+      fontWeight: "900",
+      marginTop: -6,
+      marginBottom: 8,
+    },
+    suggestion: {
+      backgroundColor: c.card2,
+      padding: 13,
+      borderRadius: 14,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    suggestionText: {
+      color: c.text,
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: "700",
+    },
+    optionRow: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    optionButton: {
+      backgroundColor: c.card2,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      borderRadius: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 14,
+      marginBottom: 12,
+      alignItems: "center",
+    },
+    halfOption: {
+      flex: 1,
+    },
+    fullOption: {
+      width: "100%",
+    },
+    optionButtonActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    optionText: {
+      color: c.text,
+      fontWeight: "900",
+      textAlign: "center",
+    },
+    optionTextActive: {
+      color: c.navy,
+    },
+    studentBox: {
+      flexDirection: "row",
+      gap: 10,
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 12,
+    },
+    pendingStudentBox: {
+      flexDirection: "row",
+      gap: 10,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 12,
+    },
+    sharedRideBox: {
+      flexDirection: "row",
+      gap: 10,
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 12,
+    },
+    studentBoxText: {
+      flex: 1,
+    },
+    studentTitle: {
+      color: "#22c55e",
+      fontSize: 14,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
+    pendingStudentTitle: {
+      color: c.gold,
+      fontSize: 14,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
+    studentText: {
+      color: c.text2,
+      fontSize: 13,
+      lineHeight: 19,
+      fontWeight: "700",
+    },
+    notesInput: {
+      height: 105,
+      textAlignVertical: "top",
+    },
+    referralText: {
+      fontSize: 13,
+      fontWeight: "900",
+      marginTop: -6,
+      marginBottom: 10,
+    },
+    referralSuccess: {
+      color: "#22c55e",
+    },
+    referralError: {
+      color: "#FF6B6B",
+    },
+    referralButton: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      borderRadius: 15,
+      paddingVertical: 15,
+      alignItems: "center",
+      marginBottom: 14,
+    },
+    referralButtonDisabled: {
+      opacity: 0.65,
+    },
+    referralButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+    referralAppliedBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 9,
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      borderRadius: 14,
+      padding: 13,
+      marginBottom: 8,
+    },
+    referralAppliedText: {
+      color: "#22c55e",
+      fontSize: 13,
+      fontWeight: "900",
+      lineHeight: 19,
+      flex: 1,
+    },
+    submitButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      paddingVertical: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 24,
+      ...v5Shadow(c),
+    },
+    submitButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      textAlign: "center",
+    },
+  });
+}

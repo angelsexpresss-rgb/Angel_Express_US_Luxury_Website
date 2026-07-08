@@ -1,6 +1,6 @@
 import { useStripe } from "@stripe/stripe-react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,13 +9,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   BadgeCheck,
   CreditCard,
   DollarSign,
-  FileCheck,
   LockKeyhole,
   ReceiptText,
   ShieldCheck,
@@ -23,23 +24,19 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 const PAYMENT_WORKER_URL =
   "https://angel-express-payments.angelsexpresss.workers.dev";
 
-const GOLD = AE_COLORS.gold;
-
 export default function PayRideScreen() {
-  const { bookingId } = useLocalSearchParams();
+  const params = useLocalSearchParams();
+  const bookingId = String(params.bookingId || params.booking_id || "");
+
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
@@ -50,8 +47,27 @@ export default function PayRideScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
+
     loadPayment();
   }, []);
 
@@ -59,21 +75,19 @@ export default function PayRideScreen() {
     try {
       setLoading(true);
 
-      const id = Number(bookingId);
-
-      if (!id) {
+      if (!bookingId) {
         throw new Error("Missing booking ID.");
       }
 
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
-        .eq("id", id)
+        .eq("id", bookingId)
         .single();
 
       if (error) throw error;
 
-      if (String(data.status).toLowerCase() !== "completed") {
+      if (String(data.status || "").toLowerCase() !== "completed") {
         Alert.alert(
           "Ride Not Completed",
           "Payment is only available after your ride has been completed.",
@@ -87,7 +101,7 @@ export default function PayRideScreen() {
         return;
       }
 
-      if (String(data.payment_status).toLowerCase() === "paid") {
+      if (String(data.payment_status || "").toLowerCase() === "paid") {
         Alert.alert("Already Paid", "This ride has already been paid.", [
           {
             text: "View My Trips",
@@ -107,7 +121,7 @@ export default function PayRideScreen() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            booking_id: id,
+            booking_id: bookingId,
           }),
         }
       );
@@ -147,8 +161,6 @@ export default function PayRideScreen() {
         return;
       }
 
-      const id = Number(bookingId);
-
       const { error: updateError } = await supabase
         .from("bookings")
         .update({
@@ -157,7 +169,7 @@ export default function PayRideScreen() {
           invoice_status: "Paid",
           paid_at: new Date().toISOString(),
         })
-        .eq("id", id);
+        .eq("id", bookingId);
 
       if (updateError) throw updateError;
 
@@ -184,13 +196,13 @@ export default function PayRideScreen() {
   });
 
   const totalFare = Number(booking?.total_fare || booking?.total || 0);
-  const driverShare = totalFare * 0.7;
-  const companyShare = totalFare * 0.3;
+  const driverShare = Number(booking?.driver_share || booking?.driver_payout || totalFare * 0.7);
+  const companyShare = Number(booking?.company_share || totalFare * 0.3);
 
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={GOLD} />
+        <ActivityIndicator size="large" color={colors.gold} />
         <Text style={styles.loadingText}>Preparing secure payment...</Text>
       </View>
     );
@@ -212,16 +224,26 @@ export default function PayRideScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backTopButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backTopText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <Animated.View
             style={{
               opacity: pageFade,
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  SECURE RIDE PAYMENT</Text>
-            </View>
-
+            <Text style={styles.kicker}>SECURE RIDE PAYMENT</Text>
             <Text style={styles.title}>Pay Ride</Text>
 
             <Text style={styles.subtitle}>
@@ -229,85 +251,130 @@ export default function PayRideScreen() {
               payment through Stripe.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <CreditCard size={30} color={AE_COLORS.navy2} />
+                <CreditCard size={31} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
                 <Text style={styles.heroTitle}>Amount Due</Text>
                 <Text style={styles.heroPrice}>${totalFare.toFixed(2)}</Text>
-                <Text style={styles.heroText}>
-                  Secure payment powered by Stripe.
-                </Text>
+                <Text style={styles.heroText}>Secure payment powered by Stripe.</Text>
               </View>
-            </AngelCard>
-
-            <View style={styles.statusGrid}>
-              <StatusPill title="Ride" value="Completed" />
-              <StatusPill title="Invoice" value={booking?.invoice_status || "Pending"} />
-              <StatusPill title="Payment" value={booking?.payment_status || "Unpaid"} />
             </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.statusGrid}>
+              <StatusPill title="Ride" value="Completed" styles={styles} />
+              <StatusPill
+                title="Invoice"
+                value={booking?.invoice_status || "Pending"}
+                styles={styles}
+              />
+              <StatusPill
+                title="Payment"
+                value={booking?.payment_status || "Unpaid"}
+                styles={styles}
+              />
+            </View>
+
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <ReceiptText size={22} color={GOLD} />
+                <ReceiptText size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Payment Summary</Text>
               </View>
 
-              <Row label="Booking ID" value={String(bookingId)} />
-              <Row label="Invoice" value={booking?.invoice_no || "N/A"} />
-              <Row label="Passenger" value={booking?.passenger_name || booking?.name || "N/A"} />
-              <Row label="Pickup" value={booking?.pickup_address || booking?.pickup || "N/A"} />
-              <Row label="Drop-off" value={booking?.dropoff_address || booking?.dropoff || "N/A"} />
-              <Row label="Total Fare" value={`$${totalFare.toFixed(2)}`} strong />
-              <Row label="Payment Status" value={booking?.payment_status || "unpaid"} />
-            </AngelCard>
+              <Row label="Booking ID" value={bookingId} styles={styles} />
+              <Row label="Invoice" value={booking?.invoice_no || "N/A"} styles={styles} />
+              <Row
+                label="Passenger"
+                value={booking?.passenger_name || booking?.name || "N/A"}
+                styles={styles}
+              />
+              <Row
+                label="Pickup"
+                value={booking?.pickup_address || booking?.pickup || "N/A"}
+                styles={styles}
+              />
+              <Row
+                label="Drop-off"
+                value={booking?.dropoff_address || booking?.dropoff || "N/A"}
+                styles={styles}
+              />
+              <Row
+                label="Total Fare"
+                value={`$${totalFare.toFixed(2)}`}
+                strong
+                styles={styles}
+              />
+              <Row
+                label="Payment Status"
+                value={booking?.payment_status || "unpaid"}
+                styles={styles}
+              />
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <DollarSign size={22} color={GOLD} />
+                <DollarSign size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Payout Breakdown</Text>
               </View>
 
-              <Row label="Driver Share" value={`$${driverShare.toFixed(2)}`} />
-              <Row label="Company Share" value={`$${companyShare.toFixed(2)}`} />
+              <Row label="Driver Share" value={`$${driverShare.toFixed(2)}`} styles={styles} />
+              <Row label="Company Share" value={`$${companyShare.toFixed(2)}`} styles={styles} />
+
               <Text style={styles.smallNotice}>
                 Driver payout is handled separately through Angel Express operations.
               </Text>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.noticeCard}>
+            <View style={styles.noticeCard}>
               <View style={styles.noticeHeader}>
-                <LockKeyhole size={22} color={GOLD} />
+                <LockKeyhole size={22} color={colors.gold} />
                 <Text style={styles.noticeTitle}>Secure Checkout</Text>
               </View>
 
               <Text style={styles.noticeText}>
-                Apple Pay, Google Pay, and card options will appear when available
-                on your device. Angel Express does not store your full card details.
+                Apple Pay, Google Pay, and card options will appear when available on
+                your device. Angel Express does not store your full card details.
               </Text>
 
               <View style={styles.secureRow}>
-                <SecureBadge icon={<ShieldCheck size={15} color="#22c55e" />} text="Encrypted" />
-                <SecureBadge icon={<BadgeCheck size={15} color="#22c55e" />} text="Stripe" />
-                <SecureBadge icon={<Sparkles size={15} color="#22c55e" />} text="Protected" />
+                <SecureBadge
+                  icon={<ShieldCheck size={15} color="#22c55e" />}
+                  text="Encrypted"
+                  styles={styles}
+                />
+                <SecureBadge
+                  icon={<BadgeCheck size={15} color="#22c55e" />}
+                  text="Stripe"
+                  styles={styles}
+                />
+                <SecureBadge
+                  icon={<Sparkles size={15} color="#22c55e" />}
+                  text="Protected"
+                  styles={styles}
+                />
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelHeroButton
-              title={paying ? "Processing..." : "Pay Full Ride Fare"}
+            <TouchableOpacity
+              style={[styles.payButton, paying && styles.buttonDisabled]}
               onPress={payRide}
-              variant="gold"
-              style={styles.payButton}
-            />
+              disabled={paying}
+            >
+              {paying ? (
+                <ActivityIndicator color={colors.navy} />
+              ) : (
+                <Text style={styles.payButtonText}>Pay Full Ride Fare</Text>
+              )}
+            </TouchableOpacity>
 
-            <AngelHeroButton
-              title="Back to My Trips"
-              onPress={() => router.replace("/my-trips" as any)}
-              variant="outline"
+            <TouchableOpacity
               style={styles.backButton}
-            />
+              onPress={() => router.replace("/my-trips" as any)}
+            >
+              <Text style={styles.backButtonText}>Back to My Trips</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -319,10 +386,12 @@ function Row({
   label,
   value,
   strong,
+  styles,
 }: {
   label: string;
   value: string;
   strong?: boolean;
+  styles: any;
 }) {
   return (
     <View style={styles.row}>
@@ -334,7 +403,15 @@ function Row({
   );
 }
 
-function StatusPill({ title, value }: { title: string; value: string }) {
+function StatusPill({
+  title,
+  value,
+  styles,
+}: {
+  title: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.statusPill}>
       <Text style={styles.statusValue}>{value}</Text>
@@ -346,9 +423,11 @@ function StatusPill({ title, value }: { title: string; value: string }) {
 function SecureBadge({
   icon,
   text,
+  styles,
 }: {
   icon: React.ReactNode;
   text: string;
+  styles: any;
 }) {
   return (
     <View style={styles.secureBadge}>
@@ -358,217 +437,315 @@ function SecureBadge({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
 
-  center: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  loadingText: {
-    color: AE_COLORS.white,
-    marginTop: 16,
-    fontSize: 16,
-  },
+    center: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    loadingText: {
+      color: c.text,
+      marginTop: 16,
+      fontSize: 16,
+      fontWeight: "800",
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backTopButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backTopText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 38,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 8,
+    },
+    title: {
+      color: c.text,
+      fontSize: 38,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  heroCard: {
-    minHeight: 138,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  heroIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 19,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  heroCopy: { flex: 1 },
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 4,
-  },
-  heroPrice: {
-    color: AE_COLORS.navy2,
-    fontSize: 42,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 14.5,
-    lineHeight: 21,
-    fontWeight: "800",
-  },
+    heroCard: {
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 2,
+    },
+    heroPrice: {
+      color: c.navy,
+      fontSize: 42,
+      fontWeight: "900",
+      letterSpacing: -1,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 14.5,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  statusGrid: {
-    flexDirection: "row",
-    gap: 9,
-    marginBottom: 18,
-  },
-  statusPill: {
-    flex: 1,
-    backgroundColor: "rgba(13,20,34,0.84)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    borderRadius: 17,
-    padding: 12,
-    alignItems: "center",
-    minHeight: 76,
-    justifyContent: "center",
-  },
-  statusValue: {
-    color: GOLD,
-    fontSize: 13,
-    fontWeight: "900",
-    textAlign: "center",
-  },
-  statusTitle: {
-    color: AE_COLORS.white,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 5,
-    textAlign: "center",
-  },
+    statusGrid: {
+      flexDirection: "row",
+      gap: 9,
+      marginBottom: 18,
+    },
+    statusPill: {
+      flex: 1,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      borderRadius: 17,
+      padding: 12,
+      alignItems: "center",
+      minHeight: 76,
+      justifyContent: "center",
+      ...v5Shadow(c),
+    },
+    statusValue: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "900",
+      textAlign: "center",
+      textTransform: "capitalize",
+    },
+    statusTitle: {
+      color: c.text,
+      fontSize: 11,
+      fontWeight: "800",
+      marginTop: 5,
+      textAlign: "center",
+    },
 
-  card: {
-    padding: 20,
-    marginBottom: 18,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 21,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  row: {
-    marginBottom: 14,
-  },
-  rowLabel: {
-    color: GOLD,
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  rowValue: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "800",
-  },
-  rowValueStrong: {
-    color: GOLD,
-    fontSize: 20,
-    fontWeight: "900",
-  },
+    row: {
+      marginBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: c.borderSoft,
+      paddingBottom: 11,
+    },
+    rowLabel: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    rowValue: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 22,
+      fontWeight: "800",
+    },
+    rowValueStrong: {
+      color: c.gold,
+      fontSize: 20,
+      fontWeight: "900",
+    },
 
-  smallNotice: {
-    color: AE_COLORS.textSoft,
-    fontSize: 13.5,
-    lineHeight: 20,
-    marginTop: 4,
-  },
+    smallNotice: {
+      color: c.text2,
+      fontSize: 13.5,
+      lineHeight: 20,
+      marginTop: 4,
+      fontWeight: "700",
+    },
 
-  noticeCard: {
-    padding: 20,
-    marginBottom: 18,
-    borderColor: "rgba(34,197,94,0.25)",
-  },
-  noticeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 12,
-  },
-  noticeTitle: {
-    color: GOLD,
-    fontSize: 21,
-    fontWeight: "900",
-  },
-  noticeText: {
-    color: AE_COLORS.textSoft,
-    fontSize: 15,
-    lineHeight: 23,
-  },
+    noticeCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.25)",
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    noticeHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 12,
+    },
+    noticeTitle: {
+      color: c.gold,
+      fontSize: 21,
+      fontWeight: "900",
+    },
+    noticeText: {
+      color: c.text2,
+      fontSize: 15,
+      lineHeight: 23,
+      fontWeight: "700",
+    },
 
-  secureRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 9,
-    marginTop: 16,
-  },
-  secureBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "rgba(34,197,94,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.28)",
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 11,
-  },
-  secureBadgeText: {
-    color: "#22c55e",
-    fontSize: 12,
-    fontWeight: "900",
-  },
+    secureRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 9,
+      marginTop: 16,
+    },
+    secureBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.28)",
+      borderRadius: 999,
+      paddingVertical: 8,
+      paddingHorizontal: 11,
+    },
+    secureBadgeText: {
+      color: "#22c55e",
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  payButton: {
-    marginTop: 2,
-  },
-  backButton: {
-    marginTop: 14,
-  },
-});
+    payButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      paddingVertical: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      ...v5Shadow(c),
+    },
+    payButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      textAlign: "center",
+    },
+    buttonDisabled: {
+      opacity: 0.65,
+    },
+    backButton: {
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 14,
+      backgroundColor: c.card,
+    },
+    backButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}

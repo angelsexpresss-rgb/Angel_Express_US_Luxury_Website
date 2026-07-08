@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   BadgeCheck,
   CarFront,
   Clock,
@@ -26,16 +27,8 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
 const REFERRAL_DISCOUNT_AMOUNT = 10;
 const SHARED_RIDE_ESTIMATED_SAVINGS_RATE = 0.15;
 
@@ -68,6 +61,9 @@ function calculateTieredFare(distanceMiles: number) {
 
 export default function FareEstimateScreen() {
   const params = useLocalSearchParams();
+
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const pickupAddress = String(params.pickupAddress || "");
   const dropoffAddress = String(params.dropoffAddress || "");
@@ -135,8 +131,27 @@ export default function FareEstimateScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
+
     loadEstimate();
   }, []);
 
@@ -417,7 +432,7 @@ export default function FareEstimateScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={GOLD} size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.loadingText}>Calculating fare estimate...</Text>
       </View>
     );
@@ -439,9 +454,18 @@ export default function FareEstimateScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity style={styles.backTopButton} onPress={() => router.back()}>
-            <Text style={styles.backTopText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backTopButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backTopText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -459,9 +483,9 @@ export default function FareEstimateScreen() {
               Review your distance, drive time, verified student discount, referral reward, shared ride estimate, and final fare.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <CreditCard size={30} color={AE_COLORS.navy2} />
+                <CreditCard size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -471,38 +495,42 @@ export default function FareEstimateScreen() {
                   {distanceMiles} miles • {durationText || "Drive time unavailable"}
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
             <View style={styles.summaryGrid}>
               <MiniStat
-                icon={<Route size={18} color={GOLD} />}
+                icon={<Route size={18} color={colors.gold} />}
                 title="Distance"
                 value={`${distanceMiles} mi`}
+                styles={styles}
               />
               <MiniStat
-                icon={<Clock size={18} color={GOLD} />}
+                icon={<Clock size={18} color={colors.gold} />}
                 title="Drive Time"
                 value={durationText || "N/A"}
+                styles={styles}
               />
               <MiniStat
-                icon={<CarFront size={18} color={GOLD} />}
+                icon={<CarFront size={18} color={colors.gold} />}
                 title="Trip Type"
                 value={tripType}
+                styles={styles}
               />
             </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <MapPinned size={22} color={GOLD} />
+                <MapPinned size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Trip Route</Text>
               </View>
 
-              <Info label="Pickup" value={pickupAddress} />
-              <Info label="Drop-off" value={dropoffAddress} />
-              <Info label="Date & Time" value={`${rideDate} at ${rideTime}`} />
+              <Info label="Pickup" value={pickupAddress} styles={styles} />
+              <Info label="Drop-off" value={dropoffAddress} styles={styles} />
+              <Info label="Date & Time" value={`${rideDate} at ${rideTime}`} styles={styles} />
               <Info
                 label="Ride Category"
                 value={studentSharedRide ? "Student Shared Ride" : rideCategory}
+                styles={styles}
               />
 
               {studentSharedRide ? (
@@ -520,43 +548,47 @@ export default function FareEstimateScreen() {
                   GPS coordinates saved for chauffeur navigation.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Sparkles size={22} color={GOLD} />
+                <Sparkles size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Fare Breakdown</Text>
               </View>
 
-              <BreakdownRow label="Pricing Tier" value={tier.pricingTierLabel} />
+              <BreakdownRow label="Pricing Tier" value={tier.pricingTierLabel} styles={styles} />
               <BreakdownRow
                 label="Fare Method"
                 value={`$${tier.baseFareAmount.toFixed(2)} base + $${tier.mileageRate.toFixed(2)}/mile`}
+                styles={styles}
               />
-              <BreakdownRow label="Mileage Fare" value={`$${mileageFare.toFixed(2)}`} />
-              <BreakdownRow label="Base + Mileage" value={`$${oneWayFare.toFixed(2)}`} />
+              <BreakdownRow label="Mileage Fare" value={`$${mileageFare.toFixed(2)}`} styles={styles} />
+              <BreakdownRow label="Base + Mileage" value={`$${oneWayFare.toFixed(2)}`} styles={styles} />
 
               {tripType === "Round Trip" ? (
                 <BreakdownRow
                   label="Round-trip Adjustment"
                   value={`$${roundTripAdjustment.toFixed(2)}`}
+                  styles={styles}
                 />
               ) : null}
 
               <View style={styles.divider} />
 
-              <BreakdownRow label="Subtotal" value={`$${subtotal.toFixed(2)}`} />
+              <BreakdownRow label="Subtotal" value={`$${subtotal.toFixed(2)}`} styles={styles} />
 
               {studentDiscount > 0 ? (
                 <DiscountRow
                   icon={<BadgeCheck size={17} color="#22c55e" />}
                   label="Verified Student Discount"
                   value={`-$${studentDiscount.toFixed(2)}`}
+                  styles={styles}
                 />
               ) : (
                 <BreakdownRow
                   label="Student Discount"
                   value={approvedStudent ? "$0.00" : "Not verified"}
+                  styles={styles}
                 />
               )}
 
@@ -566,15 +598,17 @@ export default function FareEstimateScreen() {
                     icon={<Tag size={17} color="#22c55e" />}
                     label={`Referral Discount (${referralCode})`}
                     value={`-$${referralDiscount.toFixed(2)}`}
+                    styles={styles}
                   />
                 ) : (
                   <WarningRow
                     label={`Referral Code (${referralCode})`}
                     value={referralMessage || "Not applied"}
+                    styles={styles}
                   />
                 )
               ) : (
-                <BreakdownRow label="Referral Discount" value="$0.00" />
+                <BreakdownRow label="Referral Discount" value="$0.00" styles={styles} />
               )}
 
               {studentSharedRide ? (
@@ -583,15 +617,17 @@ export default function FareEstimateScreen() {
                     icon={<Users size={17} color="#22c55e" />}
                     label="Student Shared Ride Estimate"
                     value={`-$${sharedRideEstimatedSavings.toFixed(2)}`}
+                    styles={styles}
                   />
                 ) : (
                   <WarningRow
                     label="Student Shared Ride"
                     value="Student verification required"
+                    styles={styles}
                   />
                 )
               ) : (
-                <BreakdownRow label="Student Shared Ride" value="Not selected" />
+                <BreakdownRow label="Student Shared Ride" value="Not selected" styles={styles} />
               )}
 
               <View style={styles.divider} />
@@ -599,18 +635,19 @@ export default function FareEstimateScreen() {
               <BreakdownRow
                 label="Total Savings"
                 value={`-$${totalDiscount.toFixed(2)}`}
+                styles={styles}
               />
 
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Final Price</Text>
                 <Text style={styles.totalValue}>${finalPrice.toFixed(2)}</Text>
               </View>
-            </AngelCard>
+            </View>
 
             {studentSharedRide ? (
-              <AngelCard style={styles.noticeCard}>
+              <View style={styles.noticeCard}>
                 <View style={styles.cardHeader}>
-                  <GraduationCap size={22} color={GOLD} />
+                  <GraduationCap size={22} color={colors.gold} />
                   <Text style={styles.cardTitle}>Shared Ride Notice</Text>
                 </View>
 
@@ -619,12 +656,12 @@ export default function FareEstimateScreen() {
                   final shared ride pricing based on student match availability, route,
                   date, seat availability, and operational approval.
                 </Text>
-              </AngelCard>
+              </View>
             ) : null}
 
-            <AngelCard style={styles.noticeCard}>
+            <View style={styles.noticeCard}>
               <View style={styles.cardHeader}>
-                <ShieldCheck size={22} color={GOLD} />
+                <ShieldCheck size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Estimate Notice</Text>
               </View>
 
@@ -633,21 +670,23 @@ export default function FareEstimateScreen() {
                 based on route, wait time, airport pickup, event traffic, tolls, and special
                 requests. Referral credits are awarded to the referrer only after the ride is completed.
               </Text>
-            </AngelCard>
+            </View>
 
-            <AngelHeroButton
-              title="Continue to Confirm Booking"
-              onPress={confirmBooking}
-              variant="gold"
+            <TouchableOpacity
               style={styles.actionButton}
-            />
+              onPress={confirmBooking}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.actionButtonText}>Continue to Confirm Booking</Text>
+            </TouchableOpacity>
 
-            <AngelHeroButton
-              title="Back to Booking Form"
-              onPress={() => router.back()}
-              variant="outline"
+            <TouchableOpacity
               style={styles.backButton}
-            />
+              onPress={() => router.back()}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.backButtonText}>Back to Booking Form</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -659,10 +698,12 @@ function MiniStat({
   icon,
   title,
   value,
+  styles,
 }: {
   icon: React.ReactNode;
   title: string;
   value: string;
+  styles: any;
 }) {
   return (
     <View style={styles.miniStat}>
@@ -673,7 +714,15 @@ function MiniStat({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
@@ -682,7 +731,15 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BreakdownRow({ label, value }: { label: string; value: string }) {
+function BreakdownRow({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.breakdownRow}>
       <Text style={styles.breakdownLabel}>{label}</Text>
@@ -695,10 +752,12 @@ function DiscountRow({
   icon,
   label,
   value,
+  styles,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
+  styles: any;
 }) {
   return (
     <View style={styles.discountRow}>
@@ -711,7 +770,15 @@ function DiscountRow({
   );
 }
 
-function WarningRow({ label, value }: { label: string; value: string }) {
+function WarningRow({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.warningRow}>
       <Text style={styles.warningLabel}>{label}</Text>
@@ -720,283 +787,384 @@ function WarningRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
+    bgWrap: { ...StyleSheet.absoluteFillObject },
+    background: { flex: 1 },
+    overlay: { flex: 1, backgroundColor: c.overlay },
+    container: { flex: 1 },
+    content: { padding: 22, paddingTop: 58, paddingBottom: 54 },
 
-  center: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: { color: AE_COLORS.white, marginTop: 12 },
+    center: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    loadingText: {
+      color: c.text,
+      marginTop: 12,
+      fontWeight: "800",
+    },
 
-  backTopButton: { alignSelf: "flex-start", marginBottom: 18 },
-  backTopText: { color: GOLD, fontSize: 18, fontWeight: "900" },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backTopButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backTopText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    kicker: {
+      alignSelf: "flex-start",
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      borderRadius: 999,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      marginBottom: 18,
+    },
+    kickerText: {
+      color: c.gold,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.3,
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 38,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    title: {
+      color: c.text,
+      fontSize: 38,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  heroCard: {
-    minHeight: 132,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  heroIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 19,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  heroCopy: { flex: 1 },
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 4,
-  },
-  heroPrice: {
-    color: AE_COLORS.navy2,
-    fontSize: 42,
-    fontWeight: "900",
-    letterSpacing: -1,
-  },
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
+    heroCard: {
+      minHeight: 132,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 19,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: { flex: 1 },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+    heroPrice: {
+      color: c.navy,
+      fontSize: 42,
+      fontWeight: "900",
+      letterSpacing: -1,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  summaryGrid: {
-    flexDirection: "row",
-    gap: 9,
-    marginBottom: 18,
-  },
-  miniStat: {
-    flex: 1,
-    minHeight: 88,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(13,20,34,0.84)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 8,
-    gap: 5,
-  },
-  miniTitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 11,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  miniValue: {
-    color: AE_COLORS.white,
-    fontSize: 13,
-    fontWeight: "900",
-    textAlign: "center",
-  },
+    summaryGrid: {
+      flexDirection: "row",
+      gap: 9,
+      marginBottom: 18,
+    },
+    miniStat: {
+      flex: 1,
+      minHeight: 88,
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 8,
+      gap: 5,
+      ...v5Shadow(c),
+    },
+    miniTitle: {
+      color: c.text2,
+      fontSize: 11,
+      fontWeight: "800",
+      textAlign: "center",
+    },
+    miniValue: {
+      color: c.text,
+      fontSize: 13,
+      fontWeight: "900",
+      textAlign: "center",
+    },
 
-  card: { padding: 20, marginBottom: 18 },
-  noticeCard: { padding: 20, marginBottom: 18 },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    noticeCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
-  cardTitle: { color: GOLD, fontSize: 22, fontWeight: "900", flex: 1 },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  infoRow: { marginBottom: 14 },
-  infoLabel: {
-    color: GOLD,
-    fontSize: 12,
-    fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  infoValue: {
-    color: AE_COLORS.white,
-    fontSize: 15.5,
-    lineHeight: 23,
-  },
+    infoRow: {
+      marginBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: c.borderSoft,
+      paddingBottom: 11,
+    },
+    infoLabel: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    infoValue: {
+      color: c.text,
+      fontSize: 15.5,
+      lineHeight: 23,
+      fontWeight: "700",
+    },
 
-  sharedBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(34,197,94,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.35)",
-    borderRadius: 15,
-    padding: 13,
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  sharedText: {
-    color: "#22c55e",
-    fontSize: 13,
-    fontWeight: "900",
-    flex: 1,
-    lineHeight: 19,
-  },
+    sharedBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      borderRadius: 15,
+      padding: 13,
+      marginTop: 4,
+      marginBottom: 10,
+    },
+    sharedText: {
+      color: "#22c55e",
+      fontSize: 13,
+      fontWeight: "900",
+      flex: 1,
+      lineHeight: 19,
+    },
 
-  gpsBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(34,197,94,0.10)",
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.35)",
-    borderRadius: 15,
-    padding: 13,
-    marginTop: 6,
-  },
-  gpsText: {
-    color: "#22c55e",
-    fontSize: 13,
-    fontWeight: "900",
-    flex: 1,
-  },
+    gpsBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      borderRadius: 15,
+      padding: 13,
+      marginTop: 6,
+    },
+    gpsText: {
+      color: "#22c55e",
+      fontSize: 13,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  breakdownRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 13,
-  },
-  breakdownLabel: {
-    color: AE_COLORS.textSoft,
-    fontSize: 15,
-    flex: 1,
-  },
-  breakdownValue: {
-    color: AE_COLORS.white,
-    fontSize: 15,
-    fontWeight: "900",
-    textAlign: "right",
-    flex: 1,
-  },
+    breakdownRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+      marginBottom: 13,
+    },
+    breakdownLabel: {
+      color: c.text2,
+      fontSize: 15,
+      flex: 1,
+      fontWeight: "700",
+    },
+    breakdownValue: {
+      color: c.text,
+      fontSize: 15,
+      fontWeight: "900",
+      textAlign: "right",
+      flex: 1,
+    },
 
-  warningRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 13,
-  },
-  warningLabel: {
-    color: "#FF6B6B",
-    fontSize: 15,
-    fontWeight: "900",
-    flex: 1,
-  },
-  warningValue: {
-    color: "#FF6B6B",
-    fontSize: 15,
-    fontWeight: "900",
-    textAlign: "right",
-    flex: 1,
-  },
+    warningRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+      marginBottom: 13,
+    },
+    warningLabel: {
+      color: "#FF6B6B",
+      fontSize: 15,
+      fontWeight: "900",
+      flex: 1,
+    },
+    warningValue: {
+      color: "#FF6B6B",
+      fontSize: 15,
+      fontWeight: "900",
+      textAlign: "right",
+      flex: 1,
+    },
 
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(212,175,55,0.22)",
-    marginVertical: 10,
-  },
+    divider: {
+      height: 1,
+      backgroundColor: c.border,
+      marginVertical: 10,
+    },
 
-  discountRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 13,
-  },
-  discountLeft: {
-    flex: 1,
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-  },
-  discountLabel: {
-    color: "#22c55e",
-    fontSize: 15,
-    fontWeight: "900",
-    flex: 1,
-  },
-  discountValue: {
-    color: "#22c55e",
-    fontSize: 15,
-    fontWeight: "900",
-    textAlign: "right",
-  },
+    discountRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+      marginBottom: 13,
+    },
+    discountLeft: {
+      flex: 1,
+      flexDirection: "row",
+      gap: 8,
+      alignItems: "center",
+    },
+    discountLabel: {
+      color: "#22c55e",
+      fontSize: 15,
+      fontWeight: "900",
+      flex: 1,
+    },
+    discountValue: {
+      color: "#22c55e",
+      fontSize: 15,
+      fontWeight: "900",
+      textAlign: "right",
+    },
 
-  totalRow: {
-    borderTopWidth: 1,
-    borderTopColor: "rgba(212,175,55,0.25)",
-    paddingTop: 16,
-    marginTop: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  totalLabel: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-  },
-  totalValue: {
-    color: GOLD,
-    fontSize: 25,
-    fontWeight: "900",
-  },
+    totalRow: {
+      borderTopWidth: 1,
+      borderTopColor: c.border,
+      paddingTop: 16,
+      marginTop: 12,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    totalLabel: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+    },
+    totalValue: {
+      color: c.gold,
+      fontSize: 25,
+      fontWeight: "900",
+    },
 
-  notice: {
-    color: AE_COLORS.textSoft,
-    fontSize: 15,
-    lineHeight: 23,
-  },
+    notice: {
+      color: c.text2,
+      fontSize: 15,
+      lineHeight: 23,
+      fontWeight: "700",
+    },
 
-  actionButton: {
-    marginTop: 2,
-  },
-  backButton: {
-    marginTop: 14,
-  },
-});
+    actionButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      paddingVertical: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 2,
+      ...v5Shadow(c),
+    },
+    actionButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      textAlign: "center",
+    },
+    backButton: {
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 14,
+      backgroundColor: c.card,
+    },
+    backButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}

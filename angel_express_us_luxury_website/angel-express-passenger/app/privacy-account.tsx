@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   Alert,
   Animated,
@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   Database,
   FileText,
   Headphones,
@@ -21,23 +22,38 @@ import {
   UserCheck,
 } from "lucide-react-native";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
-const GOLD = AE_COLORS.gold;
+const SUPPORT_EMAIL = "support@angelexpressus.com";
 
 export default function PrivacyAccountScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   function openPrivacyPolicy() {
@@ -54,8 +70,14 @@ export default function PrivacyAccountScreen() {
           text: "Request Deletion",
           style: "destructive",
           onPress: () => {
+            const subject = "Account Deletion Request";
+            const body =
+              "I would like to permanently delete my Angel Express account and associated data.";
+
             Linking.openURL(
-              "mailto:angelexpresss@gmail.com?subject=Account Deletion Request&body=I would like to permanently delete my Angel Express account and associated data."
+              `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
+                subject
+              )}&body=${encodeURIComponent(body)}`
             );
           },
         },
@@ -84,9 +106,18 @@ export default function PrivacyAccountScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -94,9 +125,7 @@ export default function PrivacyAccountScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  PRIVACY & ACCOUNT CONTROL</Text>
-            </View>
+            <Text style={styles.kicker}>PRIVACY & ACCOUNT CONTROL</Text>
 
             <Text style={styles.title}>Privacy & Account</Text>
 
@@ -105,9 +134,9 @@ export default function PrivacyAccountScreen() {
               and handles account deletion requests.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <ShieldCheck size={30} color={AE_COLORS.navy2} />
+                <ShieldCheck size={30} color={colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -117,12 +146,13 @@ export default function PrivacyAccountScreen() {
                   safety, communication, payments, rewards, and customer service.
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<LockKeyhole size={24} color={GOLD} />}
+                icon={<LockKeyhole size={24} color={colors.gold} />}
                 title="Privacy Policy"
+                styles={styles}
               />
 
               <Text style={styles.cardText}>
@@ -131,21 +161,21 @@ export default function PrivacyAccountScreen() {
                 rewards, and customer support.
               </Text>
 
-              <AngelHeroButton
-                title="View App Privacy Policy"
-                onPress={openPrivacyPolicy}
-                variant="gold"
-                style={styles.cardButton}
-              />
-            </AngelCard>
+              <TouchableOpacity style={styles.goldButton} onPress={openPrivacyPolicy}>
+                <Text style={styles.goldButtonText}>View App Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<Database size={24} color={GOLD} />}
+                icon={<Database size={24} color={colors.gold} />}
                 title="Data We Collect"
+                styles={styles}
               />
 
               <DataGrid
+                styles={styles}
+                iconColor={colors.gold}
                 items={[
                   "Name",
                   "Email Address",
@@ -157,27 +187,29 @@ export default function PrivacyAccountScreen() {
                   "Rewards Activity",
                 ]}
               />
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<UserCheck size={24} color={GOLD} />}
+                icon={<UserCheck size={24} color={colors.gold} />}
                 title="How We Use Your Data"
+                styles={styles}
               />
 
-              <Bullet text="Process ride bookings and trip requests." />
-              <Bullet text="Provide safety notifications and live trip updates." />
-              <Bullet text="Support Family Check-In+ and Safety Share." />
-              <Bullet text="Connect passengers with owner and driver support." />
-              <Bullet text="Manage rewards, referrals, discounts, and ride history." />
-              <Bullet text="Improve customer service and travel assistance." />
-            </AngelCard>
+              <Bullet text="Process ride bookings and trip requests." styles={styles} />
+              <Bullet text="Provide safety notifications and live trip updates." styles={styles} />
+              <Bullet text="Support Family Check-In+ and Safety Share." styles={styles} />
+              <Bullet text="Connect passengers with owner and driver support." styles={styles} />
+              <Bullet text="Manage rewards, referrals, discounts, and ride history." styles={styles} />
+              <Bullet text="Improve customer service and travel assistance." styles={styles} />
+            </View>
 
-            <AngelCard style={styles.dangerCard}>
+            <View style={styles.dangerCard}>
               <CardHeader
-                icon={<Trash2 size={24} color="#FF6B6B" />}
+                icon={<Trash2 size={24} color={colors.danger} />}
                 title="Request Account Deletion"
                 danger
+                styles={styles}
               />
 
               <Text style={styles.cardText}>
@@ -190,6 +222,7 @@ export default function PrivacyAccountScreen() {
                 onPress={requestAccountDeletion}
                 activeOpacity={0.85}
               >
+                <Trash2 size={18} color={colors.danger} />
                 <Text style={styles.deleteButtonText}>Delete My Account</Text>
               </TouchableOpacity>
 
@@ -197,12 +230,13 @@ export default function PrivacyAccountScreen() {
                 Some records may be retained where required by law, safety,
                 accounting, payment, fraud prevention, or regulatory compliance.
               </Text>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <CardHeader
-                icon={<Headphones size={24} color={GOLD} />}
+                icon={<Headphones size={24} color={colors.gold} />}
                 title="Need Help?"
+                styles={styles}
               />
 
               <Text style={styles.cardText}>
@@ -210,13 +244,13 @@ export default function PrivacyAccountScreen() {
                 or safety questions.
               </Text>
 
-              <AngelHeroButton
-                title="Contact Support"
+              <TouchableOpacity
+                style={styles.outlineButton}
                 onPress={() => router.push("/support" as any)}
-                variant="outline"
-                style={styles.cardButton}
-              />
-            </AngelCard>
+              >
+                <Text style={styles.outlineButtonText}>Contact Support</Text>
+              </TouchableOpacity>
+            </View>
           </Animated.View>
         </ScrollView>
       </View>
@@ -228,20 +262,24 @@ function CardHeader({
   icon,
   title,
   danger,
+  styles,
 }: {
   icon: React.ReactNode;
   title: string;
   danger?: boolean;
+  styles: any;
 }) {
   return (
     <View style={styles.cardHeader}>
       <View style={[styles.iconBox, danger && styles.dangerIconBox]}>{icon}</View>
-      <Text style={[styles.cardTitle, danger && styles.dangerTitle]}>{title}</Text>
+      <Text style={[styles.cardTitle, danger && styles.dangerTitle]}>
+        {title}
+      </Text>
     </View>
   );
 }
 
-function Bullet({ text }: { text: string }) {
+function Bullet({ text, styles }: { text: string; styles: any }) {
   return (
     <View style={styles.bulletRow}>
       <Text style={styles.bulletDot}>•</Text>
@@ -250,12 +288,20 @@ function Bullet({ text }: { text: string }) {
   );
 }
 
-function DataGrid({ items }: { items: string[] }) {
+function DataGrid({
+  items,
+  styles,
+  iconColor,
+}: {
+  items: string[];
+  styles: any;
+  iconColor: string;
+}) {
   return (
     <View style={styles.dataGrid}>
       {items.map((item) => (
         <View key={item} style={styles.dataPill}>
-          <FileText size={15} color={GOLD} />
+          <FileText size={15} color={iconColor} />
           <Text style={styles.dataPillText}>{item}</Text>
         </View>
       ))}
@@ -263,175 +309,278 @@ function DataGrid({ items }: { items: string[] }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: AE_COLORS.navy, overflow: "hidden" },
-  bgWrap: { ...StyleSheet.absoluteFillObject },
-  background: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "rgba(5,11,22,0.91)" },
-  container: { flex: 1 },
-  content: { padding: 22, paddingTop: 56, paddingBottom: 50 },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
 
-  backButton: { alignSelf: "flex-start", marginBottom: 18 },
-  backText: { color: GOLD, fontSize: 18, fontWeight: "900" },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 8,
+    },
+    title: {
+      color: c.text,
+      fontSize: 36,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    heroCard: {
+      minHeight: 135,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      gap: 14,
+      ...v5Shadow(c),
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    heroCopy: {
+      flex: 1,
+    },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 23,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    heroText: {
+      color: c.navy,
+      fontSize: 14.5,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  heroCard: {
-    minHeight: 135,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 14,
-  },
-  heroCopy: { flex: 1 },
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 23,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 14.5,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    dangerCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.42)" : "rgba(220,38,38,0.28)",
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  card: { padding: 20, marginBottom: 18 },
-  dangerCard: {
-    padding: 20,
-    marginBottom: 18,
-    borderColor: "rgba(255,107,107,0.35)",
-  },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      marginBottom: 14,
+    },
+    iconBox: {
+      width: 46,
+      height: 46,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dangerIconBox: {
+      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.5)" : "rgba(220,38,38,0.3)",
+      backgroundColor: c.dangerSoft,
+    },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
+    dangerTitle: {
+      color: c.danger,
+    },
 
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 14,
-  },
-  iconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dangerIconBox: {
-    borderColor: "rgba(255,107,107,0.45)",
-    backgroundColor: "rgba(255,107,107,0.08)",
-  },
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
-  dangerTitle: { color: "#FF6B6B" },
+    cardText: {
+      color: c.text,
+      fontSize: 15,
+      lineHeight: 24,
+      fontWeight: "700",
+    },
 
-  cardText: {
-    color: AE_COLORS.white,
-    fontSize: 15,
-    lineHeight: 24,
-  },
+    goldButton: {
+      backgroundColor: c.gold,
+      paddingVertical: 16,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 18,
+      ...v5Shadow(c),
+    },
+    goldButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
 
-  cardButton: { marginTop: 18 },
+    outlineButton: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      paddingVertical: 16,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 18,
+    },
+    outlineButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
 
-  dataGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  dataPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(255,255,255,0.055)",
-    borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  dataPillText: {
-    color: AE_COLORS.white,
-    fontSize: 13,
-    fontWeight: "800",
-  },
+    dataGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    dataPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card2,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    dataPillText: {
+      color: c.text,
+      fontSize: 13,
+      fontWeight: "800",
+    },
 
-  bulletRow: {
-    flexDirection: "row",
-    gap: 9,
-    marginBottom: 10,
-  },
-  bulletDot: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 23,
-  },
-  bulletText: {
-    color: AE_COLORS.white,
-    fontSize: 15,
-    lineHeight: 23,
-    flex: 1,
-  },
+    bulletRow: {
+      flexDirection: "row",
+      gap: 9,
+      marginBottom: 10,
+    },
+    bulletDot: {
+      color: c.gold,
+      fontSize: 18,
+      fontWeight: "900",
+      lineHeight: 23,
+    },
+    bulletText: {
+      color: c.text,
+      fontSize: 15,
+      lineHeight: 23,
+      flex: 1,
+      fontWeight: "700",
+    },
 
-  deleteButton: {
-    backgroundColor: "#8B0000",
-    paddingVertical: 16,
-    borderRadius: 15,
-    alignItems: "center",
-    marginTop: 18,
-  },
-  deleteButtonText: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  disclaimer: {
-    color: AE_COLORS.textSoft,
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 14,
-  },
-});
+    deleteButton: {
+      backgroundColor: c.dangerSoft,
+      borderWidth: 1,
+      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.48)" : "rgba(220,38,38,0.28)",
+      paddingVertical: 16,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      marginTop: 18,
+    },
+    deleteButtonText: {
+      color: c.danger,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    disclaimer: {
+      color: c.text2,
+      fontSize: 13,
+      lineHeight: 20,
+      marginTop: 14,
+      fontWeight: "700",
+    },
+  });
+}

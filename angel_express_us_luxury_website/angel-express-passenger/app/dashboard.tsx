@@ -31,7 +31,6 @@ import {
   LogOut,
   MapPinned,
   Menu,
-  Navigation,
   Plane,
   ShieldCheck,
   Sparkles,
@@ -149,7 +148,9 @@ export default function DashboardScreen() {
         if (passenger.first_name) setFirstName(passenger.first_name);
         if (passenger.rating) setRating(Number(passenger.rating));
         if (passenger.total_trips) setTotalTrips(Number(passenger.total_trips));
-        if (passenger.student_verified) setStudentVerified(Boolean(passenger.student_verified));
+        if (passenger.student_verified) {
+          setStudentVerified(Boolean(passenger.student_verified));
+        }
         return;
       }
 
@@ -245,7 +246,7 @@ export default function DashboardScreen() {
 
                 <TouchableOpacity
                   style={styles.bellButton}
-                  onPress={() => goTo("/notification-preferences")}
+                  onPress={() => goTo("/passenger-notifications")}
                   activeOpacity={0.85}
                 >
                   <Bell size={23} color={colors.text} strokeWidth={2.6} />
@@ -263,7 +264,9 @@ export default function DashboardScreen() {
 
                 <TouchableOpacity
                   style={styles.themePill}
-                  onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
+                  onPress={() =>
+                    setThemeMode(themeMode === "dark" ? "light" : "dark")
+                  }
                   activeOpacity={0.85}
                 >
                   <Text style={styles.themeText}>
@@ -283,7 +286,9 @@ export default function DashboardScreen() {
                   <View>
                     <Text style={styles.heroLabel}>Private Ride</Text>
                     <Text style={styles.heroTitle}>Book a Ride</Text>
-                    <Text style={styles.heroSub}>Reserve your next Angel Express trip</Text>
+                    <Text style={styles.heroSub}>
+                      Reserve your next Angel Express trip
+                    </Text>
                   </View>
 
                   <Text style={styles.arrowLight}>›</Text>
@@ -309,7 +314,11 @@ export default function DashboardScreen() {
                 activeOpacity={0.9}
               >
                 <View style={styles.levelIcon}>
-                  <Gift size={27} color={colors.mode === "dark" ? "#07111F" : "#FFFFFF"} strokeWidth={2.8} />
+                  <Gift
+                    size={27}
+                    color={colors.mode === "dark" ? "#07111F" : "#FFFFFF"}
+                    strokeWidth={2.8}
+                  />
                 </View>
 
                 <View style={styles.levelMiddle}>
@@ -332,7 +341,9 @@ export default function DashboardScreen() {
               <View style={styles.goOnlineCard}>
                 <View style={styles.cityArt}>
                   <Text style={styles.cityEmoji}>🏙️</Text>
-                  <Text style={styles.carEmoji}>{themeMode === "dark" ? "🚘" : "🚕"}</Text>
+                  <Text style={styles.carEmoji}>
+                    {themeMode === "dark" ? "🚘" : "🚕"}
+                  </Text>
                 </View>
 
                 <Text style={styles.goOnlineTitle}>Ready for Your Next Trip?</Text>
@@ -385,172 +396,193 @@ export default function DashboardScreen() {
             </Animated.View>
 
             <Animated.View style={{ opacity: toolFade }}>
-              <Text style={styles.menuTitle}>Passenger Tools</Text>
+              <Text style={styles.menuTitle}>Passenger Control Center</Text>
 
-              <ToolCard
-                icon={<CarFront size={26} color={colors.gold} strokeWidth={2.7} />}
-                title="Book a Ride"
-                subtitle="Reserve your next private Angel Express trip."
-                onPress={() => goTo("/book-ride")}
-                styles={styles}
-              />
+<DropdownPanel title="Trips & Ride Management" styles={styles}>
+  <ListItem
+    title="My Trips"
+    icon={<CalendarDays size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/my-trips")}
+    styles={styles}
+  />
 
-              <ToolCard
-                icon={<CalendarDays size={26} color={colors.gold} strokeWidth={2.7} />}
-                title="My Trips"
-                subtitle="View pending, confirmed, in-progress, and completed rides."
-                onPress={() => goTo("/my-trips")}
-                styles={styles}
-              />
+  <ListItem
+    title="Track Live Trip"
+    icon={<MapPinned size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/live-trip")}
+    styles={styles}
+  />
 
-             <ToolCard
-  icon={<MapPinned size={26} color={colors.gold} strokeWidth={2.7} />}
-  title="Track Live Trip"
-  subtitle="Track your active ride, driver location, ETA, vehicle, and plate."
-  onPress={() => goTo("/live-trip")}
+  <ListItem
+    title="Manage Booking"
+    icon={<Ticket size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/my-trips")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Pay Ride"
+    icon={<Ticket size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/my-trips")}
+    styles={styles}
+  />
+</DropdownPanel>
+
+<DropdownPanel title="Travel Services" styles={styles}>
+  <ListItem
+    title="Luxury Ride Prep+"
+    icon={
+      <BriefcaseBusiness
+        size={21}
+        color={colors.gold}
+        strokeWidth={2.7}
+      />
+    }
+    onPress={() => goTo("/luxury-ride-prep")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Angel Travel Concierge"
+    icon={<Plane size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/travel-concierge")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Student Travel Mode+"
+    icon={
+      <GraduationCap
+        size={21}
+        color={colors.gold}
+        strokeWidth={2.7}
+      />
+    }
+    onPress={() => goTo("/student-travel")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="AI Ride Assistant"
+    icon={<Sparkles size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/ai-assistant")}
+    styles={styles}
+  />
+</DropdownPanel>
+
+<DropdownPanel title="Passenger Account" styles={styles}>
+  <ListItem
+    title="Profile"
+    icon={<UserRound size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/profile")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Passenger Card"
+    icon={<BadgeCheck size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/passenger-card")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Rewards"
+    icon={<Gift size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/rewards")}
+    styles={styles}
+  />
+</DropdownPanel>
+
+<DropdownPanel title="Entertainment & Events" styles={styles}>
+  <ListItem
+    title="Entertainment Hub+"
+    icon={<Gamepad2 size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/entertainment-hub")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Multi-Language Assistant"
+    icon={<Languages size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/language-assistant")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="World Cup & Event Mode"
+    icon={<Trophy size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/travel-concierge")}
+    styles={styles}
+  />
+</DropdownPanel>
+
+<DropdownPanel title="Safety, Family & Support" styles={styles}>
+  <ListItem
+    title="Safety & Support"
+    icon={<ShieldCheck size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/safety-share")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Angel Safety Share"
+    icon={<ShieldCheck size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/safety-share")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Family Check-In+"
+    icon={<Users size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/family-checkin")}
+    styles={styles}
+  />
+
+  <ListItem
+    title="Support Center"
+    icon={<Headphones size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/support")}
+    styles={styles}
+  />
+</DropdownPanel>
+
+<DropdownPanel title="Settings & Information" styles={styles}>
+  <ListItem
+  title="Notifications"
+  icon={<Bell size={21} color={colors.gold} strokeWidth={2.7} />}
+  onPress={() => goTo("/passenger-notifications")}
   styles={styles}
 />
-            
 
-              <ToolCard
-                icon={<BriefcaseBusiness size={26} color={colors.gold} strokeWidth={2.7} />}
-                title="Luxury Ride Prep+"
-                subtitle="Prepare luggage, pickup timing, preferences, and special notes."
-                onPress={() => goTo("/luxury-ride-prep")}
-                styles={styles}
-              />
+  <ListItem
+    title="Privacy & Account"
+    icon={<Lock size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/privacy-account")}
+    styles={styles}
+  />
 
-              <ToolCard
-                icon={<Plane size={26} color={colors.gold} strokeWidth={2.7} />}
-                title="Angel Travel Concierge"
-                subtitle="Hotels, airports, events, restaurants, tourism, and travel planning."
-                onPress={() => goTo("/travel-concierge")}
-                styles={styles}
-              />
+  <ListItem
+    title="About Angel Express"
+    icon={<Info size={21} color={colors.gold} strokeWidth={2.7} />}
+    onPress={() => goTo("/about")}
+    styles={styles}
+  />
 
-              <ToolCard
-                icon={<GraduationCap size={26} color={colors.gold} strokeWidth={2.7} />}
-                title="Student Travel Mode+"
-                subtitle="Student discounts, campus pickup points, and verified student features."
-                onPress={() => goTo("/student-travel")}
-                styles={styles}
-              />
+  <ListItem
+    title="Log Out"
+    icon={<LogOut size={21} color={colors.danger} strokeWidth={2.7} />}
+    onPress={handleLogout}
+    styles={styles}
+    danger
+  />
+</DropdownPanel>
 
-              <ToolCard
-                icon={<Sparkles size={26} color={colors.gold} strokeWidth={2.7} />}
-                title="AI Ride Assistant"
-                subtitle="Ask questions about booking, luggage, airport pickup, pricing, and support."
-                onPress={() => goTo("/ai-assistant")}
-                styles={styles}
-              />
-
-              <ToolCard
-                icon={<ShieldCheck size={26} color={colors.gold} strokeWidth={2.7} />}
-                title="Safety & Support"
-                subtitle="Angel Safety Share, Family Check-In, and Support Center."
-                onPress={() => goTo("/safety-share")}
-                styles={styles}
-              />
-
-              <Text style={styles.menuTitle}>More Services</Text>
-
-              <DropdownPanel title="Passenger Account" styles={styles}>
-                <ListItem
-                  title="Profile"
-                  icon={<UserRound size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/profile")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="Passenger Card"
-                  icon={<BadgeCheck size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/passenger-card")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="Rewards"
-                  icon={<Gift size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/rewards")}
-                  styles={styles}
-                />
-              </DropdownPanel>
-
-              <DropdownPanel title="Travel & Entertainment" styles={styles}>
-                <ListItem
-                  title="Entertainment Hub+"
-                  icon={<Gamepad2 size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/entertainment-hub")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="Multi-Language Assistant"
-                  icon={<Languages size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/language-assistant")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="World Cup & Event Mode"
-                  icon={<Trophy size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/travel-concierge")}
-                  styles={styles}
-                />
-              </DropdownPanel>
-
-              <DropdownPanel title="Account & Settings" styles={styles}>
-                <ListItem
-                  title="Notification Preferences"
-                  icon={<Bell size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/notification-preferences")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="Privacy & Account"
-                  icon={<Lock size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/privacy-account")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="About Angel Express"
-                  icon={<Info size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/about")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="Log Out"
-                  icon={<LogOut size={21} color={colors.danger} strokeWidth={2.7} />}
-                  onPress={handleLogout}
-                  styles={styles}
-                  danger
-                />
-              </DropdownPanel>
-
-              <DropdownPanel title="Safety & Family" styles={styles}>
-                <ListItem
-                  title="Angel Safety Share"
-                  icon={<ShieldCheck size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/safety-share")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="Family Check-In+"
-                  icon={<Users size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/family-checkin")}
-                  styles={styles}
-                />
-                <ListItem
-                  title="Support Center"
-                  icon={<Headphones size={21} color={colors.gold} strokeWidth={2.7} />}
-                  onPress={() => goTo("/support")}
-                  styles={styles}
-                />
-              </DropdownPanel>
-
-              <View style={styles.footerCard}>
-                <Text style={styles.footerTitle}>Angel Express Standard</Text>
-                <Text style={styles.footerText}>
-                  Comfort • Operational Service • Reliability • Cleanliness
-                </Text>
-              </View>
+<View style={styles.footerCard}>
+  <Text style={styles.footerTitle}>Angel Express Standard</Text>
+  <Text style={styles.footerText}>
+    Comfort • Operational Service • Reliability • Cleanliness
+  </Text>
+</View>
             </Animated.View>
           </Animated.View>
         </ScrollView>
@@ -633,13 +665,14 @@ export default function DashboardScreen() {
           />
         </View>
 
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.logoutText}>🚪 Log Out</Text>
-        </TouchableOpacity>
+      <TouchableOpacity
+  style={styles.logoutButton}
+  onPress={handleLogout}
+  activeOpacity={0.85}
+>
+  <LogOut size={21} color={colors.danger} strokeWidth={2.7} />
+  <Text style={styles.logoutText}>Log Out</Text>
+</TouchableOpacity>
       </Animated.View>
 
       <View style={styles.bottomNav}>
@@ -663,9 +696,17 @@ export default function DashboardScreen() {
           activeOpacity={0.9}
         >
           {menuOpen ? (
-            <X size={31} color={colors.mode === "dark" ? "#07111F" : "#FFFFFF"} strokeWidth={3} />
+            <X
+              size={31}
+              color={colors.mode === "dark" ? "#07111F" : "#FFFFFF"}
+              strokeWidth={3}
+            />
           ) : (
-            <Menu size={31} color={colors.mode === "dark" ? "#07111F" : "#FFFFFF"} strokeWidth={3} />
+            <Menu
+              size={31}
+              color={colors.mode === "dark" ? "#07111F" : "#FFFFFF"}
+              strokeWidth={3}
+            />
           )}
         </TouchableOpacity>
 
@@ -811,39 +852,32 @@ function createStyles(c: any) {
       backgroundColor: c.bg,
       overflow: "hidden",
     },
-
     bgWrap: {
       ...StyleSheet.absoluteFillObject,
     },
-
     background: {
       flex: 1,
       width: "100%",
       height: "100%",
     },
-
     overlay: {
       flex: 1,
       backgroundColor: c.overlay,
     },
-
     scroll: {
       flex: 1,
     },
-
     content: {
       paddingTop: 54,
       paddingHorizontal: 20,
       paddingBottom: 150,
     },
-
     topBar: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 18,
     },
-
     menuButton: {
       width: 44,
       height: 44,
@@ -854,19 +888,16 @@ function createStyles(c: any) {
       borderWidth: 1,
       borderColor: c.lightBorder,
     },
-
     brandBox: {
       alignItems: "center",
       justifyContent: "center",
       flex: 1,
       paddingHorizontal: 12,
     },
-
     logo: {
       width: 178,
       height: 62,
     },
-
     bellButton: {
       width: 44,
       height: 44,
@@ -878,7 +909,6 @@ function createStyles(c: any) {
       justifyContent: "center",
       position: "relative",
     },
-
     badge: {
       position: "absolute",
       top: -4,
@@ -892,13 +922,11 @@ function createStyles(c: any) {
       borderWidth: 2,
       borderColor: c.mode === "dark" ? "#050B16" : "#FFFFFF",
     },
-
     badgeText: {
       color: "#FFFFFF",
       fontSize: 11,
       fontWeight: "900",
     },
-
     greetingRow: {
       flexDirection: "row",
       alignItems: "flex-end",
@@ -906,7 +934,6 @@ function createStyles(c: any) {
       gap: 14,
       marginBottom: 16,
     },
-
     kicker: {
       color: c.gold,
       fontSize: 12,
@@ -914,7 +941,6 @@ function createStyles(c: any) {
       letterSpacing: 1.5,
       marginBottom: 6,
     },
-
     greeting: {
       color: c.text,
       fontSize: 28,
@@ -922,7 +948,6 @@ function createStyles(c: any) {
       letterSpacing: -0.7,
       maxWidth: 235,
     },
-
     themePill: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -931,96 +956,89 @@ function createStyles(c: any) {
       paddingVertical: 10,
       borderRadius: 999,
     },
-
     themeText: {
       color: c.gold,
       fontSize: 12,
       fontWeight: "900",
     },
-
     heroCard: {
-      backgroundColor: c.mode === "dark" ? "rgba(7,17,31,0.98)" : "#07111F",
+      backgroundColor: c.gold,
       borderRadius: 26,
       padding: 22,
       marginBottom: 18,
       borderWidth: 1,
-      borderColor: c.mode === "dark" ? c.border : "rgba(0,0,0,0.06)",
-      shadowColor: "#000",
-      shadowOpacity: 0.18,
+      borderColor:
+        c.mode === "dark"
+          ? "rgba(255,255,255,0.12)"
+          : "rgba(184,134,11,0.28)",
+      shadowColor: c.gold,
+      shadowOpacity: 0.28,
       shadowRadius: 18,
       shadowOffset: { width: 0, height: 10 },
       elevation: 8,
     },
-
     heroTop: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
       marginBottom: 26,
     },
-
     heroLabel: {
-      color: "#EAF0F6",
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 16,
-      fontWeight: "800",
+      fontWeight: "900",
       marginBottom: 8,
+      opacity: 0.9,
     },
-
     heroTitle: {
-      color: "#FFFFFF",
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 42,
       fontWeight: "900",
       letterSpacing: -1.1,
     },
-
     heroSub: {
-      color: "#D6DEE8",
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 14,
-      fontWeight: "700",
+      fontWeight: "800",
       marginTop: 5,
+      opacity: 0.86,
     },
-
     arrowLight: {
-      color: "#FFFFFF",
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 42,
-      fontWeight: "500",
+      fontWeight: "700",
       marginTop: 12,
     },
-
     statsRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
-
     statBlock: {
       flex: 1,
     },
-
     statValue: {
-      color: "#FFFFFF",
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 21,
       fontWeight: "900",
       marginBottom: 5,
     },
-
     statValueSmall: {
       fontSize: 15,
     },
-
     statLabel: {
-      color: "#D6DEE8",
+      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 14,
-      fontWeight: "700",
+      fontWeight: "900",
+      opacity: 0.82,
     },
-
     divider: {
       width: 1,
       height: 58,
-      backgroundColor: "rgba(255,255,255,0.16)",
+      backgroundColor:
+        c.mode === "dark" ? "rgba(7,17,31,0.22)" : "rgba(255,255,255,0.28)",
       marginHorizontal: 12,
     },
-
     levelCard: {
       backgroundColor: c.mode === "dark" ? "rgba(21,31,43,0.94)" : "#FFF8E8",
       borderRadius: 24,
@@ -1032,7 +1050,6 @@ function createStyles(c: any) {
       alignItems: "center",
       gap: 13,
     },
-
     levelIcon: {
       width: 58,
       height: 58,
@@ -1045,18 +1062,15 @@ function createStyles(c: any) {
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },
     },
-
     levelMiddle: {
       flex: 1,
     },
-
     levelTitle: {
       color: c.text,
       fontSize: 17,
       fontWeight: "900",
       marginBottom: 4,
     },
-
     levelText: {
       color: c.muted,
       fontSize: 13,
@@ -1064,33 +1078,28 @@ function createStyles(c: any) {
       fontWeight: "700",
       marginBottom: 10,
     },
-
     progressTrack: {
       height: 8,
       backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.18)" : "#F2DEAD",
       borderRadius: 999,
       overflow: "hidden",
     },
-
     progressFill: {
       width: "45%",
       height: "100%",
       backgroundColor: c.gold,
       borderRadius: 999,
     },
-
     levelCount: {
       color: c.text,
       fontSize: 16,
       fontWeight: "900",
     },
-
     arrowDark: {
       color: c.text,
       fontSize: 30,
       fontWeight: "700",
     },
-
     goOnlineCard: {
       backgroundColor: c.card,
       borderRadius: 25,
@@ -1100,7 +1109,6 @@ function createStyles(c: any) {
       marginBottom: 28,
       overflow: "hidden",
     },
-
     cityArt: {
       position: "absolute",
       right: 16,
@@ -1108,17 +1116,14 @@ function createStyles(c: any) {
       alignItems: "center",
       opacity: c.mode === "dark" ? 0.72 : 0.9,
     },
-
     cityEmoji: {
       fontSize: 64,
       opacity: 0.35,
     },
-
     carEmoji: {
       fontSize: 54,
       marginTop: -34,
     },
-
     goOnlineTitle: {
       color: c.text,
       fontSize: 21,
@@ -1126,7 +1131,6 @@ function createStyles(c: any) {
       marginBottom: 10,
       maxWidth: "72%",
     },
-
     goOnlineText: {
       color: c.muted,
       fontSize: 15,
@@ -1135,7 +1139,6 @@ function createStyles(c: any) {
       marginBottom: 20,
       maxWidth: "78%",
     },
-
     primaryButton: {
       backgroundColor: c.gold,
       paddingVertical: 16,
@@ -1146,19 +1149,16 @@ function createStyles(c: any) {
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 7 },
     },
-
     primaryButtonText: {
       color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 17,
       fontWeight: "900",
     },
-
     sectionHeaderRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
     },
-
     sectionTitle: {
       color: c.text,
       fontSize: 22,
@@ -1166,14 +1166,12 @@ function createStyles(c: any) {
       marginBottom: 14,
       letterSpacing: -0.4,
     },
-
     seeAll: {
       color: c.gold,
       fontSize: 16,
       fontWeight: "900",
       marginBottom: 14,
     },
-
     opportunityCard: {
       backgroundColor: c.card,
       borderRadius: 23,
@@ -1185,7 +1183,6 @@ function createStyles(c: any) {
       gap: 15,
       marginBottom: 30,
     },
-
     smartIcon: {
       width: 58,
       height: 58,
@@ -1194,40 +1191,34 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-
     opportunityTitle: {
       color: c.text,
       fontSize: 17,
       fontWeight: "900",
       marginBottom: 4,
     },
-
     opportunitySub: {
       color: c.muted,
       fontSize: 13,
       fontWeight: "700",
       marginBottom: 4,
     },
-
     opportunityGreen: {
       color: "#16A34A",
       fontSize: 13,
       fontWeight: "800",
     },
-
     pricePill: {
       backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.16)" : "#FFF0CC",
       paddingHorizontal: 12,
       paddingVertical: 8,
       borderRadius: 10,
     },
-
     priceText: {
       color: c.gold,
       fontSize: 13,
       fontWeight: "900",
     },
-
     menuTitle: {
       color: c.gold,
       fontSize: 14,
@@ -1237,7 +1228,6 @@ function createStyles(c: any) {
       marginBottom: 12,
       marginTop: 4,
     },
-
     toolCard: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -1249,7 +1239,6 @@ function createStyles(c: any) {
       alignItems: "center",
       gap: 14,
     },
-
     toolIconBox: {
       width: 50,
       height: 50,
@@ -1260,27 +1249,23 @@ function createStyles(c: any) {
       borderWidth: 1,
       borderColor: c.border,
     },
-
     toolTitle: {
       color: c.text,
       fontSize: 17,
       fontWeight: "900",
       marginBottom: 4,
     },
-
     toolSub: {
       color: c.muted,
       fontSize: 13,
       fontWeight: "700",
       lineHeight: 19,
     },
-
     toolArrow: {
       color: c.gold,
       fontSize: 32,
       fontWeight: "800",
     },
-
     dropdownWrap: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -1289,40 +1274,35 @@ function createStyles(c: any) {
       marginBottom: 12,
       overflow: "hidden",
     },
-
     dropdownHeader: {
-      minHeight: 62,
+      minHeight: 64,
       paddingHorizontal: 17,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.08)" : "#FFF8E8",
     },
-
     dropdownTitle: {
       color: c.text,
       fontSize: 17,
       fontWeight: "900",
     },
-
     dropdownArrow: {
       color: c.gold,
       fontSize: 28,
       fontWeight: "900",
     },
-
     dropdownBody: {
       paddingHorizontal: 16,
       paddingBottom: 10,
       borderTopWidth: 1,
       borderTopColor: c.lightBorder,
     },
-
     listItem: {
       minHeight: 58,
       flexDirection: "row",
       alignItems: "center",
     },
-
     smallIcon: {
       width: 36,
       height: 36,
@@ -1334,28 +1314,26 @@ function createStyles(c: any) {
       justifyContent: "center",
       marginRight: 14,
     },
-
     dangerIcon: {
-      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.45)" : "rgba(220,38,38,0.30)",
+      borderColor:
+        c.mode === "dark"
+          ? "rgba(239,68,68,0.45)"
+          : "rgba(220,38,38,0.30)",
     },
-
     listText: {
       color: c.text,
       fontSize: 16.5,
       fontWeight: "800",
       flex: 1,
     },
-
     listArrow: {
       color: c.gold,
       fontSize: 27,
       fontWeight: "800",
     },
-
     dangerText: {
       color: c.danger,
     },
-
     footerCard: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -1364,7 +1342,6 @@ function createStyles(c: any) {
       padding: 18,
       marginTop: 4,
     },
-
     footerTitle: {
       color: c.gold,
       textAlign: "center",
@@ -1372,23 +1349,21 @@ function createStyles(c: any) {
       fontSize: 17,
       marginBottom: 8,
     },
-
     footerText: {
       color: c.text,
       textAlign: "center",
       fontWeight: "800",
       lineHeight: 22,
     },
-
     menuBackdrop: {
       position: "absolute",
       left: 0,
       right: 0,
       top: 0,
       bottom: 0,
-      backgroundColor: c.mode === "dark" ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.18)",
+      backgroundColor:
+        c.mode === "dark" ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.18)",
     },
-
     bottomMenuPanel: {
       position: "absolute",
       left: 18,
@@ -1405,7 +1380,6 @@ function createStyles(c: any) {
       shadowOffset: { width: 0, height: 14 },
       elevation: 16,
     },
-
     bottomMenuTitle: {
       color: c.gold,
       fontSize: 13,
@@ -1415,13 +1389,11 @@ function createStyles(c: any) {
       marginBottom: 14,
       textAlign: "center",
     },
-
     bottomMenuGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
     },
-
     menuOption: {
       width: "31.5%",
       minHeight: 86,
@@ -1435,31 +1407,28 @@ function createStyles(c: any) {
       paddingHorizontal: 6,
       gap: 7,
     },
-
     menuOptionTitle: {
       color: c.text,
       fontSize: 12.5,
       fontWeight: "900",
       textAlign: "center",
     },
-
     logoutButton: {
       marginTop: 4,
       height: 48,
       borderRadius: 17,
       backgroundColor: c.mode === "dark" ? "rgba(239,68,68,0.16)" : "#FEE2E2",
       borderWidth: 1,
-      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.4)" : "rgba(220,38,38,0.28)",
+      borderColor:
+        c.mode === "dark" ? "rgba(239,68,68,0.4)" : "rgba(220,38,38,0.28)",
       alignItems: "center",
       justifyContent: "center",
     },
-
     logoutText: {
       color: c.mode === "dark" ? "#FCA5A5" : "#991B1B",
       fontWeight: "900",
       fontSize: 15,
     },
-
     bottomNav: {
       position: "absolute",
       left: 0,
@@ -1475,24 +1444,20 @@ function createStyles(c: any) {
       paddingBottom: 14,
       paddingHorizontal: 8,
     },
-
     bottomTab: {
       alignItems: "center",
       justifyContent: "center",
       flex: 1,
     },
-
     bottomLabel: {
       color: c.muted,
       fontSize: 11,
       fontWeight: "900",
       marginTop: 4,
     },
-
     bottomLabelActive: {
       color: c.gold,
     },
-
     centerMenuButton: {
       width: 62,
       height: 62,

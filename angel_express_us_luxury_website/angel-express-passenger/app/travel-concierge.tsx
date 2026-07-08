@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ImageBackground,
@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import {
+  ArrowLeft,
   Building2,
   Bus,
   CalendarDays,
@@ -26,127 +27,158 @@ import {
   Utensils,
 } from "lucide-react-native";
 
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 function openUrl(url: string) {
   Linking.openURL(url);
 }
 
-const conciergeItems = [
-  {
-    category: "Stay",
-    title: "Hotels & Reservations",
-    text: "Find hotels near Dallas, DFW Airport, Love Field, AT&T Stadium, and event venues.",
-    button: "Search Hotels",
-    icon: <Building2 size={26} color={GOLD} />,
-    onPress: () => openUrl("https://www.google.com/travel/hotels/Dallas"),
-  },
-  {
-    category: "Events",
-    title: "Events in Dallas/Fort Worth",
-    text: "Discover concerts, sports, festivals, conferences, and local events.",
-    button: "Find Events",
-    icon: <CalendarDays size={26} color={GOLD} />,
-    onPress: () =>
-      openUrl("https://www.google.com/search?q=events+in+Dallas+Fort+Worth+this+weekend"),
-  },
-  {
-    category: "Events",
-    title: "World Cup / Event Mode",
-    text: "Plan private rides to stadiums, airports, hotels, fan zones, and watch parties.",
-    button: "World Cup Travel Support",
-    icon: <Trophy size={26} color={GOLD} />,
-    onPress: () =>
-      openUrl("https://www.google.com/search?q=World+Cup+2026+Dallas+matches+AT%26T+Stadium"),
-  },
-  {
-    category: "Food",
-    title: "Restaurants",
-    text: "Find restaurants near your pickup, hotel, airport, or stadium.",
-    button: "Search Restaurants",
-    icon: <Utensils size={26} color={GOLD} />,
-    onPress: () =>
-      openUrl("https://www.google.com/maps/search/restaurants+near+Dallas+TX"),
-  },
-  {
-    category: "Airport",
-    title: "Flights",
-    text: "Check flight status for DFW Airport and Dallas Love Field.",
-    button: "Check Flights",
-    icon: <Plane size={26} color={GOLD} />,
-    onPress: () => openUrl("https://www.google.com/search?q=DFW+flight+status"),
-  },
-  {
-    category: "Explore",
-    title: "Tourism",
-    text: "Explore Dallas attractions, museums, nightlife, shopping, and family activities.",
-    button: "Explore Dallas",
-    icon: <Camera size={26} color={GOLD} />,
-    onPress: () => openUrl("https://www.visitdallas.com/"),
-  },
-  {
-    category: "Transit",
-    title: "Bus Routes",
-    text: "Check Dallas public transit routes, schedules, and nearby stations.",
-    button: "View DART Routes",
-    icon: <Bus size={26} color={GOLD} />,
-    onPress: () => openUrl("https://www.dart.org/"),
-  },
-  {
-    category: "Transit",
-    title: "Live Traffic Report",
-    text: "Check live traffic before your ride and plan extra time.",
-    button: "Open Live Traffic",
-    icon: <Route size={26} color={GOLD} />,
-    onPress: () =>
-      openUrl("https://www.google.com/maps/@32.7767,-96.7970,11z/data=!5m1!1e1"),
-  },
-  {
-    category: "Airport",
-    title: "Airport Guide",
-    text: "DFW Airport and Dallas Love Field pickup guidance, terminals, and travel tips.",
-    button: "Airport Info",
-    icon: <MapPinned size={26} color={GOLD} />,
-    onPress: () =>
-      openUrl("https://www.google.com/search?q=DFW+Airport+terminal+guide"),
-  },
-  {
-    category: "Student",
-    title: "Student Travel Guide",
-    text: "Campus rides for UTD, UTA, SMU, UNT, Texas A&M, and UT Austin.",
-    button: "Open Student Travel",
-    icon: <GraduationCap size={26} color={GOLD} />,
-    onPress: () => router.push("/student-travel" as any),
-  },
-  {
-    category: "Events",
-    title: "World Cup 2026 Travel Support",
-    text: "Airport pickup, hotel transfer, stadium ride, group travel, and private city-to-city rides.",
-    button: "Plan World Cup Ride",
-    icon: <Globe2 size={26} color={GOLD} />,
-    onPress: () => router.push("/book-ride" as any),
-  },
+const categories = [
+  "All",
+  "Airport",
+  "Stay",
+  "Food",
+  "Events",
+  "Transit",
+  "Student",
+  "Explore",
 ];
 
-const categories = ["All", "Airport", "Stay", "Food", "Events", "Transit", "Student", "Explore"];
-
 export default function TravelConciergeScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [activeCategory, setActiveCategory] = useState("All");
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
 
+  const conciergeItems = useMemo(
+    () => [
+      {
+        category: "Stay",
+        title: "Hotels & Reservations",
+        text: "Find hotels near Dallas, DFW Airport, Love Field, AT&T Stadium, and event venues.",
+        button: "Search Hotels",
+        icon: <Building2 size={26} color={colors.gold} />,
+        onPress: () => openUrl("https://www.google.com/travel/hotels/Dallas"),
+      },
+      {
+        category: "Events",
+        title: "Events in Dallas/Fort Worth",
+        text: "Discover concerts, sports, festivals, conferences, and local events.",
+        button: "Find Events",
+        icon: <CalendarDays size={26} color={colors.gold} />,
+        onPress: () =>
+          openUrl(
+            "https://www.google.com/search?q=events+in+Dallas+Fort+Worth+this+weekend"
+          ),
+      },
+      {
+        category: "Events",
+        title: "World Cup / Event Mode",
+        text: "Plan private rides to stadiums, airports, hotels, fan zones, and watch parties.",
+        button: "World Cup Travel Support",
+        icon: <Trophy size={26} color={colors.gold} />,
+        onPress: () =>
+          openUrl(
+            "https://www.google.com/search?q=World+Cup+2026+Dallas+matches+AT%26T+Stadium"
+          ),
+      },
+      {
+        category: "Food",
+        title: "Restaurants",
+        text: "Find restaurants near your pickup, hotel, airport, or stadium.",
+        button: "Search Restaurants",
+        icon: <Utensils size={26} color={colors.gold} />,
+        onPress: () =>
+          openUrl("https://www.google.com/maps/search/restaurants+near+Dallas+TX"),
+      },
+      {
+        category: "Airport",
+        title: "Flights",
+        text: "Check flight status for DFW Airport and Dallas Love Field.",
+        button: "Check Flights",
+        icon: <Plane size={26} color={colors.gold} />,
+        onPress: () => openUrl("https://www.google.com/search?q=DFW+flight+status"),
+      },
+      {
+        category: "Explore",
+        title: "Tourism",
+        text: "Explore Dallas attractions, museums, nightlife, shopping, and family activities.",
+        button: "Explore Dallas",
+        icon: <Camera size={26} color={colors.gold} />,
+        onPress: () => openUrl("https://www.visitdallas.com/"),
+      },
+      {
+        category: "Transit",
+        title: "Bus Routes",
+        text: "Check Dallas public transit routes, schedules, and nearby stations.",
+        button: "View DART Routes",
+        icon: <Bus size={26} color={colors.gold} />,
+        onPress: () => openUrl("https://www.dart.org/"),
+      },
+      {
+        category: "Transit",
+        title: "Live Traffic Report",
+        text: "Check live traffic before your ride and plan extra time.",
+        button: "Open Live Traffic",
+        icon: <Route size={26} color={colors.gold} />,
+        onPress: () =>
+          openUrl(
+            "https://www.google.com/maps/@32.7767,-96.7970,11z/data=!5m1!1e1"
+          ),
+      },
+      {
+        category: "Airport",
+        title: "Airport Guide",
+        text: "DFW Airport and Dallas Love Field pickup guidance, terminals, and travel tips.",
+        button: "Airport Info",
+        icon: <MapPinned size={26} color={colors.gold} />,
+        onPress: () =>
+          openUrl("https://www.google.com/search?q=DFW+Airport+terminal+guide"),
+      },
+      {
+        category: "Student",
+        title: "Student Travel Guide",
+        text: "Campus rides for UTD, UTA, SMU, UNT, Texas A&M, and UT Austin.",
+        button: "Open Student Travel",
+        icon: <GraduationCap size={26} color={colors.gold} />,
+        onPress: () => router.push("/student-travel" as any),
+      },
+      {
+        category: "Events",
+        title: "World Cup 2026 Travel Support",
+        text: "Airport pickup, hotel transfer, stadium ride, group travel, and private city-to-city rides.",
+        button: "Plan World Cup Ride",
+        icon: <Globe2 size={26} color={colors.gold} />,
+        onPress: () => router.push("/book-ride" as any),
+      },
+    ],
+    [colors]
+  );
+
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
   }, []);
 
   const pageTranslate = pageFade.interpolate({
@@ -175,9 +207,18 @@ export default function TravelConciergeScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -185,9 +226,7 @@ export default function TravelConciergeScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <View style={styles.kicker}>
-              <Text style={styles.kickerText}>A  PREMIUM TRAVEL SUPPORT</Text>
-            </View>
+            <Text style={styles.kicker}>PREMIUM TRAVEL SUPPORT</Text>
 
             <Text style={styles.title}>Angel Travel Concierge</Text>
 
@@ -196,7 +235,7 @@ export default function TravelConciergeScreen() {
               events, and World Cup ride support from one professional travel hub.
             </Text>
 
-            <AngelCard variant="gold" style={styles.heroCard}>
+            <View style={styles.heroCard}>
               <View style={styles.heroLeft}>
                 <Text style={styles.heroTitle}>Need a private ride?</Text>
                 <Text style={styles.heroText}>
@@ -208,12 +247,12 @@ export default function TravelConciergeScreen() {
                 style={styles.heroAction}
                 onPress={() => router.push("/book-ride" as any)}
               >
-                <ChevronRight size={26} color={AE_COLORS.navy2} />
+                <ChevronRight size={26} color={colors.navy} />
               </TouchableOpacity>
-            </AngelCard>
+            </View>
 
             <View style={styles.searchBar}>
-              <Search size={18} color={GOLD} />
+              <Search size={18} color={colors.gold} />
               <Text style={styles.searchText}>
                 Choose a travel need below. Angel Express will guide the next step.
               </Text>
@@ -250,22 +289,27 @@ export default function TravelConciergeScreen() {
               <MiniFeature
                 label="Airport"
                 value="DFW & Love Field"
-                icon={<Plane size={19} color={GOLD} />}
+                icon={<Plane size={19} color={colors.gold} />}
+                styles={styles}
               />
               <MiniFeature
                 label="Events"
                 value="World Cup Ready"
-                icon={<Trophy size={19} color={GOLD} />}
+                icon={<Trophy size={19} color={colors.gold} />}
+                styles={styles}
               />
               <MiniFeature
                 label="Students"
                 value="Campus Travel"
-                icon={<GraduationCap size={19} color={GOLD} />}
+                icon={<GraduationCap size={19} color={colors.gold} />}
+                styles={styles}
               />
             </View>
 
             <Text style={styles.sectionTitle}>
-              {activeCategory === "All" ? "Concierge Services" : `${activeCategory} Support`}
+              {activeCategory === "All"
+                ? "Concierge Services"
+                : `${activeCategory} Support`}
             </Text>
 
             {filteredItems.map((item, index) => (
@@ -276,15 +320,18 @@ export default function TravelConciergeScreen() {
                 text={item.text}
                 button={item.button}
                 onPress={item.onPress}
+                styles={styles}
+                colors={colors}
               />
             ))}
 
-            <AngelHeroButton
-              title="Plan a Ride Now"
-              onPress={() => router.push("/book-ride" as any)}
-              variant="gold"
+            <TouchableOpacity
               style={styles.bottomButton}
-            />
+              onPress={() => router.push("/book-ride" as any)}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.bottomButtonText}>Plan a Ride Now</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -296,10 +343,12 @@ function MiniFeature({
   label,
   value,
   icon,
+  styles,
 }: {
   label: string;
   value: string;
   icon: React.ReactNode;
+  styles: any;
 }) {
   return (
     <View style={styles.miniCard}>
@@ -316,15 +365,19 @@ function ConciergeCard({
   text,
   button,
   onPress,
+  styles,
+  colors,
 }: {
   icon: React.ReactNode;
   title: string;
   text: string;
   button: string;
   onPress: () => void;
+  styles: any;
+  colors: any;
 }) {
   return (
-    <AngelCard style={styles.card}>
+    <View style={styles.card}>
       <View style={styles.cardTop}>
         <View style={styles.iconBox}>{icon}</View>
 
@@ -336,274 +389,325 @@ function ConciergeCard({
 
       <TouchableOpacity style={styles.cardButton} onPress={onPress} activeOpacity={0.85}>
         <Text style={styles.cardButtonText}>{button}</Text>
-        <ChevronRight size={19} color={AE_COLORS.navy2} />
+        <ChevronRight size={19} color={colors.navy} />
       </TouchableOpacity>
-    </AngelCard>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    overflow: "hidden",
-  },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
 
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
 
-  background: {
-    flex: 1,
-  },
+    background: {
+      flex: 1,
+    },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.92)",
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
 
-  container: {
-    flex: 1,
-  },
+    container: {
+      flex: 1,
+    },
 
-  content: {
-    padding: 22,
-    paddingTop: 56,
-    paddingBottom: 50,
-  },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
 
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: 18,
-  },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
 
-  backText: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-  },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  kicker: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-  },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
 
-  kickerText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.3,
-  },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 36,
-    fontWeight: "900",
-    marginBottom: 10,
-    letterSpacing: -0.7,
-  },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
 
-  heroCard: {
-    minHeight: 122,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
+    title: {
+      color: c.text,
+      fontSize: 36,
+      fontWeight: "900",
+      marginBottom: 10,
+      letterSpacing: -0.7,
+    },
 
-  heroLeft: {
-    flex: 1,
-    paddingRight: 14,
-  },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  heroTitle: {
-    color: AE_COLORS.navy2,
-    fontSize: 25,
-    fontWeight: "900",
-    marginBottom: 6,
-  },
+    heroCard: {
+      minHeight: 122,
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 18,
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      ...v5Shadow(c),
+    },
 
-  heroText: {
-    color: "rgba(6,17,31,0.78)",
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
+    heroLeft: {
+      flex: 1,
+      paddingRight: 14,
+    },
 
-  heroAction: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: "rgba(6,17,31,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 25,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
 
-  searchBar: {
-    minHeight: 58,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 18,
-  },
+    heroText: {
+      color: c.navy,
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  searchText: {
-    color: AE_COLORS.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    flex: 1,
-  },
+    heroAction: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  categoryRow: {
-    gap: 10,
-    paddingRight: 20,
-    marginBottom: 18,
-  },
+    searchBar: {
+      minHeight: 58,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card,
+      paddingHorizontal: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  categoryPill: {
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.28)",
-    backgroundColor: "rgba(255,255,255,0.06)",
-  },
+    searchText: {
+      color: c.text2,
+      fontSize: 14,
+      lineHeight: 20,
+      flex: 1,
+      fontWeight: "700",
+    },
 
-  categoryPillActive: {
-    backgroundColor: GOLD,
-    borderColor: AE_COLORS.goldLight,
-  },
+    categoryRow: {
+      gap: 10,
+      paddingRight: 20,
+      marginBottom: 18,
+    },
 
-  categoryText: {
-    color: AE_COLORS.white,
-    fontSize: 14,
-    fontWeight: "900",
-  },
+    categoryPill: {
+      paddingVertical: 11,
+      paddingHorizontal: 16,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+    },
 
-  categoryTextActive: {
-    color: AE_COLORS.navy2,
-  },
+    categoryPillActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
 
-  featureGrid: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 24,
-  },
+    categoryText: {
+      color: c.text,
+      fontSize: 14,
+      fontWeight: "900",
+    },
 
-  miniCard: {
-    flex: 1,
-    minHeight: 104,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(13,20,34,0.84)",
-    padding: 12,
-    justifyContent: "space-between",
-  },
+    categoryTextActive: {
+      color: c.navy,
+    },
 
-  miniIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    featureGrid: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 24,
+    },
 
-  miniLabel: {
-    color: AE_COLORS.muted,
-    fontSize: 12,
-    fontWeight: "800",
-  },
+    miniCard: {
+      flex: 1,
+      minHeight: 104,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card,
+      padding: 12,
+      justifyContent: "space-between",
+      ...v5Shadow(c),
+    },
 
-  miniValue: {
-    color: AE_COLORS.white,
-    fontSize: 14,
-    fontWeight: "900",
-    lineHeight: 18,
-  },
+    miniIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  sectionTitle: {
-    color: AE_COLORS.white,
-    fontSize: 24,
-    fontWeight: "900",
-    marginBottom: 14,
-  },
+    miniLabel: {
+      color: c.text2,
+      fontSize: 12,
+      fontWeight: "800",
+    },
 
-  card: {
-    padding: 18,
-    marginBottom: 16,
-  },
+    miniValue: {
+      color: c.text,
+      fontSize: 14,
+      fontWeight: "900",
+      lineHeight: 18,
+    },
 
-  cardTop: {
-    flexDirection: "row",
-    gap: 14,
-    marginBottom: 16,
-  },
+    sectionTitle: {
+      color: c.text,
+      fontSize: 24,
+      fontWeight: "900",
+      marginBottom: 14,
+    },
 
-  iconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 18,
+      marginBottom: 16,
+      ...v5Shadow(c),
+    },
 
-  cardCopy: {
-    flex: 1,
-  },
+    cardTop: {
+      flexDirection: "row",
+      gap: 14,
+      marginBottom: 16,
+    },
 
-  cardTitle: {
-    color: GOLD,
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 7,
-  },
+    iconBox: {
+      width: 50,
+      height: 50,
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  cardText: {
-    color: AE_COLORS.white,
-    fontSize: 14.5,
-    lineHeight: 22,
-  },
+    cardCopy: {
+      flex: 1,
+    },
 
-  cardButton: {
-    minHeight: 50,
-    borderRadius: 15,
-    backgroundColor: GOLD,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-  },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 20,
+      fontWeight: "900",
+      marginBottom: 7,
+    },
 
-  cardButtonText: {
-    color: AE_COLORS.navy2,
-    fontSize: 15,
-    fontWeight: "900",
-  },
+    cardText: {
+      color: c.text,
+      fontSize: 14.5,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
 
-  bottomButton: {
-    marginTop: 8,
-  },
-});
+    cardButton: {
+      minHeight: 50,
+      borderRadius: 15,
+      backgroundColor: c.gold,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+    },
+
+    cardButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+
+    bottomButton: {
+      minHeight: 54,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+      ...v5Shadow(c),
+    },
+
+    bottomButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}

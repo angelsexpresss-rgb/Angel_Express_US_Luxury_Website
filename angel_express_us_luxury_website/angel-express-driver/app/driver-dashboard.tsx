@@ -12,23 +12,15 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
-
-type ThemeMode = "dark" | "light";
+import { useDriverTheme } from "../lib/driverTheme";
 
 export default function ChauffeurDashboardScreen() {
-  const systemMode = useColorScheme();
-
-  const [themeMode, setThemeMode] = useState<ThemeMode>(
-    systemMode === "light" ? "light" : "dark"
-  );
-
-  const colors = themeMode === "dark" ? darkTheme : lightTheme;
-  const styles = useMemo(() => createStyles(colors), [themeMode]);
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,8 +32,13 @@ export default function ChauffeurDashboardScreen() {
   const [completedTrips, setCompletedTrips] = useState(0);
   const [weeklyEarnings, setWeeklyEarnings] = useState(0);
   const [driverLevel, setDriverLevel] = useState("Bronze");
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const [showTripTools, setShowTripTools] = useState(true);
+  const [showMoneyTools, setShowMoneyTools] = useState(false);
+  const [showSafetyTools, setShowSafetyTools] = useState(false);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -50,7 +47,6 @@ export default function ChauffeurDashboardScreen() {
   const bodyFade = useRef(new Animated.Value(0)).current;
   const toolFade = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const menuAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -89,21 +85,6 @@ export default function ChauffeurDashboardScreen() {
       fadeIn(bodyFade, 90),
       fadeIn(toolFade, 90),
     ]).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
   }, []);
 
   useEffect(() => {
@@ -139,11 +120,21 @@ export default function ChauffeurDashboardScreen() {
     safetyCheckins: number,
     feedbackScore: number
   ) {
-    if (trips >= 50 && avgRating >= 4.9 && safetyCheckins >= 40 && feedbackScore >= 4.8) {
+    if (
+      trips >= 50 &&
+      avgRating >= 4.9 &&
+      safetyCheckins >= 40 &&
+      feedbackScore >= 4.8
+    ) {
       return "Angel Elite";
     }
 
-    if (trips >= 25 && avgRating >= 4.7 && safetyCheckins >= 20 && feedbackScore >= 4.6) {
+    if (
+      trips >= 25 &&
+      avgRating >= 4.7 &&
+      safetyCheckins >= 20 &&
+      feedbackScore >= 4.6
+    ) {
       return "Gold";
     }
 
@@ -186,10 +177,18 @@ export default function ChauffeurDashboardScreen() {
       setDriver(driverData);
       setIsOnline(driverData.is_online || false);
 
+      const { count: unreadCount } = await supabase
+        .from("driver_notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("driver_id", user.id)
+        .eq("is_read", false);
+
+      setUnreadNotifications(unreadCount || 0);
+
       const { data: completedData, error: completedError } = await supabase
         .from("bookings")
         .select("*")
-        .eq("driver_id", user.id)
+        .or(`driver_id.eq.${user.id},assigned_driver_id.eq.${user.id}`)
         .in("status", ["Completed", "completed"]);
 
       if (completedError) throw completedError;
@@ -209,26 +208,30 @@ export default function ChauffeurDashboardScreen() {
       const weekStart = getWeekStartDate();
 
       const weeklyTrips = completed.filter((trip) => {
-        const completedDate = new Date(
-          trip.completed_at || trip.updated_at || trip.created_at
-        );
+        const completedDate = new Date(trip.completed_at || trip.created_at);
         return completedDate >= new Date(weekStart);
       });
 
-      const weeklyRevenue = weeklyTrips.reduce((sum, trip) => {
-        return (
-          sum +
-          Number(
-            trip.total ||
-              trip.total_fare ||
-              trip.total_price ||
-              trip.price ||
-              0
-          )
+      const weeklyDriverPayout = weeklyTrips.reduce((sum, trip) => {
+        const savedDriverShare = Number(
+          trip.driver_share || trip.driver_payout || trip.driver_earnings || 0
         );
-      }, 0);
 
-      const weeklyDriverPayout = weeklyRevenue * 0.7;
+        if (savedDriverShare > 0) {
+          return sum + savedDriverShare;
+        }
+
+        const tripTotal = Number(
+          trip.total_fare ||
+            trip.total ||
+            trip.balance_due ||
+            trip.total_price ||
+            trip.price ||
+            0
+        );
+
+        return sum + tripTotal * 0.7;
+      }, 0);
 
       const safetyCheckins = completed.filter(
         (trip) =>
@@ -289,7 +292,6 @@ export default function ChauffeurDashboardScreen() {
     if (error) {
       setIsOnline(!newStatus);
       Alert.alert("Error", "Unable to update online status.");
-      return;
     }
   }
 
@@ -330,10 +332,7 @@ export default function ChauffeurDashboardScreen() {
   }
 
   const driverName =
-    driver?.first_name ||
-    driver?.full_name ||
-    driver?.name ||
-    "Chauffeur";
+    driver?.first_name || driver?.full_name || driver?.name || "Chauffeur";
 
   const levelProgress =
     driverLevel === "Angel Elite"
@@ -364,7 +363,9 @@ export default function ChauffeurDashboardScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle={themeMode === "dark" ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={themeMode === "dark" ? "light-content" : "dark-content"}
+      />
 
       <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
         <ImageBackground
@@ -413,7 +414,7 @@ export default function ChauffeurDashboardScreen() {
 
                 <TouchableOpacity
                   style={styles.bellButton}
-                  onPress={() => goTo("/support")}
+                  onPress={() => goTo("/driver-notifications")}
                   activeOpacity={0.85}
                 >
                   <MaterialCommunityIcons
@@ -422,9 +423,13 @@ export default function ChauffeurDashboardScreen() {
                     color={colors.text}
                   />
 
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>3</Text>
-                  </View>
+                  {unreadNotifications > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -436,7 +441,7 @@ export default function ChauffeurDashboardScreen() {
 
                 <TouchableOpacity
                   style={styles.themePill}
-                  onPress={() => setThemeMode(themeMode === "dark" ? "light" : "dark")}
+                  onPress={toggleTheme}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.themeText}>
@@ -447,36 +452,6 @@ export default function ChauffeurDashboardScreen() {
             </Animated.View>
 
             <Animated.View style={{ opacity: cardFade }}>
-              <View style={styles.statusCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.statusTitle}>
-                    {isOnline ? "You are online" : "You are offline"}
-                  </Text>
-                  <Text style={styles.statusSub}>
-                    {isOnline
-                      ? "Ready to accept Angel Express ride requests."
-                      : "Go online to start receiving trip requests."}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    styles.switchTrack,
-                    isOnline ? styles.switchOn : styles.switchOff,
-                  ]}
-                  onPress={toggleOnlineStatus}
-                  activeOpacity={0.85}
-                >
-                  <Animated.View
-                    style={[
-                      styles.switchKnob,
-                      isOnline && styles.switchKnobOn,
-                      { transform: [{ scale: isOnline ? pulseAnim : 1 }] },
-                    ]}
-                  />
-                </TouchableOpacity>
-              </View>
-
               <TouchableOpacity
                 style={styles.earningsCard}
                 onPress={() => goTo("/earnings")}
@@ -484,24 +459,37 @@ export default function ChauffeurDashboardScreen() {
               >
                 <View style={styles.earningsTop}>
                   <View>
-                    <Text style={styles.cardLabel}>Today's Earnings</Text>
+                    <Text style={styles.cardLabel}>This Week's Earnings</Text>
                     <Text style={styles.amount}>${weeklyEarnings.toFixed(2)}</Text>
                   </View>
                   <Text style={styles.arrowLight}>›</Text>
                 </View>
 
                 <View style={styles.statsRow}>
-                  <StatBlock label="Trips" value={String(completedTrips)} styles={styles} />
+                  <StatBlock
+                    label="Trips"
+                    value={String(completedTrips)}
+                    styles={styles}
+                  />
                   <Divider styles={styles} />
-                  <StatBlock label="Rating" value={rating.toFixed(1)} styles={styles} />
+                  <StatBlock
+                    label="Rating"
+                    value={rating.toFixed(1)}
+                    styles={styles}
+                  />
                   <Divider styles={styles} />
-                  <StatBlock label="Level" value={driverLevel} styles={styles} small />
+                  <StatBlock
+                    label="Level"
+                    value={driverLevel}
+                    styles={styles}
+                    small
+                  />
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.levelCard}
-                onPress={() => goTo("/driver-card")}
+                onPress={() => goTo("/rewards")}
                 activeOpacity={0.9}
               >
                 <View style={styles.levelIcon}>
@@ -532,7 +520,9 @@ export default function ChauffeurDashboardScreen() {
               <View style={styles.goOnlineCard}>
                 <View style={styles.cityArt}>
                   <Text style={styles.cityEmoji}>🏙️</Text>
-                  <Text style={styles.carEmoji}>{themeMode === "dark" ? "🚘" : "🚕"}</Text>
+                  <Text style={styles.carEmoji}>
+                    {themeMode === "dark" ? "🚘" : "🚕"}
+                  </Text>
                 </View>
 
                 <Text style={styles.goOnlineTitle}>
@@ -601,72 +591,147 @@ export default function ChauffeurDashboardScreen() {
             <Animated.View style={{ opacity: toolFade }}>
               <Text style={styles.menuTitle}>Driver Tools</Text>
 
-              <ToolCard
-                icon="map-search-outline"
-                title="Find Trips"
-                subtitle="View available website and passenger app bookings."
-                locked={!isOnline}
-                onPress={() => requireOnline("/find-trips")}
-                styles={styles}
-                colors={colors}
-              />
-
-              <ToolCard
+              <ToolSection
+                title="Trip Operations"
+                subtitle="Find, manage, and complete rides"
                 icon="car-clock"
-                title="My Active Trip"
-                subtitle="Navigate to pickup, update status, and complete the ride."
-                locked={!isOnline}
-                onPress={() => requireOnline("/active-trip")}
+                expanded={showTripTools}
+                onPress={() => setShowTripTools(!showTripTools)}
                 styles={styles}
                 colors={colors}
-              />
+              >
+                <ToolCard
+                  icon="map-search-outline"
+                  title="Find Trips"
+                  subtitle="View available website and passenger app bookings."
+                  locked={!isOnline}
+                  onPress={() => requireOnline("/find-trips")}
+                  styles={styles}
+                  colors={colors}
+                />
 
-              <ToolCard
-                icon="calendar-clock"
-                title="Upcoming Trips"
-                subtitle="See today, this week, and future accepted rides."
-                onPress={() => goTo("/upcoming-trips")}
-                styles={styles}
-                colors={colors}
-              />
+                <ToolCard
+                  icon="car-clock"
+                  title="My Active Trip"
+                  subtitle="Navigate to pickup, update status, and complete the ride."
+                  locked={!isOnline}
+                  onPress={() => requireOnline("/active-trip")}
+                  styles={styles}
+                  colors={colors}
+                />
 
-              <ToolCard
-                icon="map-marker-path"
-                title="Smart Queue"
-                subtitle="Claim future trips before they become urgent."
-                locked={!isOnline}
-                onPress={() => requireOnline("/smart-trip-queue")}
-                styles={styles}
-                colors={colors}
-              />
+                <ToolCard
+                  icon="calendar-clock"
+                  title="Upcoming Trips"
+                  subtitle="See today, this week, and future accepted rides."
+                  onPress={() => goTo("/upcoming-trips")}
+                  styles={styles}
+                  colors={colors}
+                />
 
-              <ToolCard
+                <ToolCard
+                  icon="map-marker-path"
+                  title="Smart Queue"
+                  subtitle="Claim future trips before they become urgent."
+                  locked={!isOnline}
+                  onPress={() => requireOnline("/smart-trip-queue")}
+                  styles={styles}
+                  colors={colors}
+                />
+              </ToolSection>
+
+              <ToolSection
+                title="Money & Profile"
+                subtitle="Earnings, ratings, rewards, and account"
                 icon="wallet-outline"
-                title="Money Profile"
-                subtitle="Earnings, payout status, driver card, and passenger ratings."
-                onPress={() => goTo("/earnings")}
+                expanded={showMoneyTools}
+                onPress={() => setShowMoneyTools(!showMoneyTools)}
                 styles={styles}
                 colors={colors}
-              />
+              >
+                <ToolCard
+                  icon="wallet-outline"
+                  title="Money Profile"
+                  subtitle="Earnings, payout status, driver card, and passenger ratings."
+                  onPress={() => goTo("/earnings")}
+                  styles={styles}
+                  colors={colors}
+                />
 
-              <ToolCard
-                icon="star-check-outline"
-                title="Passenger Ratings"
-                subtitle="Review completed trip feedback and passenger ratings."
-                onPress={() => goTo("/passenger-ratings")}
-                styles={styles}
-                colors={colors}
-              />
+                <ToolCard
+                  icon="star-check-outline"
+                  title="Passenger Ratings"
+                  subtitle="Review completed trip feedback and passenger ratings."
+                  onPress={() => goTo("/passenger-ratings")}
+                  styles={styles}
+                  colors={colors}
+                />
 
-              <ToolCard
-                icon="shield-check-outline"
+                <ToolCard
+                  icon="gift-outline"
+                  title="Driver Rewards"
+                  subtitle="Track your chauffeur level, rewards, and Angel Elite progress."
+                  onPress={() => goTo("/rewards")}
+                  styles={styles}
+                  colors={colors}
+                />
+
+                <ToolCard
+                  icon="card-account-details-outline"
+                  title="Driver Card"
+                  subtitle="Preview the chauffeur profile passengers see."
+                  onPress={() => goTo("/driver-card")}
+                  styles={styles}
+                  colors={colors}
+                />
+
+                <ToolCard
+                  icon="account-circle-outline"
+                  title="Account"
+                  subtitle="Manage phone, vehicle, payout backups, and account details."
+                  onPress={() => goTo("/driver-account")}
+                  styles={styles}
+                  colors={colors}
+                />
+              </ToolSection>
+
+              <ToolSection
                 title="Safety & Support"
-                subtitle="Emergency button, safety check-ins, and Angel Express support."
-                onPress={() => goTo("/safety-support")}
+                subtitle="Emergency tools, support, and updates"
+                icon="shield-check-outline"
+                expanded={showSafetyTools}
+                onPress={() => setShowSafetyTools(!showSafetyTools)}
                 styles={styles}
                 colors={colors}
-                danger
-              />
+              >
+                <ToolCard
+                  icon="bell-outline"
+                  title="Update Center"
+                  subtitle="Read driver notifications, updates, and push preferences."
+                  onPress={() => goTo("/driver-notifications")}
+                  styles={styles}
+                  colors={colors}
+                />
+
+                <ToolCard
+                  icon="headset"
+                  title="Driver Support"
+                  subtitle="Contact dispatch, ask Angel Assist, or connect to owner chat."
+                  onPress={() => goTo("/support")}
+                  styles={styles}
+                  colors={colors}
+                />
+
+                <ToolCard
+                  icon="shield-check-outline"
+                  title="Safety & Support"
+                  subtitle="Emergency button, safety check-ins, and Angel Express support."
+                  onPress={() => goTo("/safety-support")}
+                  styles={styles}
+                  colors={colors}
+                  danger
+                />
+              </ToolSection>
 
               <View style={styles.footerCard}>
                 <Text style={styles.footerTitle}>Angel Express Standard</Text>
@@ -738,9 +803,9 @@ export default function ChauffeurDashboardScreen() {
           />
 
           <MenuOption
-            icon="headset"
-            title="Support"
-            onPress={() => goTo("/support")}
+            icon="bell-outline"
+            title="Updates"
+            onPress={() => goTo("/driver-notifications")}
             styles={styles}
             colors={colors}
           />
@@ -748,7 +813,7 @@ export default function ChauffeurDashboardScreen() {
           <MenuOption
             icon="gift-outline"
             title="Rewards"
-            onPress={() => goTo("/driver-card")}
+            onPress={() => goTo("/rewards")}
             styles={styles}
             colors={colors}
           />
@@ -756,7 +821,7 @@ export default function ChauffeurDashboardScreen() {
           <MenuOption
             icon="account-circle-outline"
             title="Account"
-            onPress={() => goTo("/driver-card")}
+            onPress={() => goTo("/driver-account")}
             styles={styles}
             colors={colors}
           />
@@ -807,7 +872,7 @@ export default function ChauffeurDashboardScreen() {
         <BottomTab
           icon="account-circle"
           label="Account"
-          onPress={() => goTo("/driver-card")}
+          onPress={() => goTo("/driver-account")}
           styles={styles}
           colors={colors}
         />
@@ -819,7 +884,10 @@ export default function ChauffeurDashboardScreen() {
 function StatBlock({ label, value, styles, small }: any) {
   return (
     <View style={styles.statBlock}>
-      <Text style={[styles.statValue, small && styles.statValueSmall]} numberOfLines={1}>
+      <Text
+        style={[styles.statValue, small && styles.statValueSmall]}
+        numberOfLines={1}
+      >
         {value}
       </Text>
       <Text style={styles.statLabel}>{label}</Text>
@@ -829,6 +897,40 @@ function StatBlock({ label, value, styles, small }: any) {
 
 function Divider({ styles }: any) {
   return <View style={styles.divider} />;
+}
+
+function ToolSection({
+  title,
+  subtitle,
+  icon,
+  expanded,
+  onPress,
+  children,
+  styles,
+  colors,
+}: any) {
+  return (
+    <View style={styles.toolSection}>
+      <TouchableOpacity
+        style={styles.toolSectionHeader}
+        onPress={onPress}
+        activeOpacity={0.85}
+      >
+        <View style={styles.toolSectionIcon}>
+          <MaterialCommunityIcons name={icon} size={24} color={colors.gold} />
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.toolSectionTitle}>{title}</Text>
+          <Text style={styles.toolSectionSub}>{subtitle}</Text>
+        </View>
+
+        <Text style={styles.toolSectionArrow}>{expanded ? "▲" : "▼"}</Text>
+      </TouchableOpacity>
+
+      {expanded && <View style={styles.toolSectionBody}>{children}</View>}
+    </View>
+  );
 }
 
 function ToolCard({
@@ -843,7 +945,11 @@ function ToolCard({
 }: any) {
   return (
     <TouchableOpacity
-      style={[styles.toolCard, locked && styles.lockedCard, danger && styles.dangerCard]}
+      style={[
+        styles.toolCard,
+        locked && styles.lockedCard,
+        danger && styles.dangerCard,
+      ]}
       onPress={onPress}
       activeOpacity={0.85}
     >
@@ -899,44 +1005,6 @@ function MenuOption({ icon, title, onPress, styles, colors }: any) {
   );
 }
 
-const darkTheme = {
-  mode: "dark",
-  bg: "#050B16",
-  overlay: "rgba(5,11,22,0.91)",
-  card: "rgba(16,24,39,0.94)",
-  card2: "rgba(21,31,43,0.95)",
-  text: "#FFFFFF",
-  muted: "#B8C1CC",
-  soft: "rgba(255,255,255,0.07)",
-  border: "rgba(212,175,55,0.26)",
-  lightBorder: "rgba(255,255,255,0.10)",
-  gold: "#D4AF37",
-  gold2: "#B8860B",
-  navy: "#050B16",
-  green: "#20C461",
-  danger: "#EF4444",
-  nav: "rgba(8,14,24,0.98)",
-};
-
-const lightTheme = {
-  mode: "light",
-  bg: "#F7F7F5",
-  overlay: "rgba(247,247,245,0.88)",
-  card: "rgba(255,255,255,0.96)",
-  card2: "#FFF8E8",
-  text: "#07111F",
-  muted: "#5D6673",
-  soft: "rgba(7,17,31,0.05)",
-  border: "rgba(184,134,11,0.24)",
-  lightBorder: "rgba(7,17,31,0.10)",
-  gold: "#B8860B",
-  gold2: "#D4AF37",
-  navy: "#07111F",
-  green: "#16A34A",
-  danger: "#DC2626",
-  nav: "rgba(255,255,255,0.98)",
-};
-
 function createStyles(c: any) {
   return StyleSheet.create({
     root: {
@@ -944,53 +1012,44 @@ function createStyles(c: any) {
       backgroundColor: c.bg,
       overflow: "hidden",
     },
-
     bgWrap: {
       ...StyleSheet.absoluteFillObject,
     },
-
     background: {
       flex: 1,
       width: "100%",
       height: "100%",
     },
-
     overlay: {
       flex: 1,
       backgroundColor: c.overlay,
     },
-
     loadingContainer: {
       flex: 1,
       backgroundColor: c.bg,
       alignItems: "center",
       justifyContent: "center",
     },
-
     loadingText: {
       color: c.text,
       fontWeight: "900",
       marginTop: 14,
       letterSpacing: 0.3,
     },
-
     scroll: {
       flex: 1,
     },
-
     container: {
       paddingTop: 54,
       paddingHorizontal: 20,
       paddingBottom: 150,
     },
-
     topBar: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 18,
     },
-
     menuButton: {
       width: 44,
       height: 44,
@@ -1001,26 +1060,22 @@ function createStyles(c: any) {
       borderWidth: 1,
       borderColor: c.lightBorder,
     },
-
     menuIcon: {
       color: c.text,
       fontSize: 27,
       fontWeight: "900",
       marginTop: -2,
     },
-
     brandBox: {
       alignItems: "center",
       justifyContent: "center",
       flex: 1,
       paddingHorizontal: 12,
     },
-
     logo: {
       width: 178,
       height: 62,
     },
-
     bellButton: {
       width: 44,
       height: 44,
@@ -1032,12 +1087,11 @@ function createStyles(c: any) {
       justifyContent: "center",
       position: "relative",
     },
-
     badge: {
       position: "absolute",
       top: -4,
       right: -3,
-      width: 20,
+      minWidth: 20,
       height: 20,
       borderRadius: 10,
       backgroundColor: "#FF3045",
@@ -1045,14 +1099,13 @@ function createStyles(c: any) {
       justifyContent: "center",
       borderWidth: 2,
       borderColor: c.mode === "dark" ? "#050B16" : "#FFFFFF",
+      paddingHorizontal: 4,
     },
-
     badgeText: {
       color: "#FFFFFF",
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: "900",
     },
-
     greetingRow: {
       flexDirection: "row",
       alignItems: "flex-end",
@@ -1060,7 +1113,6 @@ function createStyles(c: any) {
       gap: 14,
       marginBottom: 16,
     },
-
     kicker: {
       color: c.gold,
       fontSize: 12,
@@ -1068,7 +1120,6 @@ function createStyles(c: any) {
       letterSpacing: 1.5,
       marginBottom: 6,
     },
-
     greeting: {
       color: c.text,
       fontSize: 28,
@@ -1076,7 +1127,6 @@ function createStyles(c: any) {
       letterSpacing: -0.7,
       maxWidth: 235,
     },
-
     themePill: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -1085,70 +1135,11 @@ function createStyles(c: any) {
       paddingVertical: 10,
       borderRadius: 999,
     },
-
     themeText: {
       color: c.gold,
       fontSize: 12,
       fontWeight: "900",
     },
-
-    statusCard: {
-      backgroundColor: c.card,
-      borderWidth: 1,
-      borderColor: c.border,
-      borderRadius: 22,
-      padding: 17,
-      marginBottom: 14,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 16,
-    },
-
-    statusTitle: {
-      color: c.text,
-      fontSize: 18,
-      fontWeight: "900",
-      marginBottom: 5,
-    },
-
-    statusSub: {
-      color: c.muted,
-      fontSize: 13.5,
-      fontWeight: "700",
-      lineHeight: 20,
-    },
-
-    switchTrack: {
-      width: 54,
-      height: 31,
-      borderRadius: 999,
-      padding: 3,
-      justifyContent: "center",
-    },
-
-    switchOn: {
-      backgroundColor: c.green,
-      alignItems: "flex-end",
-    },
-
-    switchOff: {
-      backgroundColor: c.soft,
-      borderWidth: 1,
-      borderColor: c.lightBorder,
-      alignItems: "flex-start",
-    },
-
-    switchKnob: {
-      width: 25,
-      height: 25,
-      borderRadius: 13,
-      backgroundColor: "#FFFFFF",
-    },
-
-    switchKnobOn: {
-      backgroundColor: "#FFFFFF",
-    },
-
     earningsCard: {
       backgroundColor: c.mode === "dark" ? "rgba(7,17,31,0.98)" : "#07111F",
       borderRadius: 26,
@@ -1162,81 +1153,69 @@ function createStyles(c: any) {
       shadowOffset: { width: 0, height: 10 },
       elevation: 8,
     },
-
     earningsTop: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
       marginBottom: 26,
     },
-
     cardLabel: {
       color: "#EAF0F6",
       fontSize: 16,
       fontWeight: "800",
       marginBottom: 8,
     },
-
     amount: {
       color: "#FFFFFF",
       fontSize: 46,
       fontWeight: "900",
       letterSpacing: -1.2,
     },
-
     arrowLight: {
       color: "#FFFFFF",
       fontSize: 42,
       fontWeight: "500",
       marginTop: 12,
     },
-
     statsRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
-
     statBlock: {
       flex: 1,
     },
-
     statValue: {
       color: "#FFFFFF",
       fontSize: 21,
       fontWeight: "900",
       marginBottom: 5,
     },
-
     statValueSmall: {
       fontSize: 15,
     },
-
     statLabel: {
       color: "#D6DEE8",
       fontSize: 14,
       fontWeight: "700",
     },
-
     divider: {
       width: 1,
       height: 58,
       backgroundColor: "rgba(255,255,255,0.16)",
       marginHorizontal: 12,
     },
-
     levelCard: {
       backgroundColor: c.mode === "dark" ? "rgba(21,31,43,0.94)" : "#FFF8E8",
       borderRadius: 24,
       borderWidth: 1,
       borderColor: c.border,
       padding: 18,
-      marginBottom: 28,
+      marginBottom: 24,
       flexDirection: "row",
       alignItems: "center",
       gap: 13,
     },
-
     levelIcon: {
       width: 58,
       height: 58,
@@ -1249,18 +1228,15 @@ function createStyles(c: any) {
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },
     },
-
     levelMiddle: {
       flex: 1,
     },
-
     levelTitle: {
       color: c.text,
       fontSize: 17,
       fontWeight: "900",
       marginBottom: 4,
     },
-
     levelText: {
       color: c.muted,
       fontSize: 13,
@@ -1268,32 +1244,27 @@ function createStyles(c: any) {
       fontWeight: "700",
       marginBottom: 10,
     },
-
     progressTrack: {
       height: 8,
       backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.18)" : "#F2DEAD",
       borderRadius: 999,
       overflow: "hidden",
     },
-
     progressFill: {
       height: "100%",
       backgroundColor: c.gold,
       borderRadius: 999,
     },
-
     levelCount: {
       color: c.text,
       fontSize: 16,
       fontWeight: "900",
     },
-
     arrowDark: {
       color: c.text,
       fontSize: 30,
       fontWeight: "700",
     },
-
     goOnlineCard: {
       backgroundColor: c.card,
       borderRadius: 25,
@@ -1303,7 +1274,6 @@ function createStyles(c: any) {
       marginBottom: 28,
       overflow: "hidden",
     },
-
     cityArt: {
       position: "absolute",
       right: 16,
@@ -1311,17 +1281,14 @@ function createStyles(c: any) {
       alignItems: "center",
       opacity: c.mode === "dark" ? 0.72 : 0.9,
     },
-
     cityEmoji: {
       fontSize: 64,
       opacity: 0.35,
     },
-
     carEmoji: {
       fontSize: 54,
       marginTop: -34,
     },
-
     goOnlineTitle: {
       color: c.text,
       fontSize: 21,
@@ -1329,7 +1296,6 @@ function createStyles(c: any) {
       marginBottom: 10,
       maxWidth: "72%",
     },
-
     goOnlineText: {
       color: c.muted,
       fontSize: 15,
@@ -1338,7 +1304,6 @@ function createStyles(c: any) {
       marginBottom: 20,
       maxWidth: "78%",
     },
-
     primaryButton: {
       backgroundColor: c.gold,
       paddingVertical: 16,
@@ -1349,30 +1314,25 @@ function createStyles(c: any) {
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 7 },
     },
-
     primaryButtonText: {
       color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 17,
       fontWeight: "900",
     },
-
     outlineButton: {
       backgroundColor: c.soft,
       borderWidth: 1,
       borderColor: c.border,
       shadowOpacity: 0,
     },
-
     outlineButtonText: {
       color: c.gold,
     },
-
     sectionHeaderRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
     },
-
     sectionTitle: {
       color: c.text,
       fontSize: 22,
@@ -1380,14 +1340,12 @@ function createStyles(c: any) {
       marginBottom: 14,
       letterSpacing: -0.4,
     },
-
     seeAll: {
       color: c.gold,
       fontSize: 16,
       fontWeight: "900",
       marginBottom: 14,
     },
-
     opportunityCard: {
       backgroundColor: c.card,
       borderRadius: 23,
@@ -1397,9 +1355,8 @@ function createStyles(c: any) {
       flexDirection: "row",
       alignItems: "center",
       gap: 15,
-      marginBottom: 30,
+      marginBottom: 28,
     },
-
     smartQueueIcon: {
       width: 58,
       height: 58,
@@ -1408,40 +1365,34 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-
     opportunityTitle: {
       color: c.text,
       fontSize: 17,
       fontWeight: "900",
       marginBottom: 4,
     },
-
     opportunitySub: {
       color: c.muted,
       fontSize: 13,
       fontWeight: "700",
       marginBottom: 4,
     },
-
     opportunityGreen: {
       color: "#16A34A",
       fontSize: 13,
       fontWeight: "800",
     },
-
     pricePill: {
       backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.16)" : "#FFF0CC",
       paddingHorizontal: 10,
       paddingVertical: 8,
       borderRadius: 10,
     },
-
     priceText: {
       color: c.gold,
       fontSize: 13,
       fontWeight: "900",
     },
-
     menuTitle: {
       color: c.gold,
       fontSize: 14,
@@ -1450,30 +1401,23 @@ function createStyles(c: any) {
       textTransform: "uppercase",
       marginBottom: 12,
     },
-
-    toolCard: {
+    toolSection: {
       backgroundColor: c.card,
       borderWidth: 1,
       borderColor: c.lightBorder,
-      borderRadius: 23,
-      padding: 16,
-      marginBottom: 12,
+      borderRadius: 24,
+      marginBottom: 14,
+      overflow: "hidden",
+    },
+    toolSectionHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 14,
+      padding: 16,
+      gap: 13,
     },
-
-    dangerCard: {
-      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.45)" : "rgba(220,38,38,0.30)",
-    },
-
-    lockedCard: {
-      opacity: 0.48,
-    },
-
-    toolIconBox: {
-      width: 50,
-      height: 50,
+    toolSectionIcon: {
+      width: 48,
+      height: 48,
       borderRadius: 17,
       backgroundColor: c.soft,
       alignItems: "center",
@@ -1481,27 +1425,72 @@ function createStyles(c: any) {
       borderWidth: 1,
       borderColor: c.border,
     },
-
-    toolTitle: {
+    toolSectionTitle: {
       color: c.text,
-      fontSize: 17,
+      fontSize: 18,
       fontWeight: "900",
       marginBottom: 4,
     },
-
-    toolSub: {
+    toolSectionSub: {
       color: c.muted,
       fontSize: 13,
+      lineHeight: 18,
       fontWeight: "700",
-      lineHeight: 19,
     },
-
+    toolSectionArrow: {
+      color: c.gold,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    toolSectionBody: {
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+    },
+    toolCard: {
+      backgroundColor: c.card2,
+      borderWidth: 1,
+      borderColor: c.lightBorder,
+      borderRadius: 19,
+      padding: 14,
+      marginBottom: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 13,
+    },
+    dangerCard: {
+      borderColor:
+        c.mode === "dark" ? "rgba(239,68,68,0.45)" : "rgba(220,38,38,0.30)",
+    },
+    lockedCard: {
+      opacity: 0.48,
+    },
+    toolIconBox: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    toolTitle: {
+      color: c.text,
+      fontSize: 16,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+    toolSub: {
+      color: c.muted,
+      fontSize: 12.8,
+      fontWeight: "700",
+      lineHeight: 18,
+    },
     toolArrow: {
       color: c.gold,
-      fontSize: 32,
+      fontSize: 30,
       fontWeight: "800",
     },
-
     footerCard: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -1510,7 +1499,6 @@ function createStyles(c: any) {
       padding: 18,
       marginTop: 4,
     },
-
     footerTitle: {
       color: c.gold,
       textAlign: "center",
@@ -1518,23 +1506,21 @@ function createStyles(c: any) {
       fontSize: 17,
       marginBottom: 8,
     },
-
     footerText: {
       color: c.text,
       textAlign: "center",
       fontWeight: "800",
       lineHeight: 22,
     },
-
     menuBackdrop: {
       position: "absolute",
       left: 0,
       right: 0,
       top: 0,
       bottom: 0,
-      backgroundColor: c.mode === "dark" ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.18)",
+      backgroundColor:
+        c.mode === "dark" ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.18)",
     },
-
     bottomMenuPanel: {
       position: "absolute",
       left: 18,
@@ -1551,7 +1537,6 @@ function createStyles(c: any) {
       shadowOffset: { width: 0, height: 14 },
       elevation: 16,
     },
-
     bottomMenuTitle: {
       color: c.gold,
       fontSize: 13,
@@ -1561,13 +1546,11 @@ function createStyles(c: any) {
       marginBottom: 14,
       textAlign: "center",
     },
-
     bottomMenuGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
     },
-
     menuOption: {
       width: "31.5%",
       minHeight: 86,
@@ -1581,31 +1564,28 @@ function createStyles(c: any) {
       paddingHorizontal: 6,
       gap: 7,
     },
-
     menuOptionTitle: {
       color: c.text,
       fontSize: 12.5,
       fontWeight: "900",
       textAlign: "center",
     },
-
     logoutButton: {
       marginTop: 4,
       height: 48,
       borderRadius: 17,
       backgroundColor: c.mode === "dark" ? "rgba(239,68,68,0.16)" : "#FEE2E2",
       borderWidth: 1,
-      borderColor: c.mode === "dark" ? "rgba(239,68,68,0.4)" : "rgba(220,38,38,0.28)",
+      borderColor:
+        c.mode === "dark" ? "rgba(239,68,68,0.4)" : "rgba(220,38,38,0.28)",
       alignItems: "center",
       justifyContent: "center",
     },
-
     logoutText: {
       color: c.mode === "dark" ? "#FCA5A5" : "#991B1B",
       fontWeight: "900",
       fontSize: 15,
     },
-
     bottomNav: {
       position: "absolute",
       left: 0,
@@ -1621,24 +1601,20 @@ function createStyles(c: any) {
       paddingBottom: 14,
       paddingHorizontal: 8,
     },
-
     bottomTab: {
       alignItems: "center",
       justifyContent: "center",
       flex: 1,
     },
-
     bottomLabel: {
       color: c.muted,
       fontSize: 11,
       fontWeight: "900",
       marginTop: 4,
     },
-
     bottomLabelActive: {
       color: c.gold,
     },
-
     centerMenuButton: {
       width: 62,
       height: 62,
@@ -1655,7 +1631,6 @@ function createStyles(c: any) {
       borderWidth: 4,
       borderColor: c.mode === "dark" ? "#050B16" : "#FFFFFF",
     },
-
     centerMenuIcon: {
       color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
       fontSize: 31,

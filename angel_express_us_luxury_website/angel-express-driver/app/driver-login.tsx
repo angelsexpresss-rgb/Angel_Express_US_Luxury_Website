@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,8 +14,12 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../lib/supabase";
+import { useDriverTheme, v5Shadow } from "../lib/driverTheme";
 
 export default function ChauffeurLoginScreen() {
+  const { colors, themeMode, toggleTheme } = useDriverTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -147,9 +151,17 @@ export default function ChauffeurLoginScreen() {
               transform: [{ translateY: slideAnim }],
             }}
           >
-            <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.backTop}>‹ Back</Text>
-            </TouchableOpacity>
+            <View style={styles.topRow}>
+              <TouchableOpacity onPress={() => router.back()}>
+                <Text style={styles.backTop}>‹ Back</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+                <Text style={styles.themeText}>
+                  {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <Image
               source={require("../assets/images/angel-logo-transparent.png")}
@@ -175,7 +187,7 @@ export default function ChauffeurLoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter chauffeur email"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 value={email}
@@ -186,7 +198,7 @@ export default function ChauffeurLoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter password"
-                placeholderTextColor="rgba(255,255,255,0.45)"
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
@@ -203,7 +215,7 @@ export default function ChauffeurLoginScreen() {
                 </View>
 
                 {loading ? (
-                  <ActivityIndicator color="#050b16" style={{ flex: 1 }} />
+                  <ActivityIndicator color={colors.navy} style={{ flex: 1 }} />
                 ) : (
                   <Text style={styles.primaryButtonText}>Login</Text>
                 )}
@@ -243,245 +255,265 @@ export default function ChauffeurLoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#050b16",
-  },
+function createStyles(colors: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.bg,
+    },
 
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
 
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
+    background: {
+      flex: 1,
+      width: "100%",
+      height: "100%",
+    },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.91)",
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+    },
 
-  container: {
-    flexGrow: 1,
-    padding: 22,
-    paddingTop: 58,
-    paddingBottom: 46,
-    justifyContent: "center",
-  },
+    container: {
+      flexGrow: 1,
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 46,
+      justifyContent: "center",
+    },
 
-  backTop: {
-    color: "#D4AF37",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 18,
-  },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 18,
+    },
 
-  logo: {
-    width: "100%",
-    height: 145,
-    marginBottom: 12,
-  },
+    backTop: {
+      color: colors.gold,
+      fontSize: 18,
+      fontWeight: "900",
+    },
 
-  kickerBox: {
-    alignSelf: "center",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 999,
-    paddingVertical: 9,
-    paddingHorizontal: 15,
-    marginBottom: 18,
-  },
+    themePill: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: 999,
+      paddingVertical: 8,
+      paddingHorizontal: 13,
+    },
 
-  kicker: {
-    color: "#D4AF37",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-    textAlign: "center",
-  },
+    themeText: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  heading: {
-    color: "#ffffff",
-    fontSize: 42,
-    fontWeight: "900",
-    textAlign: "center",
-    letterSpacing: -1.3,
-    lineHeight: 48,
-    marginBottom: 14,
-  },
+    logo: {
+      width: "100%",
+      height: 145,
+      marginBottom: 12,
+    },
 
-  goldText: {
-    color: "#D4AF37",
-  },
+    kickerBox: {
+      alignSelf: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.soft || colors.card,
+      borderRadius: 999,
+      paddingVertical: 9,
+      paddingHorizontal: 15,
+      marginBottom: 18,
+    },
 
-  subtitle: {
-    color: "#DDE3EA",
-    fontSize: 15.5,
-    lineHeight: 24,
-    textAlign: "center",
-    marginBottom: 24,
-  },
+    kicker: {
+      color: colors.gold,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.5,
+      textAlign: "center",
+    },
 
-  loginCard: {
-    backgroundColor: "rgba(13,20,34,0.9)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    borderRadius: 30,
-    padding: 18,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 6,
-  },
+    heading: {
+      color: colors.text,
+      fontSize: 42,
+      fontWeight: "900",
+      textAlign: "center",
+      letterSpacing: -1.3,
+      lineHeight: 48,
+      marginBottom: 14,
+    },
 
-  formLabel: {
-    color: "#D4AF37",
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
+    goldText: {
+      color: colors.gold,
+    },
 
-  input: {
-    backgroundColor: "rgba(5,11,22,0.82)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    color: "#ffffff",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-    fontSize: 16,
-    fontWeight: "700",
-  },
+    subtitle: {
+      color: colors.text2,
+      fontSize: 15.5,
+      lineHeight: 24,
+      textAlign: "center",
+      marginBottom: 24,
+    },
 
-  primaryButton: {
-    backgroundColor: "#D4AF37",
-    minHeight: 66,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    marginTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+    loginCard: {
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 30,
+      padding: 18,
+      marginBottom: 16,
+      ...v5Shadow(colors),
+    },
 
-  disabledButton: {
-    opacity: 0.7,
-  },
+    formLabel: {
+      color: colors.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+      marginBottom: 8,
+    },
 
-  buttonIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#050b16",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    input: {
+      backgroundColor: colors.input,
+      borderWidth: 1,
+      borderColor: colors.border,
+      color: colors.inputText,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 16,
+      fontSize: 16,
+      fontWeight: "700",
+    },
 
-  buttonIcon: {
-    color: "#D4AF37",
-    fontSize: 25,
-    fontWeight: "900",
-  },
+    primaryButton: {
+      backgroundColor: colors.gold,
+      minHeight: 66,
+      borderRadius: 22,
+      paddingHorizontal: 14,
+      marginTop: 4,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
 
-  primaryButtonText: {
-    flex: 1,
-    color: "#050b16",
-    fontWeight: "900",
-    fontSize: 17,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginLeft: 14,
-  },
+    disabledButton: {
+      opacity: 0.7,
+    },
 
-  buttonArrow: {
-    color: "#050b16",
-    fontSize: 38,
-    fontWeight: "700",
-  },
+    buttonIconBox: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: colors.navy,
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  secondaryButton: {
-    borderWidth: 1.5,
-    borderColor: "#D4AF37",
-    backgroundColor: "rgba(5,11,22,0.78)",
-    minHeight: 66,
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    marginBottom: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+    buttonIcon: {
+      color: colors.gold,
+      fontSize: 25,
+      fontWeight: "900",
+    },
 
-  outlineIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+    primaryButtonText: {
+      flex: 1,
+      color: colors.navy,
+      fontWeight: "900",
+      fontSize: 17,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginLeft: 14,
+    },
 
-  outlineIcon: {
-    color: "#D4AF37",
-    fontSize: 25,
-    fontWeight: "900",
-  },
+    buttonArrow: {
+      color: colors.navy,
+      fontSize: 38,
+      fontWeight: "700",
+    },
 
-  secondaryButtonText: {
-    flex: 1,
-    color: "#D4AF37",
-    fontWeight: "900",
-    fontSize: 16,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginLeft: 14,
-  },
+    secondaryButton: {
+      borderWidth: 1.5,
+      borderColor: colors.gold,
+      backgroundColor: colors.mode === "dark" ? "rgba(5,11,22,0.78)" : colors.card,
+      minHeight: 66,
+      borderRadius: 22,
+      paddingHorizontal: 14,
+      marginBottom: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
 
-  secondaryArrow: {
-    color: "#D4AF37",
-    fontSize: 38,
-    fontWeight: "700",
-  },
+    outlineIconBox: {
+      width: 46,
+      height: 46,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.08)" : "#FFF8E8",
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  noticeCard: {
-    backgroundColor: "rgba(212,175,55,0.09)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 18,
-  },
+    outlineIcon: {
+      color: colors.gold,
+      fontSize: 25,
+      fontWeight: "900",
+    },
 
-  noticeTitle: {
-    color: "#D4AF37",
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 8,
-    textAlign: "center",
-  },
+    secondaryButtonText: {
+      flex: 1,
+      color: colors.gold,
+      fontWeight: "900",
+      fontSize: 16,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      marginLeft: 14,
+    },
 
-  noticeText: {
-    color: "#DDE3EA",
-    textAlign: "center",
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: "700",
-  },
+    secondaryArrow: {
+      color: colors.gold,
+      fontSize: 38,
+      fontWeight: "700",
+    },
 
-  footer: {
-    color: "#ffffff",
-    textAlign: "center",
-    fontSize: 13,
-    fontWeight: "700",
-    opacity: 0.9,
-  },
-});
+    noticeCard: {
+      backgroundColor: colors.mode === "dark" ? "rgba(212,175,55,0.09)" : "#FFF8E8",
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 24,
+      padding: 18,
+      marginBottom: 18,
+    },
+
+    noticeTitle: {
+      color: colors.gold,
+      fontSize: 18,
+      fontWeight: "900",
+      marginBottom: 8,
+      textAlign: "center",
+    },
+
+    noticeText: {
+      color: colors.text2,
+      textAlign: "center",
+      fontSize: 14,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
+
+    footer: {
+      color: colors.text,
+      textAlign: "center",
+      fontSize: 13,
+      fontWeight: "700",
+      opacity: 0.9,
+    },
+  });
+}

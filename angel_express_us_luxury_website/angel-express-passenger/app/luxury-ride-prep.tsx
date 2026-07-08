@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import {
-  Bell,
+  ArrowLeft,
   BriefcaseBusiness,
   CheckCircle2,
   Clock,
@@ -27,16 +27,7 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-
-import {
-  AE_COLORS,
-  AngelCard,
-  AngelHeroButton,
-  fadeUp,
-  slowBackgroundZoom,
-} from "../components/angel";
-
-const GOLD = AE_COLORS.gold;
+import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 /*
   Later we will create this Cloudflare Worker:
@@ -48,6 +39,9 @@ const GOLD = AE_COLORS.gold;
 const TRAFFIC_WORKER_URL = "";
 
 export default function LuxuryRidePrepScreen() {
+  const { colors, themeMode, toggleTheme } = usePassengerTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -59,8 +53,27 @@ export default function LuxuryRidePrepScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    slowBackgroundZoom(bgScale).start();
-    fadeUp(pageFade, 80).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
+
     loadRidePrep();
   }, []);
 
@@ -257,7 +270,7 @@ export default function LuxuryRidePrepScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator color={GOLD} size="large" />
+        <ActivityIndicator color={colors.gold} size="large" />
         <Text style={styles.loadingText}>Loading ride prep...</Text>
       </View>
     );
@@ -279,12 +292,25 @@ export default function LuxuryRidePrepScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.gold}
+            />
           }
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ArrowLeft size={19} color={colors.gold} />
+              <Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+              <Text style={styles.themeText}>
+                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           <Animated.View
             style={{
@@ -292,6 +318,8 @@ export default function LuxuryRidePrepScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
+            <Text style={styles.kicker}>PREMIUM RIDE READINESS</Text>
+
             <Text style={styles.title}>Luxury Ride Prep+</Text>
 
             <Text style={styles.subtitle}>
@@ -299,28 +327,52 @@ export default function LuxuryRidePrepScreen() {
               route guidance, and traffic readiness.
             </Text>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.heroCard}>
+              <View style={styles.heroIcon}>
+                <BriefcaseBusiness size={31} color={colors.navy} />
+              </View>
+
+              <View style={styles.heroCopy}>
+                <Text style={styles.heroTitle}>Ride Readiness</Text>
+                <Text style={styles.heroText}>
+                  Weather, route estimate, checklist, and family safety tools in one premium prep hub.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <BriefcaseBusiness size={23} color={GOLD} />
+                <BriefcaseBusiness size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Active Trip Readiness</Text>
               </View>
 
               {trip ? (
                 <>
-                  <InfoLine label="Invoice" value={trip.invoice_no || "N/A"} />
+                  <InfoLine
+                    label="Invoice"
+                    value={trip.invoice_no || "N/A"}
+                    styles={styles}
+                    colors={colors}
+                  />
                   <InfoLine
                     label="Pickup"
                     value={trip.pickup_address || trip.pickup || "N/A"}
+                    styles={styles}
+                    colors={colors}
                   />
                   <InfoLine
                     label="Drop-off"
                     value={trip.dropoff_address || trip.dropoff || "N/A"}
+                    styles={styles}
+                    colors={colors}
                   />
                   <InfoLine
                     label="Ride Time"
                     value={`${trip.ride_date || trip.date || "N/A"} • ${
                       trip.ride_time || trip.time || "N/A"
                     }`}
+                    styles={styles}
+                    colors={colors}
                   />
                 </>
               ) : (
@@ -328,23 +380,24 @@ export default function LuxuryRidePrepScreen() {
                   No active ride found. Bookings will appear here when available.
                 </Text>
               )}
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <CloudSun size={23} color={GOLD} />
+                <CloudSun size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>
                   {weather?.title || "Live Pickup Weather"}
                 </Text>
               </View>
 
-              <ReportRow label="Condition" value={weather?.condition || "N/A"} />
-              <ReportRow label="Temperature" value={weather?.temperature || "N/A"} />
-              <ReportRow label="Feels Like" value={weather?.feelsLike || "N/A"} />
-              <ReportRow label="Wind" value={weather?.wind || "N/A"} />
+              <ReportRow label="Condition" value={weather?.condition || "N/A"} styles={styles} />
+              <ReportRow label="Temperature" value={weather?.temperature || "N/A"} styles={styles} />
+              <ReportRow label="Feels Like" value={weather?.feelsLike || "N/A"} styles={styles} />
+              <ReportRow label="Wind" value={weather?.wind || "N/A"} styles={styles} />
               <ReportRow
                 label="Precipitation"
                 value={weather?.precipitation || "N/A"}
+                styles={styles}
               />
 
               <View style={styles.adviceBox}>
@@ -352,86 +405,93 @@ export default function LuxuryRidePrepScreen() {
                   {weather?.advice || "Weather report loading."}
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.alertCard}>
+            <View style={styles.alertCard}>
               <View style={styles.cardHeader}>
-                <Route size={23} color={GOLD} />
+                <Route size={23} color={colors.gold} />
                 <Text style={styles.alertTitle}>
                   {traffic?.title || "Traffic Report"}
                 </Text>
               </View>
 
-              <ReportRow label="Distance" value={traffic?.distance || "N/A"} />
-              <ReportRow label="Drive Time" value={traffic?.duration || "N/A"} />
-              <ReportRow label="Traffic Delay" value={traffic?.delay || "N/A"} />
+              <ReportRow label="Distance" value={traffic?.distance || "N/A"} styles={styles} />
+              <ReportRow label="Drive Time" value={traffic?.duration || "N/A"} styles={styles} />
+              <ReportRow label="Traffic Delay" value={traffic?.delay || "N/A"} styles={styles} />
 
               <View style={styles.adviceBox}>
                 <Text style={styles.adviceText}>
                   {traffic?.advice || "Traffic report loading."}
                 </Text>
               </View>
-            </AngelCard>
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <ShieldCheck size={23} color={GOLD} />
+                <ShieldCheck size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Trip Preparation Checklist</Text>
               </View>
 
-              <ChecklistItem text="Driver Assigned" checked />
-              <ChecklistItem text="Pickup Time Confirmed" checked />
-              <ChecklistItem text="Luggage Count Confirmed" checked />
-              <ChecklistItem text="Flight Number Added" checked />
-              <ChecklistItem text="Driver Contact Available" checked />
-            </AngelCard>
+              <ChecklistItem text="Driver Assigned" checked styles={styles} colors={colors} />
+              <ChecklistItem text="Pickup Time Confirmed" checked styles={styles} colors={colors} />
+              <ChecklistItem text="Luggage Count Confirmed" checked styles={styles} colors={colors} />
+              <ChecklistItem text="Flight Number Added" checked styles={styles} colors={colors} />
+              <ChecklistItem text="Driver Contact Available" checked styles={styles} colors={colors} />
+            </View>
 
-            <AngelCard style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <ShieldCheck size={23} color={GOLD} />
+                <ShieldCheck size={23} color={colors.gold} />
                 <Text style={styles.cardTitle}>Before Your Ride</Text>
               </View>
 
               <PrepItem
-                icon={<Clock size={18} color={GOLD} />}
+                icon={<Clock size={18} color={colors.gold} />}
                 text="Keep your phone available."
+                styles={styles}
               />
               <PrepItem
-                icon={<CheckCircle2 size={18} color={GOLD} />}
+                icon={<CheckCircle2 size={18} color={colors.gold} />}
                 text="Be ready 5–10 minutes before pickup."
+                styles={styles}
               />
               <PrepItem
-                icon={<Luggage size={18} color={GOLD} />}
+                icon={<Luggage size={18} color={colors.gold} />}
                 text="Confirm luggage before the driver arrives."
+                styles={styles}
               />
               <PrepItem
-                icon={<Plane size={18} color={GOLD} />}
+                icon={<Plane size={18} color={colors.gold} />}
                 text="Add flight number for airport rides when needed."
+                styles={styles}
               />
               <PrepItem
-                icon={<ShieldCheck size={18} color={GOLD} />}
+                icon={<ShieldCheck size={18} color={colors.gold} />}
                 text="Share Family Check-In+ with your emergency contact."
+                styles={styles}
               />
-            </AngelCard>
+            </View>
 
             <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-              <RefreshCw size={18} color={GOLD} />
+              <RefreshCw size={18} color={colors.gold} />
               <Text style={styles.refreshText}>Refresh Weather & Traffic</Text>
             </TouchableOpacity>
 
-            <AngelHeroButton
-              title="Open Family Check-In+"
-              onPress={() => router.push("/family-checkin" as any)}
-              variant="gold"
+            <TouchableOpacity
               style={styles.primaryButton}
-            />
+              onPress={() => router.push("/family-checkin" as any)}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.primaryButtonText}>Open Family Check-In+</Text>
+            </TouchableOpacity>
 
-            <AngelHeroButton
-              title="View My Trips"
-              onPress={() => router.push("/my-trips" as any)}
-              variant="outline"
+            <TouchableOpacity
               style={styles.secondaryButton}
-            />
+              onPress={() => router.push("/my-trips" as any)}
+              activeOpacity={0.88}
+            >
+              <Text style={styles.secondaryButtonText}>View My Trips</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -439,18 +499,36 @@ export default function LuxuryRidePrepScreen() {
   );
 }
 
-function ChecklistItem({ text, checked }: { text: string; checked: boolean }) {
+function ChecklistItem({
+  text,
+  checked,
+  styles,
+  colors,
+}: {
+  text: string;
+  checked: boolean;
+  styles: any;
+  colors: any;
+}) {
   return (
     <View style={styles.checkRow}>
       <View style={styles.checkIconBox}>
-        <CheckCircle2 size={21} color={checked ? GOLD : AE_COLORS.muted} />
+        <CheckCircle2 size={21} color={checked ? colors.gold : colors.muted} />
       </View>
       <Text style={styles.checkText}>{text}</Text>
     </View>
   );
 }
 
-function PrepItem({ icon, text }: { icon: React.ReactNode; text: string }) {
+function PrepItem({
+  icon,
+  text,
+  styles,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  styles: any;
+}) {
   return (
     <View style={styles.prepRow}>
       <View style={styles.prepIcon}>{icon}</View>
@@ -459,10 +537,20 @@ function PrepItem({ icon, text }: { icon: React.ReactNode; text: string }) {
   );
 }
 
-function InfoLine({ label, value }: { label: string; value: string }) {
+function InfoLine({
+  label,
+  value,
+  styles,
+  colors,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+  colors: any;
+}) {
   return (
     <View style={styles.infoLine}>
-      <MapPinned size={15} color={GOLD} />
+      <MapPinned size={15} color={colors.gold} />
       <View style={{ flex: 1 }}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
@@ -471,7 +559,15 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReportRow({ label, value }: { label: string; value: string }) {
+function ReportRow({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+}) {
   return (
     <View style={styles.reportRow}>
       <Text style={styles.reportLabel}>{label}</Text>
@@ -555,234 +651,355 @@ function getWeatherAdvice(code: number, windSpeed: number) {
   return "Weather looks manageable. Be ready 5–10 minutes before pickup.";
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    overflow: "hidden",
-  },
+function createStyles(c: any) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
 
-  bgWrap: {
-    ...StyleSheet.absoluteFillObject,
-  },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
 
-  background: {
-    flex: 1,
-  },
+    background: {
+      flex: 1,
+    },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(5,11,22,0.91)",
-  },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
 
-  container: {
-    flex: 1,
-  },
+    container: {
+      flex: 1,
+    },
 
-  centerContainer: {
-    flex: 1,
-    backgroundColor: AE_COLORS.navy,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
+    centerContainer: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
 
-  loadingText: {
-    color: AE_COLORS.white,
-    marginTop: 14,
-    fontSize: 16,
-  },
+    loadingText: {
+      color: c.text,
+      marginTop: 14,
+      fontSize: 16,
+      fontWeight: "800",
+    },
 
-  content: {
-    padding: 22,
-    paddingTop: 56,
-    paddingBottom: 50,
-  },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
 
-  backButton: {
-    alignSelf: "flex-start",
-    marginBottom: 18,
-  },
+    topRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
 
-  backText: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-  },
+    backButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  title: {
-    color: GOLD,
-    fontSize: 34,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
 
-  subtitle: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 24,
-  },
+    themePill: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 999,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
 
-  card: {
-    padding: 20,
-    marginBottom: 18,
-  },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
 
-  alertCard: {
-    padding: 20,
-    marginBottom: 18,
-    backgroundColor: "rgba(34,23,10,0.88)",
-    borderColor: "rgba(212,175,55,0.45)",
-  },
+    kicker: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      letterSpacing: 1.6,
+      marginBottom: 10,
+    },
 
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 16,
-  },
+    title: {
+      color: c.text,
+      fontSize: 34,
+      fontWeight: "900",
+      marginBottom: 10,
+    },
 
-  cardTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
+    subtitle: {
+      color: c.text2,
+      fontSize: 15.5,
+      lineHeight: 23,
+      marginBottom: 22,
+      fontWeight: "700",
+    },
 
-  alertTitle: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    flex: 1,
-  },
+    heroCard: {
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  noTripText: {
-    color: AE_COLORS.textSoft,
-    fontSize: 16,
-    lineHeight: 24,
-  },
+    heroIcon: {
+      width: 58,
+      height: 58,
+      borderRadius: 20,
+      backgroundColor: "rgba(255,255,255,0.28)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
 
-  infoLine: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 14,
-  },
+    heroCopy: {
+      flex: 1,
+    },
 
-  infoLabel: {
-    color: GOLD,
-    fontSize: 13,
-    fontWeight: "900",
-    marginBottom: 3,
-    textTransform: "uppercase",
-  },
+    heroTitle: {
+      color: c.navy,
+      fontSize: 21,
+      fontWeight: "900",
+      marginBottom: 5,
+    },
 
-  infoValue: {
-    color: AE_COLORS.white,
-    fontSize: 15,
-    lineHeight: 22,
-  },
+    heroText: {
+      color: c.navy,
+      fontSize: 14,
+      lineHeight: 20,
+      fontWeight: "800",
+      opacity: 0.82,
+    },
 
-  reportRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 16,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.08)",
-  },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  reportLabel: {
-    color: AE_COLORS.muted,
-    fontSize: 14,
-    flex: 1,
-  },
+    alertCard: {
+      backgroundColor:
+        c.mode === "dark" ? "rgba(34,23,10,0.9)" : "rgba(255,251,235,0.95)",
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
 
-  reportValue: {
-    color: AE_COLORS.white,
-    fontSize: 14,
-    fontWeight: "900",
-    textAlign: "right",
-    flex: 1,
-  },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
 
-  adviceBox: {
-    marginTop: 14,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(212,175,55,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.20)",
-  },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  adviceText: {
-    color: GOLD,
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "800",
-  },
+    alertTitle: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      flex: 1,
+    },
 
-  checkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-  },
+    noTripText: {
+      color: c.text2,
+      fontSize: 16,
+      lineHeight: 24,
+      fontWeight: "700",
+    },
 
-  checkIconBox: {
-    width: 34,
-    alignItems: "flex-start",
-  },
+    infoLine: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 10,
+      marginBottom: 14,
+    },
 
-  checkText: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    flex: 1,
-  },
+    infoLabel: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "900",
+      marginBottom: 3,
+      textTransform: "uppercase",
+    },
 
-  prepRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 14,
-  },
+    infoValue: {
+      color: c.text,
+      fontSize: 15,
+      lineHeight: 22,
+      fontWeight: "700",
+    },
 
-  prepIcon: {
-    width: 30,
-    marginTop: 2,
-  },
+    reportRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 16,
+      paddingVertical: 9,
+      borderBottomWidth: 1,
+      borderBottomColor: c.borderSoft,
+    },
 
-  prepText: {
-    color: AE_COLORS.white,
-    fontSize: 16,
-    lineHeight: 24,
-    flex: 1,
-  },
+    reportLabel: {
+      color: c.text2,
+      fontSize: 14,
+      flex: 1,
+      fontWeight: "700",
+    },
 
-  refreshButton: {
-    minHeight: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 9,
-    marginTop: 2,
-    marginBottom: 18,
-  },
+    reportValue: {
+      color: c.text,
+      fontSize: 14,
+      fontWeight: "900",
+      textAlign: "right",
+      flex: 1,
+    },
 
-  refreshText: {
-    color: GOLD,
-    fontSize: 15,
-    fontWeight: "900",
-  },
+    adviceBox: {
+      marginTop: 14,
+      padding: 14,
+      borderRadius: 14,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
 
-  primaryButton: {
-    marginTop: 8,
-  },
+    adviceText: {
+      color: c.gold,
+      fontSize: 14,
+      lineHeight: 21,
+      fontWeight: "800",
+    },
 
-  secondaryButton: {
-    marginTop: 14,
-  },
-});
+    checkRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: 14,
+    },
+
+    checkIconBox: {
+      width: 34,
+      alignItems: "flex-start",
+    },
+
+    checkText: {
+      color: c.text,
+      fontSize: 16,
+      flex: 1,
+      fontWeight: "700",
+    },
+
+    prepRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: 14,
+    },
+
+    prepIcon: {
+      width: 30,
+      marginTop: 2,
+    },
+
+    prepText: {
+      color: c.text,
+      fontSize: 16,
+      lineHeight: 24,
+      flex: 1,
+      fontWeight: "700",
+    },
+
+    refreshButton: {
+      minHeight: 52,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 9,
+      marginTop: 2,
+      marginBottom: 18,
+    },
+
+    refreshText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+
+    primaryButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      minHeight: 54,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 8,
+      ...v5Shadow(c),
+    },
+
+    primaryButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+
+    secondaryButton: {
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 16,
+      minHeight: 54,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 14,
+    },
+
+    secondaryButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+  });
+}
