@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Vibration,
   View,
 } from "react-native";
 import {
@@ -39,6 +40,25 @@ type GameTarget = {
   kind: TargetKind;
 };
 
+type Popup = {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  anim: Animated.Value;
+};
+
+type Burst = {
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+  progress: Animated.Value;
+};
+
+const BURST_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+
 export default function AngelGameScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -56,6 +76,10 @@ export default function AngelGameScreen() {
   const [shieldActive, setShieldActive] = useState(false);
   const [lastEvent, setLastEvent] = useState("Choose a mode and start your ride.");
 
+  const [popups, setPopups] = useState<Popup[]>([]);
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  const idRef = useRef(0);
+
   const boardWidth = Math.min(width - 44, 390);
   const boardHeight = 440;
 
@@ -72,6 +96,9 @@ export default function AngelGameScreen() {
   const bgScale = useRef(new Animated.Value(1)).current;
   const targetScale = useRef(new Animated.Value(1)).current;
   const targetRotate = useRef(new Animated.Value(0)).current;
+  const targetSpawn = useRef(new Animated.Value(1)).current;
+  const wander = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const shake = useRef(new Animated.Value(0)).current;
   const glow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -136,6 +163,7 @@ export default function AngelGameScreen() {
     ).start();
   }, []);
 
+  // Game clock
   useEffect(() => {
     if (!gameActive) return;
 
@@ -147,6 +175,10 @@ export default function AngelGameScreen() {
     const timer = setTimeout(() => {
       setTimeLeft((prev) => prev - 1);
 
+      if (timeLeft <= 4) {
+        Vibration.vibrate(20);
+      }
+
       if (gameMode === "speed" && timeLeft % 3 === 0) {
         randomTarget(true);
       }
@@ -154,16 +186,88 @@ export default function AngelGameScreen() {
       if (gameMode === "god" && timeLeft % 4 === 0) {
         setScore((prev) => prev + level);
         setLastEvent(`God Mode bonus +${level}`);
+        spawnPopup(boardWidth / 2 - 24, 40, `+${level}`, "#FFD700");
       }
     }, 1000);
 
     return () => clearTimeout(timer);
   }, [gameActive, timeLeft, lives, gameMode, level]);
 
+  // Level up
   useEffect(() => {
     const nextLevel = Math.max(1, Math.floor(score / 20) + 1);
     setLevel(nextLevel);
   }, [score]);
+
+  // Target lifetime — escapes if not tapped in time
+  useEffect(() => {
+    if (!gameActive) return;
+
+    const life = getTargetLife();
+    const escapeTimer = setTimeout(() => {
+      if (target.kind === "angel" || target.kind === "bonus") {
+        setCombo(0);
+        setLastEvent("Target escaped. Combo reset.");
+        Vibration.vibrate(30);
+        spawnPopup(target.left + target.size / 2 - 30, target.top, "Escaped", "#94A3B8");
+      }
+      randomTarget();
+    }, life);
+
+    return () => clearTimeout(escapeTimer);
+  }, [target, gameActive]);
+
+  // Target spawn pop + drifting movement
+  useEffect(() => {
+    if (!gameActive) return;
+
+    targetSpawn.setValue(0);
+    Animated.spring(targetSpawn, {
+      toValue: 1,
+      friction: 5,
+      tension: 140,
+      useNativeDriver: true,
+    }).start();
+
+    wander.setValue({ x: 0, y: 0 });
+    const amp = Math.min(6 + level * 3, 30);
+    const drift = Animated.loop(
+      Animated.sequence([
+        Animated.timing(wander, {
+          toValue: { x: rand(-amp, amp), y: rand(-amp, amp) },
+          duration: 520,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(wander, {
+          toValue: { x: rand(-amp, amp), y: rand(-amp, amp) },
+          duration: 520,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(wander, {
+          toValue: { x: 0, y: 0 },
+          duration: 460,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    drift.start();
+
+    return () => drift.stop();
+  }, [target, gameActive]);
+
+  function rand(min: number, max: number) {
+    return Math.random() * (max - min) + min;
+  }
+
+  function getTargetLife() {
+    if (gameMode === "speed") return Math.max(800, 1600 - level * 90);
+    if (gameMode === "god") return Math.max(850, 1900 - level * 100);
+    if (gameMode === "shield") return Math.max(1200, 2800 - level * 120);
+    return Math.max(1000, 2400 - level * 130);
+  }
 
   function getModeTime(mode: GameMode) {
     if (mode === "speed") return 20;
@@ -219,6 +323,47 @@ export default function AngelGameScreen() {
     });
   }
 
+  function spawnPopup(x: number, y: number, text: string, color: string) {
+    const id = ++idRef.current;
+    const anim = new Animated.Value(0);
+    setPopups((prev) => [...prev.slice(-6), { id, x, y, text, color, anim }]);
+
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 750,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => {
+      setPopups((prev) => prev.filter((p) => p.id !== id));
+    });
+  }
+
+  function spawnBurst(x: number, y: number, color: string) {
+    const id = ++idRef.current;
+    const progress = new Animated.Value(0);
+    setBursts((prev) => [...prev.slice(-3), { id, x, y, color, progress }]);
+
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 450,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(() => {
+      setBursts((prev) => prev.filter((b) => b.id !== id));
+    });
+  }
+
+  function shakeBoard() {
+    shake.setValue(0);
+    Animated.sequence([
+      Animated.timing(shake, { toValue: -8, duration: 40, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 8, duration: 40, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: -5, duration: 40, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 5, duration: 40, useNativeDriver: true }),
+      Animated.timing(shake, { toValue: 0, duration: 40, useNativeDriver: true }),
+    ]).start();
+  }
+
   function startGame(mode = gameMode) {
     setGameMode(mode);
     setScore(0);
@@ -229,6 +374,9 @@ export default function AngelGameScreen() {
     setShieldActive(mode === "shield" || mode === "god");
     setGameOver(false);
     setGameActive(true);
+    setPopups([]);
+    setBursts([]);
+    Vibration.vibrate(15);
     setLastEvent(
       mode === "god"
         ? "God Mode activated. Maximum power unlocked."
@@ -241,6 +389,7 @@ export default function AngelGameScreen() {
   function finishGame() {
     setGameActive(false);
     setGameOver(true);
+    Vibration.vibrate([0, 80, 60, 80]);
 
     const newBest = Math.max(score, bestScore);
 
@@ -260,6 +409,8 @@ export default function AngelGameScreen() {
     if (!gameActive) return;
 
     setCombo(0);
+    shakeBoard();
+    Vibration.vibrate(30);
 
     if (shieldActive) {
       setShieldActive(false);
@@ -274,19 +425,26 @@ export default function AngelGameScreen() {
   function tapTarget() {
     if (!gameActive) return;
 
+    const cx = target.left + target.size / 2 - 26;
+    const cy = target.top - 6;
     const nextCombo = combo + 1;
     const comboBonus = nextCombo >= 15 ? 4 : nextCombo >= 10 ? 3 : nextCombo >= 5 ? 2 : 1;
     const godBonus = gameMode === "god" ? 3 : 1;
 
     if (target.kind === "trap") {
       setCombo(0);
+      shakeBoard();
+      Vibration.vibrate([0, 60, 40, 60]);
+      spawnBurst(target.left + target.size / 2, target.top + target.size / 2, colors.danger || "#EF4444");
 
       if (shieldActive) {
         setShieldActive(false);
         setLastEvent("Shield absorbed a trap.");
+        spawnPopup(cx, cy, "Blocked", "#38BDF8");
       } else {
         setLives((prev) => Math.max(prev - 1, 0));
         setLastEvent("Trap hit. Lost one life.");
+        spawnPopup(cx, cy, "-1 ♥", "#EF4444");
       }
 
       animateTargetHit();
@@ -294,12 +452,17 @@ export default function AngelGameScreen() {
       return;
     }
 
+    Vibration.vibrate(8);
+
     if (target.kind === "shield") {
       setShieldActive(true);
       setCombo(nextCombo);
       setScore((prev) => prev + 2 * godBonus);
       setLastEvent("Shield power-up activated.");
+      spawnPopup(cx, cy, `+${2 * godBonus}`, "#38BDF8");
+      spawnBurst(target.left + target.size / 2, target.top + target.size / 2, "#38BDF8");
       animateTargetHit();
+      handleComboMilestone(nextCombo, cx, cy);
       randomTarget();
       return;
     }
@@ -309,7 +472,10 @@ export default function AngelGameScreen() {
       setCombo(nextCombo);
       setScore((prev) => prev + points);
       setLastEvent(`Bonus target +${points}`);
+      spawnPopup(cx, cy, `+${points}`, "#A855F7");
+      spawnBurst(target.left + target.size / 2, target.top + target.size / 2, "#A855F7");
       animateTargetHit();
+      handleComboMilestone(nextCombo, cx, cy);
       randomTarget();
       return;
     }
@@ -318,8 +484,23 @@ export default function AngelGameScreen() {
     setCombo(nextCombo);
     setScore((prev) => prev + points);
     setLastEvent(`Angel target +${points}`);
+    spawnPopup(cx, cy, `+${points}`, "#FFD700");
+    spawnBurst(target.left + target.size / 2, target.top + target.size / 2, "#FFD700");
     animateTargetHit();
+    handleComboMilestone(nextCombo, cx, cy);
     randomTarget();
+  }
+
+  function handleComboMilestone(nextCombo: number, x: number, y: number) {
+    if (nextCombo > 0 && nextCombo % 10 === 0) {
+      setTimeLeft((prev) => prev + 2);
+      spawnPopup(x, y - 26, "+2s", "#4ADE80");
+      Vibration.vibrate([0, 30, 30, 30]);
+    } else if (nextCombo === 15) {
+      spawnPopup(x, y - 26, `${nextCombo}x!`, "#FFD700");
+    } else if (nextCombo === 5) {
+      spawnPopup(x, y - 26, `${nextCombo}x!`, "#FFD700");
+    }
   }
 
   function animateTargetHit() {
@@ -502,85 +683,173 @@ export default function AngelGameScreen() {
               <Text style={styles.eventText}>{lastEvent}</Text>
             </View>
 
-            <TouchableOpacity
-              activeOpacity={1}
-              style={[styles.gameBoard, { width: boardWidth, height: boardHeight }]}
-              onPress={missTap}
-            >
-              {!gameActive ? (
-                <View style={styles.startBox}>
-                  <View style={styles.startIcon}>
-                    {gameMode === "god" ? (
-                      <Crown size={34} color={colors.navy} />
-                    ) : (
-                      <Gamepad2 size={34} color={colors.navy} />
-                    )}
-                  </View>
+            <Animated.View style={{ transform: [{ translateX: shake }] }}>
+              <TouchableOpacity
+                activeOpacity={1}
+                style={[styles.gameBoard, { width: boardWidth, height: boardHeight }]}
+                onPress={missTap}
+              >
+                {!gameActive ? (
+                  <View style={styles.startBox}>
+                    <View style={styles.startIcon}>
+                      {gameMode === "god" ? (
+                        <Crown size={34} color={colors.navy} />
+                      ) : (
+                        <Gamepad2 size={34} color={colors.navy} />
+                      )}
+                    </View>
 
-                  <Text style={styles.startTitle}>
-                    {gameOver ? "Play Again?" : gameMode === "god" ? "Enter God Mode" : "Ready to Ride?"}
-                  </Text>
-
-                  <Text style={styles.startText}>
-                    Gold targets score. Blue shields protect you. Purple bonus targets boost points.
-                    Red traps cost lives.
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.startButton}
-                    onPress={() => startGame()}
-                    activeOpacity={0.85}
-                  >
-                    <Text style={styles.startButtonText}>
-                      {gameOver ? "Restart Game" : "Start Game"}
+                    <Text style={styles.startTitle}>
+                      {gameOver ? "Play Again?" : gameMode === "god" ? "Enter God Mode" : "Ready to Ride?"}
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <Animated.View
-                  style={[
-                    styles.target,
-                    {
-                      top: target.top,
-                      left: target.left,
-                      width: target.size,
-                      height: target.size,
-                      transform: [{ scale: targetScale }, { rotate }],
-                    },
-                  ]}
-                >
-                  <Animated.View
-                    style={[
-                      styles.targetGlow,
-                      getTargetGlowStyle(target.kind, styles),
-                      { opacity: glowOpacity },
-                    ]}
-                  />
 
-                  <TouchableOpacity
-                    style={[styles.targetButton, getTargetStyle(target.kind, styles)]}
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      tapTarget();
-                    }}
-                    activeOpacity={0.75}
-                  >
-                    {target.kind === "trap" ? (
-                      <Text style={styles.targetText}>!</Text>
-                    ) : target.kind === "shield" ? (
-                      <Shield size={target.size * 0.46} color={colors.navy} />
-                    ) : target.kind === "bonus" ? (
-                      <Zap size={target.size * 0.46} color={colors.navy} />
-                    ) : (
-                      <>
-                        <Text style={styles.targetWing}>翼</Text>
-                        <Text style={styles.targetText}>A</Text>
-                      </>
+                    <Text style={styles.startText}>
+                      Gold targets score. Blue shields protect you. Purple bonus targets boost points.
+                      Red traps cost lives.
+                    </Text>
+
+                    <TouchableOpacity
+                      style={styles.startButton}
+                      onPress={() => startGame()}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.startButtonText}>
+                        {gameOver ? "Restart Game" : "Start Game"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <>
+                    <Animated.View
+                      style={[
+                        styles.target,
+                        {
+                          top: target.top,
+                          left: target.left,
+                          width: target.size,
+                          height: target.size,
+                          transform: [
+                            { translateX: wander.x },
+                            { translateY: wander.y },
+                            { scale: Animated.multiply(targetScale, targetSpawn) },
+                            { rotate },
+                          ],
+                        },
+                      ]}
+                    >
+                      <Animated.View
+                        style={[
+                          styles.targetGlow,
+                          getTargetGlowStyle(target.kind, styles),
+                          { opacity: glowOpacity },
+                        ]}
+                      />
+
+                      <TouchableOpacity
+                        style={[styles.targetButton, getTargetStyle(target.kind, styles)]}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          tapTarget();
+                        }}
+                        activeOpacity={0.75}
+                      >
+                        {target.kind === "trap" ? (
+                          <Text style={styles.targetText}>!</Text>
+                        ) : target.kind === "shield" ? (
+                          <Shield size={target.size * 0.46} color={colors.navy} />
+                        ) : target.kind === "bonus" ? (
+                          <Zap size={target.size * 0.46} color={colors.navy} />
+                        ) : (
+                          <>
+                            <Text style={styles.targetWing}>翼</Text>
+                            <Text style={styles.targetText}>A</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </Animated.View>
+
+                    {bursts.map((b) =>
+                      BURST_ANGLES.map((angle, i) => {
+                        const rad = (angle * Math.PI) / 180;
+                        const dist = 46;
+                        return (
+                          <Animated.View
+                            key={`${b.id}-${i}`}
+                            pointerEvents="none"
+                            style={[
+                              styles.particle,
+                              {
+                                left: b.x - 5,
+                                top: b.y - 5,
+                                backgroundColor: b.color,
+                                opacity: b.progress.interpolate({
+                                  inputRange: [0, 0.7, 1],
+                                  outputRange: [1, 0.8, 0],
+                                }),
+                                transform: [
+                                  {
+                                    translateX: b.progress.interpolate({
+                                      inputRange: [0, 1],
+                                      outputRange: [0, Math.cos(rad) * dist],
+                                    }),
+                                  },
+                                  {
+                                    translateY: b.progress.interpolate({
+                                      inputRange: [0, 1],
+                                      outputRange: [0, Math.sin(rad) * dist],
+                                    }),
+                                  },
+                                  {
+                                    scale: b.progress.interpolate({
+                                      inputRange: [0, 1],
+                                      outputRange: [1, 0.2],
+                                    }),
+                                  },
+                                ],
+                              },
+                            ]}
+                          />
+                        );
+                      })
                     )}
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-            </TouchableOpacity>
+
+                    {popups.map((p) => (
+                      <Animated.View
+                        key={p.id}
+                        pointerEvents="none"
+                        style={[
+                          styles.popup,
+                          {
+                            left: p.x,
+                            top: p.y,
+                            opacity: p.anim.interpolate({
+                              inputRange: [0, 0.15, 1],
+                              outputRange: [0, 1, 0],
+                            }),
+                            transform: [
+                              {
+                                translateY: p.anim.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [0, -48],
+                                }),
+                              },
+                              {
+                                scale: p.anim.interpolate({
+                                  inputRange: [0, 0.2, 1],
+                                  outputRange: [0.6, 1.15, 1],
+                                }),
+                              },
+                            ],
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.popupText, { color: p.color }]}>{p.text}</Text>
+                      </Animated.View>
+                    ))}
+                  </>
+                )}
+              </TouchableOpacity>
+            </Animated.View>
 
             <View style={styles.actionRow}>
               <TouchableOpacity style={styles.resetButton} onPress={() => startGame()} activeOpacity={0.85}>
@@ -1043,6 +1312,25 @@ function createStyles(c: any) {
       color: c.navy,
       fontSize: 38,
       fontWeight: "900",
+    },
+
+    popup: {
+      position: "absolute",
+      zIndex: 50,
+    },
+    popupText: {
+      fontSize: 22,
+      fontWeight: "900",
+      textShadowColor: "rgba(0,0,0,0.55)",
+      textShadowOffset: { width: 0, height: 2 },
+      textShadowRadius: 6,
+    },
+    particle: {
+      position: "absolute",
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      zIndex: 40,
     },
 
     actionRow: {

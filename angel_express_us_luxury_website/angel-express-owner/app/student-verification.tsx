@@ -1,73 +1,170 @@
-import React, { useCallback, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   Image,
   ImageBackground,
   Linking,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
-import {
-  BadgeCheck,
-  Bell,
-  CalendarDays,
-  Clock,
-  Gift,
-  GraduationCap,
-  IdCard,
-  Mail,
-  MapPinned,
-  Percent,
-  ShieldCheck,
-  UserRound,
-  Users,
-  XCircle,
-} from "lucide-react-native";
 
+import { useOwnerTheme } from "../lib/ownerTheme";
 import { supabase } from "../lib/supabase";
 
-const GOLD = "#D4AF37";
-const NAVY = "#050b16";
-const GREEN = "#2ECC71";
-const RED = "#FF6B6B";
+type GenericRecord = Record<string, any>;
+
+type StudentRecord = GenericRecord & {
+  id?: string | number;
+  verification_id?: string | number | null;
+  profile_id?: string | number | null;
+  passenger_id?: string | null;
+  user_id?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
+  name?: string | null;
+  email?: string | null;
+  student_email?: string | null;
+  phone?: string | null;
+  school_name?: string | null;
+  student_university?: string | null;
+  student_campus?: string | null;
+  student_level?: string | null;
+  student_expected_graduation?: string | null;
+  student_id_last4?: string | null;
+  student_id_number?: string | null;
+  student_id_photo_url?: string | null;
+  student_id_url?: string | null;
+  student_id_path?: string | null;
+  id_photo_url?: string | null;
+  id_photo_path?: string | null;
+  student_id_uploaded?: boolean | null;
+  student_verified?: boolean | null;
+  student_verification_status?: string | null;
+  status?: string | null;
+  reviewer_notes?: string | null;
+  student_review_notes?: string | null;
+  notes?: string | null;
+  submitted_at?: string | null;
+  student_verification_submitted_at?: string | null;
+  created_at?: string | null;
+  reviewed_at?: string | null;
+  student_verified_at?: string | null;
+  profile_photo_url?: string | null;
+  queue_source?: "student_verifications" | "passenger_profiles" | "both";
+  publicUrl?: string | null;
+};
+
+type StudentTab = "pending" | "verified" | "rejected" | "rides";
+
 const BUCKET = "student-ids";
 
-export default function StudentVerificationQueue() {
-  const [loading, setLoading] = useState(true);
-  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
-  const [rideRequests, setRideRequests] = useState<any[]>([]);
-  const [approvedToday, setApprovedToday] = useState(0);
-  const [rejectedToday, setRejectedToday] = useState(0);
-  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+function normalize(value?: string | null) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]/g, "");
+}
 
-  const fade = useRef(new Animated.Value(0)).current;
+function recordStatus(item: StudentRecord) {
+  if (item.student_verified === true) return "verified";
+
+  const status = normalize(
+    item.status || item.student_verification_status
+  );
+
+  if (["approved", "verified", "active"].includes(status)) {
+    return "verified";
+  }
+
+  if (["rejected", "denied", "declined"].includes(status)) {
+    return "rejected";
+  }
+
+  return "pending";
+}
+
+function displayName(item: StudentRecord) {
+  return (
+    `${item.first_name || ""} ${item.last_name || ""}`.trim() ||
+    item.full_name ||
+    item.name ||
+    item.email ||
+    "Student Passenger"
+  );
+}
+
+function submittedDate(item: StudentRecord) {
+  return (
+    item.submitted_at ||
+    item.student_verification_submitted_at ||
+    item.created_at ||
+    null
+  );
+}
+
+function money(value: any) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Number(value || 0));
+}
+
+export default function StudentVerificationScreen() {
+  const { theme, isDark } = useOwnerTheme();
+  const { width } = useWindowDimensions();
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reviewingKey, setReviewingKey] = useState<string | null>(null);
+
+  const [students, setStudents] = useState<StudentRecord[]>([]);
+  const [rideRequests, setRideRequests] = useState<GenericRecord[]>([]);
+  const [reviewNotes, setReviewNotes] =
+    useState<Record<string, string>>({});
+
+  const [tab, setTab] = useState<StudentTab>("pending");
+  const [query, setQuery] = useState("");
+
+  const isTablet = width >= 700;
+  const isLarge = width >= 1050;
 
   useFocusEffect(
     useCallback(() => {
-      loadQueue();
-
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: 450,
-        useNativeDriver: true,
-      }).start();
+      loadStudentOperations();
     }, [])
   );
 
-  function getRequestKey(item: any) {
-    return (
-      item.id ||
-      item.user_id ||
-      item.passenger_id ||
-      item.email ||
-      Math.random().toString()
+  function identityKeys(item: StudentRecord) {
+    return [
+      item.user_id,
+      item.passenger_id,
+      item.profile_id,
+      item.email?.trim().toLowerCase(),
+      item.student_email?.trim().toLowerCase(),
+    ]
+      .filter(Boolean)
+      .map(String);
+  }
+
+  function stableKey(item: StudentRecord) {
+    return String(
+      item.verification_id ||
+        item.user_id ||
+        item.passenger_id ||
+        item.profile_id ||
+        item.email ||
+        item.student_email ||
+        item.id
     );
   }
 
@@ -75,17 +172,16 @@ export default function StudentVerificationQueue() {
     const raw = String(rawValue || "").trim();
 
     if (!raw) return "";
-
-    if (!raw.startsWith("http")) {
-      return raw;
-    }
+    if (!raw.startsWith("http")) return raw;
 
     try {
       const url = new URL(raw);
       const decodedPath = decodeURIComponent(url.pathname);
 
-      const publicMarker = `/storage/v1/object/public/${BUCKET}/`;
-      const signedMarker = `/storage/v1/object/sign/${BUCKET}/`;
+      const publicMarker =
+        `/storage/v1/object/public/${BUCKET}/`;
+      const signedMarker =
+        `/storage/v1/object/sign/${BUCKET}/`;
 
       if (decodedPath.includes(publicMarker)) {
         return decodedPath.split(publicMarker)[1] || "";
@@ -101,11 +197,11 @@ export default function StudentVerificationQueue() {
     }
   }
 
-  function getPublicStudentIdUrl(item: any) {
+  function getStudentIdUrl(item: StudentRecord) {
     const raw =
       item.student_id_photo_url ||
-      item.student_id_path ||
       item.student_id_url ||
+      item.student_id_path ||
       item.id_photo_url ||
       item.id_photo_path ||
       "";
@@ -113,10 +209,7 @@ export default function StudentVerificationQueue() {
     const rawString = String(raw || "").trim();
 
     if (!rawString) return null;
-
-    if (rawString.startsWith("http")) {
-      return rawString;
-    }
+    if (rawString.startsWith("http")) return rawString;
 
     const path = extractStoragePath(rawString);
 
@@ -126,1179 +219,2427 @@ export default function StudentVerificationQueue() {
       .from(BUCKET)
       .getPublicUrl(path);
 
-    return data?.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : null;
+    return data?.publicUrl || null;
   }
 
-  function normalizeVerificationRows(studentRows: any[], profileRows: any[]) {
-    const map = new Map<string, any>();
+  function mergeStudentRows(
+    verificationRows: GenericRecord[],
+    profileRows: GenericRecord[]
+  ) {
+    const records: StudentRecord[] = [];
+    const map = new Map<string, StudentRecord>();
 
-    (studentRows || []).forEach((item) => {
-      const key =
-        item.passenger_id ||
-        item.user_id ||
-        String(item.email || "").trim().toLowerCase() ||
-        item.id;
+    function findExisting(item: StudentRecord) {
+      const keys = identityKeys(item);
 
-      map.set(String(key), {
-        ...item,
+      return keys
+        .map((key) => map.get(key))
+        .find(Boolean);
+    }
+
+    function save(item: StudentRecord) {
+      const existing = findExisting(item);
+
+      const merged: StudentRecord = existing
+        ? {
+            ...existing,
+            ...item,
+            verification_id:
+              item.verification_id ||
+              existing.verification_id,
+            profile_id:
+              item.profile_id || existing.profile_id,
+            first_name:
+              item.first_name || existing.first_name,
+            last_name:
+              item.last_name || existing.last_name,
+            email: item.email || existing.email,
+            student_email:
+              item.student_email ||
+              existing.student_email,
+            phone: item.phone || existing.phone,
+            school_name:
+              item.school_name ||
+              item.student_university ||
+              existing.school_name ||
+              existing.student_university,
+            student_campus:
+              item.student_campus ||
+              existing.student_campus,
+            student_level:
+              item.student_level ||
+              existing.student_level,
+            student_expected_graduation:
+              item.student_expected_graduation ||
+              existing.student_expected_graduation,
+            student_id_photo_url:
+              item.student_id_photo_url ||
+              item.student_id_url ||
+              item.student_id_path ||
+              existing.student_id_photo_url ||
+              existing.student_id_url ||
+              existing.student_id_path,
+            profile_photo_url:
+              item.profile_photo_url ||
+              existing.profile_photo_url,
+            queue_source: "both",
+          }
+        : item;
+
+      identityKeys(merged).forEach((key) =>
+        map.set(key, merged)
+      );
+
+      if (!existing) {
+        records.push(merged);
+      } else {
+        const index = records.indexOf(existing);
+
+        if (index >= 0) records[index] = merged;
+      }
+    }
+
+    verificationRows.forEach((row) => {
+      save({
+        ...row,
+        verification_id: row.id,
         queue_source: "student_verifications",
       });
     });
 
-    (profileRows || []).forEach((profile) => {
-      const key =
-        profile.id ||
-        profile.user_id ||
-        String(profile.email || "").trim().toLowerCase();
-
-      if (map.has(String(key))) {
-        const existing = map.get(String(key));
-        map.set(String(key), {
-          ...profile,
-          ...existing,
-          first_name: existing.first_name || profile.first_name,
-          last_name: existing.last_name || profile.last_name,
-          phone: existing.phone || profile.phone,
-          email: existing.email || profile.email,
-          student_campus: existing.student_campus || profile.student_campus,
-          student_level: existing.student_level || profile.student_level,
-          student_expected_graduation:
-            existing.student_expected_graduation || profile.student_expected_graduation,
-          student_id_photo_url:
-            existing.student_id_photo_url ||
-            profile.student_id_url ||
-            profile.student_id_path,
-          student_id_path: existing.student_id_path || profile.student_id_path,
-          queue_source: "both",
-        });
-      } else {
-        map.set(String(key), {
-          id: profile.id,
-          passenger_id: profile.id,
-          user_id: profile.user_id,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          phone: profile.phone,
-          email: profile.email,
-          student_email: profile.student_email,
-          student_id_last4: profile.student_id_number,
-          school_name: profile.student_university,
-          student_campus: profile.student_campus,
-          student_level: profile.student_level,
-          student_expected_graduation: profile.student_expected_graduation,
-          student_id_photo_url: profile.student_id_url || profile.student_id_path,
-          student_id_path: profile.student_id_path,
-          notes: profile.student_verification_notes,
-          status: profile.student_verification_status || "Pending Review",
-          student_verified: profile.student_verified,
-          submitted_at: profile.student_verification_submitted_at,
-          created_at: profile.student_verification_submitted_at || profile.created_at,
-          queue_source: "passenger_profiles",
-        });
-      }
+    profileRows.forEach((profile) => {
+      save({
+        ...profile,
+        id: profile.id,
+        profile_id: profile.id,
+        passenger_id:
+          profile.passenger_id || profile.id,
+        school_name:
+          profile.student_university ||
+          profile.school_name,
+        student_id_last4:
+          profile.student_id_number ||
+          profile.student_id_last4,
+        student_id_photo_url:
+          profile.student_id_url ||
+          profile.student_id_path ||
+          profile.student_id_photo_url,
+        status:
+          profile.student_verification_status ||
+          profile.status,
+        submitted_at:
+          profile.student_verification_submitted_at ||
+          profile.submitted_at,
+        reviewer_notes:
+          profile.student_review_notes ||
+          profile.reviewer_notes,
+        queue_source: "passenger_profiles",
+      });
     });
 
-    return Array.from(map.values()).sort((a, b) => {
-      const dateA = new Date(a.submitted_at || a.created_at || 0).getTime();
-      const dateB = new Date(b.submitted_at || b.created_at || 0).getTime();
-      return dateB - dateA;
-    });
+    return records
+      .map((item) => ({
+        ...item,
+        publicUrl: getStudentIdUrl(item),
+      }))
+      .filter((item) => {
+        /*
+         * Preserve every real submission:
+         * - a verification row,
+         * - an uploaded student ID,
+         * - a student status,
+         * - or student profile data.
+         */
+        return Boolean(
+          item.verification_id ||
+            item.student_id_uploaded ||
+            item.student_id_photo_url ||
+            item.student_id_url ||
+            item.student_id_path ||
+            item.student_verification_status ||
+            item.status ||
+            item.student_email ||
+            item.school_name ||
+            item.student_university
+        );
+      })
+      .sort((a, b) => {
+        const dateA = new Date(
+          submittedDate(a) || 0
+        ).getTime();
+
+        const dateB = new Date(
+          submittedDate(b) || 0
+        ).getTime();
+
+        return dateB - dateA;
+      });
   }
 
-  async function loadQueue() {
-    setLoading(true);
-
+  async function safeSelect(table: string) {
     try {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
+      const { data, error } = await supabase
+        .from(table)
+        .select("*");
 
-      let studentVerificationRows: any[] = [];
-      let passengerProfileRows: any[] = [];
-      let bookingsRows: any[] = [];
-
-      const verificationResult = await supabase
-        .from("student_verifications")
-        .select("*")
-        .in("status", [
-          "pending",
-          "Pending",
-          "Pending Review",
-          "submitted",
-          "Submitted",
-        ])
-        .order("created_at", { ascending: false });
-
-      if (verificationResult.error) {
-        console.log("student_verifications load skipped:", verificationResult.error.message);
-      } else {
-        studentVerificationRows = verificationResult.data || [];
+      if (error) {
+        console.log(`${table} load skipped:`, error.message);
+        return [];
       }
 
-      const profileResult = await supabase
-        .from("passenger_profiles")
-        .select("*")
-        .or(
-          "student_verification_status.eq.Pending Review,student_verification_status.eq.pending,student_verification_status.eq.submitted,student_id_uploaded.eq.true"
+      return data || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function loadStudentOperations(
+    showLoader = true
+  ) {
+    try {
+      if (showLoader) setLoading(true);
+
+      /*
+       * Load all verification records, not only exact pending spellings.
+       * Client-side normalization prevents older submissions from disappearing.
+       */
+      const [
+        verificationRows,
+        profileRows,
+        bookingRows,
+      ] = await Promise.all([
+        safeSelect("student_verifications"),
+        safeSelect("passenger_profiles"),
+        safeSelect("bookings"),
+      ]);
+
+      setStudents(
+        mergeStudentRows(
+          verificationRows,
+          profileRows
         )
-        .order("student_verification_submitted_at", { ascending: false });
-
-      if (profileResult.error) {
-        console.log("passenger_profiles verification load skipped:", profileResult.error.message);
-      } else {
-        passengerProfileRows = (profileResult.data || []).filter((profile) => {
-          const status = String(profile.student_verification_status || "").toLowerCase();
-          const uploaded = profile.student_id_uploaded === true;
-          const pending =
-            status === "pending review" ||
-            status === "pending" ||
-            status === "submitted";
-
-          return uploaded || pending;
-        });
-      }
-
-      const combinedRows = normalizeVerificationRows(
-        studentVerificationRows,
-        passengerProfileRows
       );
 
-      const rowsWithPublicUrls = combinedRows.map((item) => {
-        const publicUrl = getPublicStudentIdUrl(item);
-        return { ...item, publicUrl };
-      });
+      setRideRequests(
+        bookingRows
+          .filter((booking) => {
+            const referral =
+              booking.referral_applied === true;
 
-      const approvedResult = await supabase
-        .from("student_verifications")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["approved", "Approved"])
-        .gte("reviewed_at", todayStart.toISOString());
+            const studentDiscount =
+              Number(booking.student_discount || 0) >
+              0;
 
-      if (!approvedResult.error) {
-        setApprovedToday(approvedResult.count || 0);
-      } else {
-        console.log("approved count skipped:", approvedResult.error.message);
-        setApprovedToday(0);
-      }
+            const sharedRide =
+              booking.shared_ride === true ||
+              booking.is_shared_ride === true ||
+              booking.student_shared_ride === true ||
+              Boolean(booking.shared_ride_status) ||
+              Number(
+                booking.shared_ride_discount || 0
+              ) > 0;
 
-      const rejectedResult = await supabase
-        .from("student_verifications")
-        .select("id", { count: "exact", head: true })
-        .in("status", ["rejected", "Rejected"])
-        .gte("reviewed_at", todayStart.toISOString());
-
-      if (!rejectedResult.error) {
-        setRejectedToday(rejectedResult.count || 0);
-      } else {
-        console.log("rejected count skipped:", rejectedResult.error.message);
-        setRejectedToday(0);
-      }
-
-      const bookingsResult = await supabase
-        .from("bookings")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(80);
-
-      if (bookingsResult.error) {
-        console.log("bookings reward/shared ride load skipped:", bookingsResult.error.message);
-      } else {
-        bookingsRows = bookingsResult.data || [];
-      }
-
-      const filteredRideRequests = bookingsRows.filter((b) => {
-        const referralApplied = b.referral_applied === true;
-        const referralPending =
-          referralApplied && b.referral_credit_awarded !== true;
-
-        const studentDiscount = Number(b.student_discount || 0) > 0;
-
-        const sharedRide =
-          b.shared_ride === true ||
-          b.is_shared_ride === true ||
-          b.student_shared_ride === true ||
-          String(b.shared_ride_status || "").trim().length > 0 ||
-          Number(b.shared_ride_discount || 0) > 0;
-
-        return referralApplied || referralPending || studentDiscount || sharedRide;
-      });
-
-      setPendingRequests(rowsWithPublicUrls);
-      setRideRequests(filteredRideRequests);
+            return referral || studentDiscount || sharedRide;
+          })
+          .sort((a, b) => {
+            return (
+              new Date(b.created_at || 0).getTime() -
+              new Date(a.created_at || 0).getTime()
+            );
+          })
+      );
     } catch (error: any) {
-      console.log("Verification Queue Error:", error);
       Alert.alert(
-        "Verification Queue Error",
-        error.message || "Could not load queue."
+        "Student Operations Error",
+        error?.message ||
+          "Unable to load student operations."
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
-  async function notifyPassenger(userId: string, status: "Approved" | "Rejected") {
-    if (!userId) return;
-
-    try {
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        title:
-          status === "Approved"
-            ? "Student Verification Approved"
-            : "Student Verification Rejected",
-        message:
-          status === "Approved"
-            ? "Your Angel Express student benefits are now active."
-            : "Your student verification could not be approved. Please review your details and resubmit.",
-        type: "student_verification",
-        read: false,
-      });
-    } catch {
-      console.log("Passenger notification insert skipped.");
-    }
-  }
-
-  async function updatePassengerProfile(item: any, approved: boolean, notes: string) {
-    const updatePayload = {
+  async function updateProfile(
+    item: StudentRecord,
+    approved: boolean,
+    notes: string
+  ) {
+    const payload = {
       student_verified: approved,
       student_status: approved,
       student_discount_eligible: approved,
-      student_verification_status: approved ? "Approved" : "Rejected",
-      student_verified_at: approved ? new Date().toISOString() : null,
+      student_verification_status: approved
+        ? "Approved"
+        : "Rejected",
+      student_verified_at: approved
+        ? new Date().toISOString()
+        : null,
       student_review_notes: notes,
-      student_email: item.student_email || item.email || null,
-      student_id_number: item.student_id_last4 || null,
-      student_university: item.school_name || null,
+      student_email:
+        item.student_email || item.email || null,
+      student_id_number:
+        item.student_id_last4 ||
+        item.student_id_number ||
+        null,
+      student_university:
+        item.school_name ||
+        item.student_university ||
+        null,
     };
 
-    try {
-      if (item.passenger_id) {
-        await supabase
-          .from("passenger_profiles")
-          .update(updatePayload)
-          .eq("id", item.passenger_id);
-        return;
-      }
+    if (item.profile_id || item.passenger_id) {
+      const id =
+        item.profile_id || item.passenger_id;
 
-      if (item.user_id) {
-        await supabase
-          .from("passenger_profiles")
-          .update(updatePayload)
-          .eq("user_id", item.user_id);
-        return;
-      }
+      const response = await supabase
+        .from("passenger_profiles")
+        .update(payload)
+        .eq("id", id);
 
-      if (item.email) {
-        await supabase
-          .from("passenger_profiles")
-          .update(updatePayload)
-          .ilike("email", String(item.email).trim().toLowerCase());
-      }
-    } catch {
-      console.log("Passenger profile update skipped.");
+      if (!response.error) return;
+    }
+
+    if (item.user_id) {
+      const response = await supabase
+        .from("passenger_profiles")
+        .update(payload)
+        .eq("user_id", item.user_id);
+
+      if (!response.error) return;
+    }
+
+    if (item.email) {
+      await supabase
+        .from("passenger_profiles")
+        .update(payload)
+        .ilike(
+          "email",
+          String(item.email).trim()
+        );
     }
   }
 
-  async function approveStudent(item: any) {
-    const key = getRequestKey(item);
-    const notes = reviewNotes[key] || "Verified by Angel Express.";
+  async function updateVerification(
+    item: StudentRecord,
+    approved: boolean,
+    notes: string
+  ) {
+    const payload = {
+      status: approved ? "approved" : "rejected",
+      student_verified: approved,
+      reviewer_notes: notes,
+      reviewed_at: new Date().toISOString(),
+    };
 
-    const { error } = await supabase
-      .from("student_verifications")
-      .update({
-        status: "approved",
-        student_verified: true,
-        reviewer_notes: notes,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", item.id);
+    if (item.verification_id) {
+      const { error } = await supabase
+        .from("student_verifications")
+        .update(payload)
+        .eq("id", item.verification_id);
 
-    if (error) {
-      Alert.alert("Approval Error", error.message);
+      if (error) throw error;
+
       return;
     }
 
-    await updatePassengerProfile(item, true, notes);
-
-    try {
-      await supabase.from("student_verification_reviews").insert({
-        passenger_user_id: item.user_id || null,
-        passenger_id: item.passenger_id || null,
-        student_verification_id: item.id,
-        decision: "approved",
-        review_notes: notes,
-      });
-    } catch {
-      console.log("Review log insert skipped.");
-    }
-
-    await notifyPassenger(item.user_id, "Approved");
-
-    Alert.alert("Approved", "Student verification approved.");
-    setReviewNotes((prev) => ({ ...prev, [key]: "" }));
-    loadQueue();
-  }
-
-  async function rejectStudent(item: any) {
-    const key = getRequestKey(item);
-    const notes = reviewNotes[key] || "Student ID could not be verified.";
+    /*
+     * Profile-only legacy submissions did not always create a row in
+     * student_verifications. Create a history row instead of losing them.
+     */
+    const insertPayload = {
+      passenger_id:
+        item.passenger_id ||
+        item.profile_id ||
+        null,
+      user_id: item.user_id || null,
+      email:
+        item.email ||
+        item.student_email ||
+        null,
+      student_email:
+        item.student_email ||
+        item.email ||
+        null,
+      school_name:
+        item.school_name ||
+        item.student_university ||
+        null,
+      student_id_last4:
+        item.student_id_last4 ||
+        item.student_id_number ||
+        null,
+      student_id_photo_url:
+        item.student_id_photo_url ||
+        item.student_id_url ||
+        item.student_id_path ||
+        null,
+      ...payload,
+    };
 
     const { error } = await supabase
       .from("student_verifications")
-      .update({
-        status: "rejected",
-        student_verified: false,
-        reviewer_notes: notes,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", item.id);
+      .insert(insertPayload);
 
     if (error) {
-      Alert.alert("Rejection Error", error.message);
-      return;
+      console.log(
+        "Verification history insert skipped:",
+        error.message
+      );
     }
-
-    await updatePassengerProfile(item, false, notes);
-
-    try {
-      await supabase.from("student_verification_reviews").insert({
-        passenger_user_id: item.user_id || null,
-        passenger_id: item.passenger_id || null,
-        student_verification_id: item.id,
-        decision: "rejected",
-        review_notes: notes,
-      });
-    } catch {
-      console.log("Review log insert skipped.");
-    }
-
-    await notifyPassenger(item.user_id, "Rejected");
-
-    Alert.alert("Rejected", "Student verification rejected.");
-    setReviewNotes((prev) => ({ ...prev, [key]: "" }));
-    loadQueue();
   }
 
-  function confirmApprove(item: any) {
+  async function notifyPassenger(
+    item: StudentRecord,
+    approved: boolean
+  ) {
+    const passengerId =
+      item.user_id ||
+      item.passenger_id ||
+      item.profile_id;
+
+    if (!passengerId) return;
+
+    const payload = {
+      passenger_id: passengerId,
+      title: approved
+        ? "Student Verification Approved"
+        : "Student Verification Rejected",
+      message: approved
+        ? "Your Angel Express student benefits are now active."
+        : "Your student verification could not be approved. Please review your details and resubmit.",
+      type: "student_verification",
+      priority: "normal",
+      is_read: false,
+      sent_by: "owner",
+    };
+
+    const response = await supabase
+      .from("passenger_notifications")
+      .insert(payload);
+
+    if (response.error) {
+      await supabase.from("notifications").insert({
+        user_id: passengerId,
+        title: payload.title,
+        message: payload.message,
+        type: payload.type,
+        read: false,
+      });
+    }
+  }
+
+  async function reviewStudent(
+    item: StudentRecord,
+    approved: boolean
+  ) {
+    const key = stableKey(item);
+
+    const notes =
+      reviewNotes[key] ||
+      (approved
+        ? "Verified by Angel Express."
+        : "Student ID could not be verified.");
+
+    try {
+      setReviewingKey(key);
+
+      await updateVerification(
+        item,
+        approved,
+        notes
+      );
+
+      await updateProfile(
+        item,
+        approved,
+        notes
+      );
+
+      try {
+        await supabase
+          .from("student_verification_reviews")
+          .insert({
+            passenger_user_id:
+              item.user_id || null,
+            passenger_id:
+              item.passenger_id ||
+              item.profile_id ||
+              null,
+            student_verification_id:
+              item.verification_id || null,
+            decision: approved
+              ? "approved"
+              : "rejected",
+            review_notes: notes,
+          });
+      } catch {
+        console.log("Review log insert skipped.");
+      }
+
+      await notifyPassenger(item, approved);
+
+      /*
+       * Move the student immediately to Verified or Rejected.
+       * Do not delete the submission from the module.
+       */
+      setStudents((current) =>
+        current.map((student) =>
+          stableKey(student) === key
+            ? {
+                ...student,
+                status: approved
+                  ? "approved"
+                  : "rejected",
+                student_verification_status:
+                  approved
+                    ? "Approved"
+                    : "Rejected",
+                student_verified: approved,
+                reviewed_at:
+                  new Date().toISOString(),
+                reviewer_notes: notes,
+                student_review_notes: notes,
+              }
+            : student
+        )
+      );
+
+      setReviewNotes((current) => ({
+        ...current,
+        [key]: "",
+      }));
+
+      setTab(approved ? "verified" : "rejected");
+
+      Alert.alert(
+        approved ? "Student Verified" : "Student Rejected",
+        approved
+          ? "The submission has moved to Verified Students."
+          : "The submission has moved to Rejected Students."
+      );
+
+      await loadStudentOperations(false);
+    } catch (error: any) {
+      Alert.alert(
+        approved
+          ? "Approval Error"
+          : "Rejection Error",
+        error?.message ||
+          "Unable to complete the review."
+      );
+    } finally {
+      setReviewingKey(null);
+    }
+  }
+
+  function confirmReview(
+    item: StudentRecord,
+    approved: boolean
+  ) {
     Alert.alert(
-      "Approve Student",
-      "Approve this student and activate student benefits?",
+      approved
+        ? "Approve Student"
+        : "Reject Student",
+      approved
+        ? "Approve this submission and activate verified student benefits?"
+        : "Reject this student verification submission?",
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Approve", onPress: () => approveStudent(item) },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: approved ? "Approve" : "Reject",
+          style: approved
+            ? "default"
+            : "destructive",
+          onPress: () =>
+            reviewStudent(item, approved),
+        },
       ]
     );
   }
 
-  function confirmReject(item: any) {
-    Alert.alert("Reject Student", "Reject this student verification request?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Reject", style: "destructive", onPress: () => rejectStudent(item) },
-    ]);
-  }
-
-  async function markReferralCreditAwarded(item: any) {
-    if (!item.id) return;
+  async function markReferralAwarded(
+    booking: GenericRecord
+  ) {
+    if (!booking.id) return;
 
     const { error } = await supabase
       .from("bookings")
-      .update({ referral_credit_awarded: true })
-      .eq("id", item.id);
+      .update({
+        referral_credit_awarded: true,
+      })
+      .eq("id", booking.id);
 
     if (error) {
-      Alert.alert("Reward Error", error.message);
+      Alert.alert(
+        "Reward Error",
+        error.message
+      );
       return;
     }
 
-    Alert.alert("Updated", "Referral credit marked as awarded.");
-    loadQueue();
+    Alert.alert(
+      "Reward Updated",
+      "Referral credit marked as awarded."
+    );
+
+    loadStudentOperations(false);
   }
 
-  if (loading) {
+  const pendingStudents = useMemo(
+    () =>
+      students.filter(
+        (student) =>
+          recordStatus(student) === "pending"
+      ),
+    [students]
+  );
+
+  const verifiedStudents = useMemo(
+    () =>
+      students.filter(
+        (student) =>
+          recordStatus(student) === "verified"
+      ),
+    [students]
+  );
+
+  const rejectedStudents = useMemo(
+    () =>
+      students.filter(
+        (student) =>
+          recordStatus(student) === "rejected"
+      ),
+    [students]
+  );
+
+  const displayedStudents = useMemo(() => {
+    const source =
+      tab === "pending"
+        ? pendingStudents
+        : tab === "verified"
+          ? verifiedStudents
+          : rejectedStudents;
+
+    const search = query
+      .trim()
+      .toLowerCase();
+
+    if (!search) return source;
+
+    return source.filter((item) =>
+      [
+        displayName(item),
+        item.email,
+        item.student_email,
+        item.school_name,
+        item.student_university,
+        item.student_campus,
+        item.student_id_last4,
+        item.student_id_number,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(search)
+    );
+  }, [
+    tab,
+    query,
+    pendingStudents,
+    verifiedStudents,
+    rejectedStudents,
+  ]);
+
+  function metricWidth() {
+    if (isLarge) return "23.5%";
+    if (isTablet) return "31.8%";
+    return "48%";
+  }
+
+  function cardWidth() {
+    if (isLarge) return "48.8%";
+    return "100%";
+  }
+
+  function MetricCard({
+    label,
+    value,
+    icon,
+    color,
+    background,
+  }: {
+    label: string;
+    value: number;
+    icon: keyof typeof Ionicons.glyphMap;
+    color: string;
+    background: string;
+  }) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={GOLD} size="large" />
-        <Text style={styles.loadingText}>Loading owner review center...</Text>
+      <View
+        style={[
+          styles.metricCard,
+          {
+            width: metricWidth(),
+            backgroundColor:
+              theme.colors.card,
+            borderColor:
+              theme.colors.cardBorder,
+          },
+          theme.shadows.soft,
+        ]}
+      >
+        <View
+          style={[
+            styles.metricIcon,
+            { backgroundColor: background },
+          ]}
+        >
+          <Ionicons
+            name={icon}
+            size={21}
+            color={color}
+          />
+        </View>
+
+        <Text
+          style={[
+            styles.metricValue,
+            { color: theme.colors.text },
+          ]}
+        >
+          {value}
+        </Text>
+
+        <Text
+          style={[
+            styles.metricLabel,
+            { color: theme.colors.textMuted },
+          ]}
+        >
+          {label}
+        </Text>
       </View>
     );
   }
 
+  function StudentCard({
+    item,
+  }: {
+    item: StudentRecord;
+  }) {
+    const key = stableKey(item);
+    const status = recordStatus(item);
+    const reviewing = reviewingKey === key;
+
+    const statusColor =
+      status === "verified"
+        ? theme.colors.success
+        : status === "rejected"
+          ? theme.colors.danger
+          : theme.colors.warning;
+
+    const statusBackground =
+      status === "verified"
+        ? theme.colors.successSoft
+        : status === "rejected"
+          ? theme.colors.dangerSoft
+          : theme.colors.warningSoft;
+
+    const submitted = submittedDate(item);
+
+    return (
+      <View
+        style={[
+          styles.studentCard,
+          {
+            width: cardWidth(),
+            backgroundColor:
+              theme.colors.card,
+            borderColor: statusColor,
+          },
+          theme.shadows.soft,
+        ]}
+      >
+        <View style={styles.studentHeader}>
+          <View
+            style={[
+              styles.avatar,
+              {
+                backgroundColor:
+                  theme.colors.goldTransparent,
+              },
+            ]}
+          >
+            {item.profile_photo_url ? (
+              <Image
+                source={{
+                  uri: item.profile_photo_url,
+                }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Text
+                style={[
+                  styles.avatarText,
+                  { color: theme.colors.gold },
+                ]}
+              >
+                {displayName(item)
+                  .charAt(0)
+                  .toUpperCase()}
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.studentTitleArea}>
+            <Text
+              style={[
+                styles.studentName,
+                { color: theme.colors.text },
+              ]}
+              numberOfLines={1}
+            >
+              {displayName(item)}
+            </Text>
+
+            <Text
+              style={[
+                styles.studentEmail,
+                {
+                  color:
+                    theme.colors.textMuted,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {item.student_email ||
+                item.email ||
+                "Email not provided"}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor:
+                  statusBackground,
+              },
+            ]}
+          >
+            <Ionicons
+              name={
+                status === "verified"
+                  ? "shield-checkmark-outline"
+                  : status === "rejected"
+                    ? "close-circle-outline"
+                    : "time-outline"
+              }
+              size={13}
+              color={statusColor}
+            />
+
+            <Text
+              style={[
+                styles.statusText,
+                { color: statusColor },
+              ]}
+            >
+              {status === "verified"
+                ? "Verified"
+                : status === "rejected"
+                  ? "Rejected"
+                  : "Pending"}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.infoGrid}>
+          {[
+            [
+              "school-outline",
+              "University",
+              item.school_name ||
+                item.student_university ||
+                "Not provided",
+            ],
+            [
+              "location-outline",
+              "Campus",
+              item.student_campus ||
+                "Not provided",
+            ],
+            [
+              "ribbon-outline",
+              "Level",
+              item.student_level ||
+                "Not provided",
+            ],
+            [
+              "calendar-outline",
+              "Graduation",
+              item.student_expected_graduation ||
+                "Not provided",
+            ],
+            [
+              "card-outline",
+              "ID Last 4",
+              item.student_id_last4 ||
+                item.student_id_number ||
+                "Not provided",
+            ],
+            [
+              "server-outline",
+              "Record Source",
+              item.queue_source ||
+                "Unknown",
+            ],
+          ].map(([icon, label, value]) => (
+            <View
+              key={label}
+              style={[
+                styles.infoItem,
+                {
+                  backgroundColor:
+                    theme.colors.surfaceSoft,
+                  borderColor:
+                    theme.colors.cardBorder,
+                },
+              ]}
+            >
+              <Ionicons
+                name={icon as any}
+                size={17}
+                color={theme.colors.gold}
+              />
+
+              <Text
+                style={[
+                  styles.infoLabel,
+                  {
+                    color:
+                      theme.colors.textMuted,
+                  },
+                ]}
+              >
+                {label}
+              </Text>
+
+              <Text
+                style={[
+                  styles.infoValue,
+                  { color: theme.colors.text },
+                ]}
+                numberOfLines={2}
+              >
+                {value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.submittedRow}>
+          <Ionicons
+            name="time-outline"
+            size={17}
+            color={theme.colors.info}
+          />
+
+          <Text
+            style={[
+              styles.submittedText,
+              {
+                color:
+                  theme.colors.textSecondary,
+              },
+            ]}
+          >
+            Submitted:{" "}
+            {submitted
+              ? new Date(
+                  submitted
+                ).toLocaleString()
+              : "Date unavailable"}
+          </Text>
+        </View>
+
+        <View style={styles.idSection}>
+          <Text
+            style={[
+              styles.sectionLabel,
+              { color: theme.colors.gold },
+            ]}
+          >
+            STUDENT ID
+          </Text>
+
+          {item.publicUrl ? (
+            <>
+              <Image
+                source={{ uri: item.publicUrl }}
+                style={[
+                  styles.idImage,
+                  {
+                    backgroundColor:
+                      theme.colors.surfaceSoft,
+                  },
+                ]}
+                resizeMode="contain"
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.openImageButton,
+                  {
+                    backgroundColor:
+                      theme.colors.goldTransparent,
+                    borderColor:
+                      theme.colors.gold,
+                  },
+                ]}
+                onPress={() =>
+                  Linking.openURL(
+                    String(item.publicUrl)
+                  )
+                }
+              >
+                <Ionicons
+                  name="expand-outline"
+                  size={18}
+                  color={theme.colors.gold}
+                />
+
+                <Text
+                  style={[
+                    styles.openImageText,
+                    { color: theme.colors.gold },
+                  ]}
+                >
+                  Open Full ID
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View
+              style={[
+                styles.noImageBox,
+                {
+                  backgroundColor:
+                    theme.colors.surfaceSoft,
+                  borderColor:
+                    theme.colors.cardBorder,
+                },
+              ]}
+            >
+              <Ionicons
+                name="image-outline"
+                size={28}
+                color={theme.colors.textMuted}
+              />
+
+              <Text
+                style={[
+                  styles.noImageText,
+                  {
+                    color:
+                      theme.colors.textMuted,
+                  },
+                ]}
+              >
+                No student ID image is linked to this submission.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {(item.reviewer_notes ||
+          item.student_review_notes) &&
+        status !== "pending" ? (
+          <View
+            style={[
+              styles.reviewBox,
+              {
+                backgroundColor:
+                  statusBackground,
+                borderColor: statusColor,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.reviewLabel,
+                { color: statusColor },
+              ]}
+            >
+              OWNER REVIEW
+            </Text>
+
+            <Text
+              style={[
+                styles.reviewText,
+                {
+                  color:
+                    theme.colors.textSecondary,
+                },
+              ]}
+            >
+              {item.reviewer_notes ||
+                item.student_review_notes}
+            </Text>
+          </View>
+        ) : null}
+
+        {status === "pending" ? (
+          <>
+            <TextInput
+              style={[
+                styles.notesInput,
+                {
+                  color: theme.colors.text,
+                  backgroundColor:
+                    theme.colors.inputBackground,
+                  borderColor:
+                    theme.colors.inputBorder,
+                },
+              ]}
+              placeholder="Owner review notes"
+              placeholderTextColor={
+                theme.colors.inputPlaceholder
+              }
+              value={reviewNotes[key] || ""}
+              onChangeText={(text) =>
+                setReviewNotes((current) => ({
+                  ...current,
+                  [key]: text,
+                }))
+              }
+              multiline
+              textAlignVertical="top"
+            />
+
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={[
+                  styles.approveButton,
+                  {
+                    backgroundColor:
+                      theme.colors.success,
+                  },
+                ]}
+                disabled={reviewing}
+                onPress={() =>
+                  confirmReview(item, true)
+                }
+              >
+                {reviewing ? (
+                  <ActivityIndicator
+                    color="#ffffff"
+                  />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={18}
+                      color="#ffffff"
+                    />
+
+                    <Text
+                      style={
+                        styles.primaryButtonText
+                      }
+                    >
+                      Approve & Verify
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.rejectButton,
+                  {
+                    backgroundColor:
+                      theme.colors.dangerSoft,
+                    borderColor:
+                      theme.colors.danger,
+                  },
+                ]}
+                disabled={reviewing}
+                onPress={() =>
+                  confirmReview(item, false)
+                }
+              >
+                <Ionicons
+                  name="close-circle-outline"
+                  size={18}
+                  color={theme.colors.danger}
+                />
+
+                <Text
+                  style={[
+                    styles.secondaryButtonText,
+                    {
+                      color:
+                        theme.colors.danger,
+                    },
+                  ]}
+                >
+                  Reject
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : null}
+      </View>
+    );
+  }
+
+  function RideCard({
+    booking,
+  }: {
+    booking: GenericRecord;
+  }) {
+    const referralApplied =
+      booking.referral_applied === true;
+
+    const pendingCredit =
+      referralApplied &&
+      booking.referral_credit_awarded !== true;
+
+    const sharedRide =
+      booking.shared_ride === true ||
+      booking.is_shared_ride === true ||
+      booking.student_shared_ride === true;
+
+    return (
+      <View
+        style={[
+          styles.rideCard,
+          {
+            width: cardWidth(),
+            backgroundColor:
+              theme.colors.card,
+            borderColor:
+              theme.colors.cardBorder,
+          },
+          theme.shadows.soft,
+        ]}
+      >
+        <View style={styles.rideHeader}>
+          <View
+            style={[
+              styles.rideIcon,
+              {
+                backgroundColor:
+                  theme.colors.goldTransparent,
+              },
+            ]}
+          >
+            <Ionicons
+              name="gift-outline"
+              size={22}
+              color={theme.colors.gold}
+            />
+          </View>
+
+          <View style={styles.rideTitleArea}>
+            <Text
+              style={[
+                styles.rideTitle,
+                { color: theme.colors.text },
+              ]}
+            >
+              Trip #{booking.id}
+            </Text>
+
+            <Text
+              style={[
+                styles.rideSubtitle,
+                {
+                  color:
+                    theme.colors.textMuted,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {booking.passenger_name ||
+                booking.name ||
+                booking.email ||
+                "Passenger"}
+            </Text>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.routeBox,
+            {
+              backgroundColor:
+                theme.colors.surfaceSoft,
+              borderColor:
+                theme.colors.cardBorder,
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.routeText,
+              {
+                color:
+                  theme.colors.textSecondary,
+              },
+            ]}
+          >
+            {booking.pickup_address ||
+              booking.pickup ||
+              "Pickup unavailable"}
+          </Text>
+
+          <Ionicons
+            name="arrow-down"
+            size={17}
+            color={theme.colors.gold}
+          />
+
+          <Text
+            style={[
+              styles.routeText,
+              {
+                color:
+                  theme.colors.textSecondary,
+              },
+            ]}
+          >
+            {booking.dropoff_address ||
+              booking.dropoff ||
+              "Drop-off unavailable"}
+          </Text>
+        </View>
+
+        <View style={styles.rewardGrid}>
+          {[
+            [
+              "Referral",
+              booking.referral_code_used ||
+                booking.referral_code ||
+                "None",
+            ],
+            [
+              "Referral Discount",
+              money(
+                booking.referral_discount
+              ),
+            ],
+            [
+              "Student Discount",
+              money(
+                booking.student_discount
+              ),
+            ],
+            [
+              "Shared Ride",
+              sharedRide ? "Yes" : "No",
+            ],
+            [
+              "Shared Discount",
+              money(
+                booking.shared_ride_discount
+              ),
+            ],
+            [
+              "Credit Pending",
+              pendingCredit ? "Yes" : "No",
+            ],
+          ].map(([label, value]) => (
+            <View
+              key={label}
+              style={styles.rewardItem}
+            >
+              <Text
+                style={[
+                  styles.rewardLabel,
+                  {
+                    color:
+                      theme.colors.textMuted,
+                  },
+                ]}
+              >
+                {label}
+              </Text>
+
+              <Text
+                style={[
+                  styles.rewardValue,
+                  { color: theme.colors.text },
+                ]}
+              >
+                {value}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {pendingCredit ? (
+          <TouchableOpacity
+            style={[
+              styles.awardButton,
+              {
+                backgroundColor:
+                  theme.colors.gold,
+              },
+            ]}
+            onPress={() =>
+              markReferralAwarded(booking)
+            }
+          >
+            <Ionicons
+              name="checkmark-done-outline"
+              size={18}
+              color={theme.colors.textInverse}
+            />
+
+            <Text
+              style={[
+                styles.awardButtonText,
+                {
+                  color:
+                    theme.colors.textInverse,
+                },
+              ]}
+            >
+              Mark Referral Credit Awarded
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View
+        style={[
+          styles.loadingContainer,
+          {
+            backgroundColor:
+              theme.colors.background,
+          },
+        ]}
+      >
+        <ActivityIndicator
+          size="large"
+          color={theme.colors.gold}
+        />
+
+        <Text
+          style={[
+            styles.loadingText,
+            {
+              color:
+                theme.colors.textSecondary,
+            },
+          ]}
+        >
+          Loading Student Operations Center...
+        </Text>
+      </View>
+    );
+  }
+
+  const tabs: {
+    key: StudentTab;
+    label: string;
+    count: number;
+  }[] = [
+    {
+      key: "pending",
+      label: "Pending",
+      count: pendingStudents.length,
+    },
+    {
+      key: "verified",
+      label: "Verified",
+      count: verifiedStudents.length,
+    },
+    {
+      key: "rejected",
+      label: "Rejected",
+      count: rejectedStudents.length,
+    },
+    {
+      key: "rides",
+      label: "Rides & Rewards",
+      count: rideRequests.length,
+    },
+  ];
+
   return (
     <ImageBackground
       source={require("../assets/images/owner-bg.png")}
-      style={styles.background}
+      style={[
+        styles.background,
+        {
+          backgroundColor:
+            theme.colors.background,
+        },
+      ]}
       resizeMode="cover"
     >
-      <View style={styles.overlay}>
+      <View
+        style={[
+          styles.overlay,
+          {
+            backgroundColor: isDark
+              ? "rgba(3,8,17,0.94)"
+              : "rgba(245,247,250,0.96)",
+          },
+        ]}
+      >
         <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.container,
+            {
+              maxWidth: isLarge
+                ? 1350
+                : 1100,
+            },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true);
+                await loadStudentOperations(
+                  false
+                );
+              }}
+              tintColor={theme.colors.gold}
+              colors={[theme.colors.gold]}
+            />
+          }
         >
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.back}>‹ Back</Text>
-          </TouchableOpacity>
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              style={[
+                styles.backButton,
+                {
+                  backgroundColor:
+                    theme.colors.card,
+                  borderColor:
+                    theme.colors.cardBorder,
+                },
+              ]}
+              onPress={() => router.back()}
+            >
+              <Ionicons
+                name="arrow-back"
+                size={20}
+                color={theme.colors.gold}
+              />
+            </TouchableOpacity>
 
-          <Animated.View style={{ opacity: fade }}>
-            <View style={styles.headerRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.kicker}>OWNER OPERATIONS CENTER</Text>
-                <Text style={styles.title}>Student Verification</Text>
-                <Text style={styles.subtitle}>
-                  Review student IDs, approve student benefits, monitor shared
-                  ride requests, and track referral rewards.
-                </Text>
-              </View>
+            <View style={styles.titleArea}>
+              <Text
+                style={[
+                  styles.eyebrow,
+                  { color: theme.colors.gold },
+                ]}
+              >
+                ANGEL EXPRESS STUDENT OPERATIONS
+              </Text>
 
-              <View style={styles.liveBadge}>
-                <Text style={styles.liveDot}>●</Text>
-                <Text style={styles.liveText}>Live Queue</Text>
-              </View>
+              <Text
+                style={[
+                  styles.pageTitle,
+                  { color: theme.colors.text },
+                ]}
+              >
+                Student Verification Center
+              </Text>
+
+              <Text
+                style={[
+                  styles.pageSubtitle,
+                  {
+                    color:
+                      theme.colors.textMuted,
+                  },
+                ]}
+              >
+                Review student IDs, organize verified students,
+                preserve review history, and manage student rides,
+                shared rides, discounts, and referral rewards.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.metricGrid}>
+            <MetricCard
+              label="Pending Review"
+              value={pendingStudents.length}
+              icon="time-outline"
+              color={theme.colors.warning}
+              background={
+                theme.colors.warningSoft
+              }
+            />
+
+            <MetricCard
+              label="Verified Students"
+              value={verifiedStudents.length}
+              icon="shield-checkmark-outline"
+              color={theme.colors.success}
+              background={
+                theme.colors.successSoft
+              }
+            />
+
+            <MetricCard
+              label="Rejected"
+              value={rejectedStudents.length}
+              icon="close-circle-outline"
+              color={theme.colors.danger}
+              background={
+                theme.colors.dangerSoft
+              }
+            />
+
+            <MetricCard
+              label="Rides & Rewards"
+              value={rideRequests.length}
+              icon="gift-outline"
+              color={theme.colors.gold}
+              background={
+                theme.colors.goldTransparent
+              }
+            />
+          </View>
+
+          <View
+            style={[
+              styles.controlPanel,
+              {
+                backgroundColor:
+                  theme.colors.card,
+                borderColor:
+                  theme.colors.cardBorderStrong,
+              },
+              theme.shadows.soft,
+            ]}
+          >
+            <View
+              style={[
+                styles.searchBox,
+                {
+                  backgroundColor:
+                    theme.colors.inputBackground,
+                  borderColor:
+                    theme.colors.inputBorder,
+                },
+              ]}
+            >
+              <Ionicons
+                name="search-outline"
+                size={20}
+                color={theme.colors.textMuted}
+              />
+
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search student, email, university, campus, or ID"
+                placeholderTextColor={
+                  theme.colors.inputPlaceholder
+                }
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={[
+                  styles.searchInput,
+                  { color: theme.colors.text },
+                ]}
+              />
+
+              {query ? (
+                <TouchableOpacity
+                  onPress={() => setQuery("")}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={20}
+                    color={
+                      theme.colors.textMuted
+                    }
+                  />
+                </TouchableOpacity>
+              ) : null}
             </View>
 
-            <View style={styles.statsRow}>
-              <StatCard title="Pending" value={pendingRequests.length} />
-              <StatCard title="Approved Today" value={approvedToday} />
-              <StatCard title="Rejected Today" value={rejectedToday} />
-            </View>
-
-            <Text style={styles.sectionHeader}>Student Verification Queue</Text>
-
-            {pendingRequests.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <ShieldCheck size={38} color={GOLD} />
-                <Text style={styles.emptyTitle}>Queue Clear</Text>
-                <Text style={styles.emptyText}>
-                  No pending student verification requests.
-                </Text>
-              </View>
-            ) : (
-              pendingRequests.map((item) => {
-                const key = getRequestKey(item);
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={
+                false
+              }
+              contentContainerStyle={
+                styles.tabRow
+              }
+            >
+              {tabs.map((item) => {
+                const selected =
+                  tab === item.key;
 
                 return (
-                  <VerificationCard
-                    key={key}
-                    item={item}
-                    note={reviewNotes[key] || ""}
-                    setNote={(text) =>
-                      setReviewNotes((prev) => ({
-                        ...prev,
-                        [key]: text,
-                      }))
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[
+                      styles.tabChip,
+                      {
+                        backgroundColor:
+                          selected
+                            ? theme.colors
+                                .goldTransparent
+                            : theme.colors
+                                .surfaceSoft,
+                        borderColor: selected
+                          ? theme.colors.gold
+                          : theme.colors
+                              .cardBorder,
+                      },
+                    ]}
+                    onPress={() =>
+                      setTab(item.key)
                     }
-                    onApprove={() => confirmApprove(item)}
-                    onReject={() => confirmReject(item)}
-                  />
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        {
+                          color: selected
+                            ? theme.colors.gold
+                            : theme.colors
+                                .textMuted,
+                        },
+                      ]}
+                    >
+                      {item.label} ({item.count})
+                    </Text>
+                  </TouchableOpacity>
                 );
-              })
-            )}
+              })}
+            </ScrollView>
+          </View>
 
-            <Text style={styles.sectionHeader}>
-              Student Rides, Referrals & Shared Ride Requests
-            </Text>
+          <View style={styles.sectionHeader}>
+            <View>
+              <Text
+                style={[
+                  styles.sectionEyebrow,
+                  { color: theme.colors.gold },
+                ]}
+              >
+                {tab === "rides"
+                  ? "STUDENT TRAVEL BENEFITS"
+                  : "STUDENT VERIFICATION RECORDS"}
+              </Text>
 
-            {rideRequests.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Gift size={38} color={GOLD} />
-                <Text style={styles.emptyTitle}>No Reward Requests</Text>
-                <Text style={styles.emptyText}>
-                  No student discounts, shared ride requests, or pending referral
-                  credits found yet.
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.colors.text },
+                ]}
+              >
+                {
+                  tabs.find(
+                    (item) =>
+                      item.key === tab
+                  )?.label
+                }
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.refreshButton,
+                {
+                  backgroundColor:
+                    theme.colors.card,
+                  borderColor:
+                    theme.colors.cardBorder,
+                },
+              ]}
+              onPress={() =>
+                loadStudentOperations(false)
+              }
+            >
+              <Ionicons
+                name="refresh"
+                size={18}
+                color={theme.colors.gold}
+              />
+
+              <Text
+                style={[
+                  styles.refreshText,
+                  {
+                    color:
+                      theme.colors
+                        .textSecondary,
+                  },
+                ]}
+              >
+                Refresh
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {tab === "rides" ? (
+            rideRequests.length === 0 ? (
+              <View
+                style={[
+                  styles.emptyState,
+                  {
+                    backgroundColor:
+                      theme.colors.card,
+                    borderColor:
+                      theme.colors.cardBorder,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="gift-outline"
+                  size={36}
+                  color={theme.colors.gold}
+                />
+
+                <Text
+                  style={[
+                    styles.emptyTitle,
+                    {
+                      color:
+                        theme.colors.text,
+                    },
+                  ]}
+                >
+                  No student ride rewards
+                </Text>
+
+                <Text
+                  style={[
+                    styles.emptyText,
+                    {
+                      color:
+                        theme.colors
+                          .textMuted,
+                    },
+                  ]}
+                >
+                  Student discounts, shared rides, and referral
+                  rewards will appear here.
                 </Text>
               </View>
             ) : (
-              rideRequests.map((item) => (
-                <RideRewardCard
-                  key={item.id || item.invoice_no}
-                  item={item}
-                  onMarkReferralCredit={() => markReferralCreditAwarded(item)}
-                />
-              ))
-            )}
-          </Animated.View>
+              <View style={styles.cardGrid}>
+                {rideRequests.map(
+                  (booking) => (
+                    <RideCard
+                      key={String(
+                        booking.id ||
+                          booking.invoice_no
+                      )}
+                      booking={booking}
+                    />
+                  )
+                )}
+              </View>
+            )
+          ) : displayedStudents.length === 0 ? (
+            <View
+              style={[
+                styles.emptyState,
+                {
+                  backgroundColor:
+                    theme.colors.card,
+                  borderColor:
+                    theme.colors.cardBorder,
+                },
+              ]}
+            >
+              <Ionicons
+                name={
+                  tab === "verified"
+                    ? "shield-checkmark-outline"
+                    : tab === "rejected"
+                      ? "close-circle-outline"
+                      : "school-outline"
+                }
+                size={38}
+                color={
+                  tab === "verified"
+                    ? theme.colors.success
+                    : tab === "rejected"
+                      ? theme.colors.danger
+                      : theme.colors.gold
+                }
+              />
+
+              <Text
+                style={[
+                  styles.emptyTitle,
+                  { color: theme.colors.text },
+                ]}
+              >
+                No {tab} student records
+              </Text>
+
+              <Text
+                style={[
+                  styles.emptyText,
+                  {
+                    color:
+                      theme.colors.textMuted,
+                  },
+                ]}
+              >
+                {tab === "pending"
+                  ? "New student verification submissions will appear here."
+                  : tab === "verified"
+                    ? "Approved submissions will be organized here."
+                    : "Rejected submissions will remain here for review history."}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.cardGrid}>
+              {displayedStudents.map(
+                (item) => (
+                  <StudentCard
+                    key={stableKey(item)}
+                    item={item}
+                  />
+                )
+              )}
+            </View>
+          )}
         </ScrollView>
       </View>
     </ImageBackground>
   );
 }
 
-function StatCard({ title, value }: { title: string; value: number }) {
-  return (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statTitle}>{title}</Text>
-    </View>
-  );
-}
-
-function VerificationCard({
-  item,
-  note,
-  setNote,
-  onApprove,
-  onReject,
-}: {
-  item: any;
-  note: string;
-  setNote: (text: string) => void;
-  onApprove: () => void;
-  onReject: () => void;
-}) {
-  const submittedRaw =
-    item.submitted_at || item.created_at || item.student_verification_submitted_at;
-
-  const submitted = submittedRaw ? new Date(submittedRaw) : null;
-
-  function openImage() {
-    if (!item.publicUrl) {
-      Alert.alert("Image Unavailable", "Could not load the student ID image from the public bucket.");
-      return;
-    }
-
-    Linking.openURL(item.publicUrl);
-  }
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardTop}>
-        <View style={styles.avatar}>
-          {item.profile_photo_url ? (
-            <Image source={{ uri: item.profile_photo_url }} style={styles.avatarImage} />
-          ) : (
-            <UserRound size={25} color={GOLD} />
-          )}
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>
-            {item.first_name || item.name || "Passenger"} {item.last_name || ""}
-          </Text>
-
-          <Text style={styles.smallMuted}>
-            {item.email || item.student_email || "No email"}
-          </Text>
-
-          <View style={styles.pendingPill}>
-            <Text style={styles.pendingDot}>●</Text>
-            <Text style={styles.pendingText}>Pending Review</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.quickInfoGrid}>
-        <QuickInfo
-          icon={<GraduationCap size={16} color={GOLD} />}
-          label="University"
-          value={item.school_name || item.student_university}
-        />
-
-        <QuickInfo
-          icon={<Mail size={16} color={GOLD} />}
-          label="Student Email"
-          value={item.student_email || item.email}
-        />
-
-        <QuickInfo
-          icon={<MapPinned size={16} color={GOLD} />}
-          label="Campus"
-          value={item.student_campus || item.campus}
-        />
-
-        <QuickInfo
-          icon={<BadgeCheck size={16} color={GOLD} />}
-          label="Status"
-          value={item.status || "Pending"}
-        />
-
-        <QuickInfo
-          icon={<CalendarDays size={16} color={GOLD} />}
-          label="Graduation"
-          value={item.student_expected_graduation}
-        />
-
-        <QuickInfo
-          icon={<IdCard size={16} color={GOLD} />}
-          label="ID Last 4"
-          value={item.student_id_last4 || item.student_id_number}
-        />
-      </View>
-
-      <View style={styles.timeRow}>
-        <Clock size={16} color={GOLD} />
-        <Text style={styles.timeText}>
-          Submitted: {submitted ? submitted.toLocaleString() : "N/A"}
-        </Text>
-      </View>
-
-      <View style={styles.idPreviewBox}>
-        <Text style={styles.cardSectionTitle}>Student ID Preview</Text>
-
-        {item.publicUrl ? (
-          <>
-            <Image
-              source={{ uri: item.publicUrl }}
-              style={styles.idImage}
-              resizeMode="contain"
-              onError={(e) => {
-                console.log("Student ID image load error:", e.nativeEvent.error);
-                Alert.alert("Image Error", e.nativeEvent.error || "Could not display student ID image.");
-              }}
-            />
-
-            <TouchableOpacity style={styles.openImageButton} onPress={openImage}>
-              <IdCard size={18} color={NAVY} />
-              <Text style={styles.openImageButtonText}>Open Full ID Image</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={styles.noImageBox}>
-            <IdCard size={28} color={GOLD} />
-            <Text style={styles.noImageText}>
-              No student ID image available. Check that the file path exists in the
-              public student-ids bucket.
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.driverNotice}>
-        <Bell size={17} color={GOLD} />
-        <Text style={styles.driverNoticeText}>
-          After approval, the Passenger App unlocks Student Travel+ and the Driver
-          App only sees a Verified Student badge — not the ID image.
-        </Text>
-      </View>
-
-      <TextInput
-        style={styles.notes}
-        placeholder="Owner review notes"
-        placeholderTextColor="#8A93A3"
-        value={note}
-        onChangeText={setNote}
-        multiline
-      />
-
-      <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.approveButton} onPress={onApprove}>
-          <BadgeCheck size={18} color={NAVY} />
-          <Text style={styles.approveText}>Approve</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.rejectButton} onPress={onReject}>
-          <XCircle size={18} color={RED} />
-          <Text style={styles.rejectText}>Reject</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-function RideRewardCard({
-  item,
-  onMarkReferralCredit,
-}: {
-  item: any;
-  onMarkReferralCredit: () => void;
-}) {
-  const referralApplied = item.referral_applied === true;
-  const pendingCredit = referralApplied && item.referral_credit_awarded !== true;
-
-  const sharedRide =
-    item.shared_ride === true ||
-    item.is_shared_ride === true ||
-    item.student_shared_ride === true;
-
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardTop}>
-        <View style={styles.avatar}>
-          <Gift size={25} color={GOLD} />
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>
-            {item.passenger_name || item.name || "Website Passenger"}
-          </Text>
-          <Text style={styles.smallMuted}>{item.email || "No email"}</Text>
-        </View>
-      </View>
-
-      <View style={styles.quickInfoGrid}>
-        <QuickInfo
-          icon={<Gift size={16} color={GOLD} />}
-          label="Referral Code Used"
-          value={item.referral_code_used || item.referral_code || "None"}
-        />
-
-        <QuickInfo
-          icon={<Percent size={16} color={GOLD} />}
-          label="Referral Discount"
-          value={money(item.referral_discount)}
-        />
-
-        <QuickInfo
-          icon={<UserRound size={16} color={GOLD} />}
-          label="Referrer"
-          value={item.referrer_user_id || "None"}
-        />
-
-        <QuickInfo
-          icon={<GraduationCap size={16} color={GOLD} />}
-          label="Student Discount"
-          value={money(item.student_discount)}
-        />
-
-        <QuickInfo
-          icon={<Users size={16} color={GOLD} />}
-          label="Shared Ride Status"
-          value={item.shared_ride_status || (sharedRide ? "Requested" : "Not Shared")}
-        />
-
-        <QuickInfo
-          icon={<Clock size={16} color={GOLD} />}
-          label="Pending Referral Credit"
-          value={pendingCredit ? "Yes" : "No"}
-        />
-      </View>
-
-      <View style={styles.routeBox}>
-        <Text style={styles.routeText}>
-          {item.pickup || item.pickup_address || "Pickup N/A"}
-        </Text>
-
-        <Text style={styles.routeArrow}>↓</Text>
-
-        <Text style={styles.routeText}>
-          {item.dropoff || item.dropoff_address || "Drop-off N/A"}
-        </Text>
-      </View>
-
-      <View style={styles.quickInfoGrid}>
-        <QuickInfo
-          icon={<Users size={16} color={GOLD} />}
-          label="Shared Ride"
-          value={sharedRide ? "Yes" : "No"}
-        />
-
-        <QuickInfo
-          icon={<Percent size={16} color={GOLD} />}
-          label="Shared Discount"
-          value={money(item.shared_ride_discount)}
-        />
-
-        <QuickInfo
-          icon={<CalendarDays size={16} color={GOLD} />}
-          label="Trip Date"
-          value={item.ride_date || item.date}
-        />
-
-        <QuickInfo
-          icon={<Clock size={16} color={GOLD} />}
-          label="Trip Time"
-          value={item.ride_time || item.time}
-        />
-      </View>
-
-      {pendingCredit ? (
-        <TouchableOpacity style={styles.approveButton} onPress={onMarkReferralCredit}>
-          <BadgeCheck size={18} color={NAVY} />
-          <Text style={styles.approveText}>Mark Referral Credit Awarded</Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  );
-}
-
-function QuickInfo({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: any;
-}) {
-  return (
-    <View style={styles.quickInfo}>
-      <View style={styles.quickIcon}>{icon}</View>
-      <Text style={styles.quickLabel}>{label}</Text>
-      <Text style={styles.quickValue}>
-        {value || value === 0 ? String(value) : "N/A"}
-      </Text>
-    </View>
-  );
-}
-
-function money(value: any) {
-  return "$" + Number(value || 0).toFixed(2);
-}
-
 const styles = StyleSheet.create({
   background: {
     flex: 1,
-    backgroundColor: NAVY,
   },
+
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(5,11,22,0.92)",
   },
-  container: {
+
+  loadingContainer: {
     flex: 1,
-  },
-  content: {
-    padding: 22,
-    paddingTop: 60,
-    paddingBottom: 50,
-  },
-  center: {
-    flex: 1,
-    backgroundColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
   },
+
   loadingText: {
-    color: "#fff",
-    marginTop: 12,
+    marginTop: 14,
+    fontSize: 14,
+    fontWeight: "700",
   },
-  back: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 18,
+
+  container: {
+    width: "100%",
+    alignSelf: "center",
+    paddingHorizontal: 20,
+    paddingTop: 54,
+    paddingBottom: 60,
   },
-  headerRow: {
+
+  topBar: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 18,
+    marginBottom: 28,
   },
-  kicker: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 1.5,
-    marginBottom: 8,
-  },
-  title: {
-    color: GOLD,
-    fontSize: 34,
-    fontWeight: "900",
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: "#DDE3EA",
-    fontSize: 15.5,
-    lineHeight: 23,
-  },
-  liveBadge: {
+
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+
+  titleArea: {
+    flex: 1,
+  },
+
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.4,
+    marginBottom: 5,
+  },
+
+  pageTitle: {
+    fontSize: 29,
+    fontWeight: "900",
+  },
+
+  pageSubtitle: {
+    marginTop: 7,
+    fontSize: 13,
+    lineHeight: 20,
+    maxWidth: 780,
+  },
+
+  metricGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+
+  metricCard: {
+    minHeight: 132,
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 15,
+    marginBottom: 13,
+  },
+
+  metricIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+
+  metricValue: {
+    fontSize: 27,
+    fontWeight: "900",
+  },
+
+  metricLabel: {
+    marginTop: 5,
+    fontSize: 11.5,
+    fontWeight: "700",
+  },
+
+  controlPanel: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 24,
+  },
+
+  searchBox: {
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-  },
-  liveDot: {
-    color: GREEN,
-    fontSize: 11,
-  },
-  liveText: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: "rgba(13,20,34,0.88)",
-    borderRadius: 18,
-    padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
+    borderRadius: 16,
+    paddingHorizontal: 15,
   },
-  statValue: {
-    color: GOLD,
-    fontSize: 28,
+
+  searchInput: {
+    flex: 1,
+    height: 52,
+    marginHorizontal: 10,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  tabRow: {
+    gap: 9,
+    paddingTop: 14,
+    paddingRight: 10,
+  },
+
+  tabChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+  },
+
+  tabText: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    marginBottom: 15,
+  },
+
+  sectionEyebrow: {
+    fontSize: 9.5,
     fontWeight: "900",
-    marginBottom: 3,
+    letterSpacing: 1.2,
+    marginBottom: 5,
   },
-  statTitle: {
-    color: "#DDE3EA",
+
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+  },
+
+  refreshButton: {
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 13,
+    paddingHorizontal: 12,
+  },
+
+  refreshText: {
+    marginLeft: 7,
     fontSize: 12,
     fontWeight: "800",
   },
-  sectionHeader: {
-    color: GOLD,
-    fontSize: 22,
-    fontWeight: "900",
-    marginBottom: 14,
-    marginTop: 10,
-  },
-  emptyCard: {
-    backgroundColor: "rgba(13,20,34,0.86)",
-    borderRadius: 24,
-    padding: 26,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    color: GOLD,
-    fontSize: 24,
-    fontWeight: "900",
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: "#fff",
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: "center",
-  },
-  card: {
-    backgroundColor: "rgba(13,20,34,0.90)",
-    borderRadius: 26,
-    padding: 18,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.30)",
-  },
-  cardTop: {
+
+  cardGrid: {
     flexDirection: "row",
-    gap: 13,
-    alignItems: "center",
-    marginBottom: 18,
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 19,
+
+  studentCard: {
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.45)",
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 16,
+  },
+
+  studentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  avatar: {
+    width: 55,
+    height: 55,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(212,175,55,0.08)",
     overflow: "hidden",
+    marginRight: 12,
   },
+
   avatarImage: {
     width: "100%",
     height: "100%",
   },
-  name: {
-    color: "#fff",
+
+  avatarText: {
     fontSize: 23,
     fontWeight: "900",
-    marginBottom: 7,
   },
-  smallMuted: {
-    color: "#B8C1CC",
-    fontSize: 13,
-    fontWeight: "700",
-    marginBottom: 7,
+
+  studentTitleArea: {
+    flex: 1,
+    paddingRight: 8,
   },
-  pendingPill: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "rgba(46,204,113,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(46,204,113,0.35)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+
+  studentName: {
+    fontSize: 16,
+    fontWeight: "900",
+  },
+
+  studentEmail: {
+    marginTop: 4,
+    fontSize: 10,
+    fontWeight: "600",
+  },
+
+  statusBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 7,
   },
-  pendingDot: {
-    color: GREEN,
-    fontSize: 10,
+
+  statusText: {
+    marginLeft: 5,
+    fontSize: 8.5,
+    fontWeight: "900",
   },
-  pendingText: {
-    color: GREEN,
+
+  infoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 18,
+  },
+
+  infoItem: {
+    width: "48.5%",
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+  },
+
+  infoLabel: {
+    marginTop: 8,
+    fontSize: 8.5,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+
+  infoValue: {
+    marginTop: 4,
+    fontSize: 11.5,
+    lineHeight: 17,
+    fontWeight: "700",
+  },
+
+  submittedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5,
+    marginBottom: 16,
+  },
+
+  submittedText: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
+
+  idSection: {
+    marginBottom: 15,
+  },
+
+  sectionLabel: {
+    fontSize: 9.5,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+    marginBottom: 9,
+  },
+
+  idImage: {
+    width: "100%",
+    height: 260,
+    borderRadius: 18,
+  },
+
+  openImageButton: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 14,
+    marginTop: 10,
+  },
+
+  openImageText: {
+    marginLeft: 7,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+
+  noImageBox: {
+    minHeight: 145,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 18,
+  },
+
+  noImageText: {
+    marginTop: 9,
+    fontSize: 11,
+    lineHeight: 17,
+    textAlign: "center",
+  },
+
+  reviewBox: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 13,
+    marginBottom: 14,
+  },
+
+  reviewLabel: {
+    fontSize: 8.5,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+
+  reviewText: {
+    marginTop: 6,
+    fontSize: 11,
+    lineHeight: 17,
+    fontWeight: "600",
+  },
+
+  notesInput: {
+    minHeight: 94,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 13,
+    fontSize: 13,
+    marginBottom: 13,
+  },
+
+  actionRow: {
+    flexDirection: "row",
+    gap: 9,
+  },
+
+  approveButton: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 15,
+  },
+
+  rejectButton: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 15,
+  },
+
+  primaryButtonText: {
+    color: "#ffffff",
+    marginLeft: 7,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+
+  secondaryButtonText: {
+    marginLeft: 7,
+    fontSize: 11,
+    fontWeight: "900",
+  },
+
+  rideCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 17,
+    marginBottom: 15,
+  },
+
+  rideHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  rideIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  rideTitleArea: {
+    flex: 1,
+  },
+
+  rideTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
+  rideSubtitle: {
+    marginTop: 4,
+    fontSize: 10.5,
+    fontWeight: "600",
+  },
+
+  routeBox: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 13,
+    marginTop: 16,
+    gap: 7,
+  },
+
+  routeText: {
+    fontSize: 11,
+    lineHeight: 17,
+    fontWeight: "700",
+  },
+
+  rewardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 16,
+  },
+
+  rewardItem: {
+    width: "50%",
+    marginBottom: 14,
+  },
+
+  rewardLabel: {
+    fontSize: 8.5,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+  },
+
+  rewardValue: {
+    marginTop: 5,
     fontSize: 12,
     fontWeight: "900",
   },
-  quickInfoGrid: {
+
+  awardButton: {
+    minHeight: 47,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 14,
-  },
-  quickInfo: {
-    width: "48%",
-    backgroundColor: "rgba(255,255,255,0.055)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.16)",
-    borderRadius: 17,
-    padding: 12,
-  },
-  quickIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.32)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 9,
+    borderRadius: 15,
+    marginTop: 4,
   },
-  quickLabel: {
-    color: GOLD,
+
+  awardButtonText: {
+    marginLeft: 7,
     fontSize: 11,
     fontWeight: "900",
-    textTransform: "uppercase",
-    marginBottom: 4,
   },
-  quickValue: {
-    color: "#fff",
-    fontSize: 14,
-    lineHeight: 19,
-  },
-  timeRow: {
-    flexDirection: "row",
+
+  emptyState: {
     alignItems: "center",
-    gap: 8,
-    marginBottom: 15,
-  },
-  timeText: {
-    color: "#DDE3EA",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  idPreviewBox: {
-    marginBottom: 14,
-  },
-  cardSectionTitle: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-    marginBottom: 10,
-  },
-  idImage: {
-    width: "100%",
-    height: 300,
-    borderRadius: 20,
-    backgroundColor: "#000",
-  },
-  openImageButton: {
-    marginTop: 12,
-    backgroundColor: GOLD,
-    borderRadius: 16,
-    minHeight: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-  },
-  openImageButtonText: {
-    color: NAVY,
-    fontWeight: "900",
-  },
-  noImageBox: {
-    minHeight: 160,
-    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.22)",
-    backgroundColor: "rgba(255,255,255,0.055)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
+    borderRadius: 22,
+    padding: 30,
   },
-  noImageText: {
-    color: "#DDE3EA",
-    marginTop: 10,
-    fontSize: 14,
+
+  emptyTitle: {
+    marginTop: 13,
+    fontSize: 17,
+    fontWeight: "900",
+  },
+
+  emptyText: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
     textAlign: "center",
-    lineHeight: 20,
-  },
-  driverNotice: {
-    flexDirection: "row",
-    gap: 9,
-    padding: 13,
-    borderRadius: 16,
-    backgroundColor: "rgba(212,175,55,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    marginBottom: 14,
-  },
-  driverNoticeText: {
-    color: GOLD,
-    fontSize: 13.5,
-    lineHeight: 20,
-    fontWeight: "700",
-    flex: 1,
-  },
-  notes: {
-    backgroundColor: "#0D1422",
-    color: "#fff",
-    borderRadius: 16,
-    padding: 14,
-    minHeight: 92,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.2)",
-    textAlignVertical: "top",
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  approveButton: {
-    flex: 1,
-    backgroundColor: GOLD,
-    paddingVertical: 15,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 7,
-  },
-  approveText: {
-    color: NAVY,
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  rejectButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: RED,
-    paddingVertical: 15,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 7,
-  },
-  rejectText: {
-    color: RED,
-    fontSize: 15,
-    fontWeight: "900",
-  },
-  routeBox: {
-    padding: 14,
-    borderRadius: 16,
-    backgroundColor: "rgba(212,175,55,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    marginBottom: 14,
-  },
-  routeText: {
-    color: "#fff",
-    fontSize: 14,
-    lineHeight: 21,
-    fontWeight: "700",
-  },
-  routeArrow: {
-    color: GOLD,
-    fontSize: 18,
-    fontWeight: "900",
-    marginVertical: 4,
   },
 });
