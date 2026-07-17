@@ -29,6 +29,18 @@ import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 const PAYMENT_WORKER_URL =
   "https://angel-express-payments.angelsexpresss.workers.dev";
 
+function firstValue(...values: any[]) {
+  return values.find(
+    (value) => value !== undefined && value !== null && value !== ""
+  );
+}
+
+function numberValue(...values: any[]) {
+  const value = firstValue(...values);
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 export default function PayRideScreen() {
   const params = useLocalSearchParams();
   const bookingId = String(params.bookingId || params.booking_id || "");
@@ -79,13 +91,43 @@ export default function PayRideScreen() {
         throw new Error("Missing booking ID.");
       }
 
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+      if (!user) throw new Error("Please sign in again.");
+
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
         .eq("id", bookingId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error("Booking not found.");
+
+      const bookingOwnerId = String(
+        firstValue(data.user_id, data.passenger_id, "")
+      );
+
+      const bookingEmail = String(
+        firstValue(data.email, data.passenger_email, "")
+      )
+        .trim()
+        .toLowerCase();
+
+      const userEmail = String(user.email || "").trim().toLowerCase();
+
+      if (
+        bookingOwnerId &&
+        bookingOwnerId !== user.id &&
+        bookingEmail &&
+        bookingEmail !== userEmail
+      ) {
+        throw new Error("You are not authorized to pay for this booking.");
+      }
 
       if (String(data.status || "").toLowerCase() !== "completed") {
         Alert.alert(
@@ -111,6 +153,21 @@ export default function PayRideScreen() {
         return;
       }
 
+      const amountDue = numberValue(
+        data.balance_due,
+        data.total_fare,
+        data.final_fare,
+        data.total,
+        data.amount,
+        0
+      );
+
+      if (amountDue <= 0) {
+        throw new Error(
+          "This booking has no payable balance. Please contact Angel Express support."
+        );
+      }
+
       setBooking(data);
 
       const res = await fetch(
@@ -129,7 +186,9 @@ export default function PayRideScreen() {
       const paymentData = await res.json();
 
       if (!res.ok || !paymentData.client_secret) {
-        throw new Error(paymentData.error || "Could not start payment.");
+        throw new Error(
+          paymentData.error || "Could not start secure payment."
+        );
       }
 
       setClientSecret(paymentData.client_secret);
@@ -142,14 +201,17 @@ export default function PayRideScreen() {
 
       if (sheetError) throw sheetError;
     } catch (error: any) {
-      Alert.alert("Payment Error", error.message || "Could not load payment.");
+      Alert.alert(
+        "Payment Error",
+        error.message || "Could not load payment."
+      );
     } finally {
       setLoading(false);
     }
   }
 
   async function payRide() {
-    if (!clientSecret || paying) return;
+    if (!clientSecret || paying || !booking) return;
 
     try {
       setPaying(true);
@@ -161,6 +223,14 @@ export default function PayRideScreen() {
         return;
       }
 
+      /*
+       * Temporary client-side compatibility update.
+       *
+       * Production recommendation:
+       * Stripe webhook -> secure backend -> bookings.payment_status = paid.
+       *
+       * Keep this until the payment worker webhook is connected.
+       */
       const { error: updateError } = await supabase
         .from("bookings")
         .update({
@@ -168,8 +238,11 @@ export default function PayRideScreen() {
           payment_method: "stripe",
           invoice_status: "Paid",
           paid_at: new Date().toISOString(),
+          balance_due: 0,
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", bookingId);
+        .eq("id", bookingId)
+        .neq("payment_status", "paid");
 
       if (updateError) throw updateError;
 
@@ -184,7 +257,10 @@ export default function PayRideScreen() {
         ]
       );
     } catch (error: any) {
-      Alert.alert("Payment Error", error.message || "Payment failed.");
+      Alert.alert(
+        "Payment Error",
+        error.message || "Payment failed."
+      );
     } finally {
       setPaying(false);
     }
@@ -195,22 +271,106 @@ export default function PayRideScreen() {
     outputRange: [24, 0],
   });
 
-  const totalFare = Number(booking?.total_fare || booking?.total || 0);
-  const driverShare = Number(booking?.driver_share || booking?.driver_payout || totalFare * 0.7);
-  const companyShare = Number(booking?.company_share || totalFare * 0.3);
+  const subtotal = numberValue(
+    booking?.subtotal,
+    booking?.base_fare,
+    booking?.base,
+    booking?.total_fare,
+    0
+  );
+
+  const totalDiscount = numberValue(
+    booking?.total_discount,
+    booking?.discount,
+    Math.max(
+      subtotal -
+        numberValue(
+          booking?.total_fare,
+          booking?.final_fare,
+          booking?.total,
+          0
+        ),
+      0
+    )
+  );
+
+  const totalFare = numberValue(
+    booking?.balance_due,
+    booking?.total_fare,
+    booking?.final_fare,
+    booking?.total,
+    booking?.amount,
+    0
+  );
+
+  const driverShare = numberValue(
+    booking?.driver_share,
+    booking?.driver_payout,
+    totalFare * 0.7
+  );
+
+  const companyShare = numberValue(
+    booking?.company_share,
+    totalFare - driverShare,
+    totalFare * 0.3
+  );
+
+  const bookingNumber = String(
+    firstValue(
+      booking?.booking_number,
+      booking?.booking_no,
+      bookingId,
+      "N/A"
+    )
+  );
+
+  const invoiceNumber = String(
+    firstValue(
+      booking?.invoice_number,
+      booking?.invoice_no,
+      "N/A"
+    )
+  );
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.gold} />
-        <Text style={styles.loadingText}>Preparing secure payment...</Text>
+        <Text style={styles.loadingText}>
+          Preparing secure payment...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>
+          Payment unavailable
+        </Text>
+
+        <Text style={styles.errorText}>
+          This ride could not be prepared for payment.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.errorButton}
+          onPress={() => router.replace("/my-trips" as any)}
+        >
+          <Text style={styles.errorButtonText}>
+            Back to My Trips
+          </Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.root}>
-      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+      <Animated.View
+        style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}
+      >
         <ImageBackground
           source={require("../assets/images/dashboard-bg.png")}
           style={styles.background}
@@ -225,12 +385,18 @@ export default function PayRideScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backTopButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backTopButton}
+              onPress={() => router.back()}
+            >
               <ArrowLeft size={19} color={colors.gold} />
               <Text style={styles.backTopText}>Back</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <TouchableOpacity
+              style={styles.themePill}
+              onPress={toggleTheme}
+            >
               <Text style={styles.themeText}>
                 {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
               </Text>
@@ -243,12 +409,14 @@ export default function PayRideScreen() {
               transform: [{ translateY: pageTranslate }],
             }}
           >
-            <Text style={styles.kicker}>SECURE RIDE PAYMENT</Text>
+            <Text style={styles.kicker}>
+              SECURE RIDE PAYMENT
+            </Text>
             <Text style={styles.title}>Pay Ride</Text>
 
             <Text style={styles.subtitle}>
-              Your ride has been completed. Review your fare and complete secure
-              payment through Stripe.
+              Your ride has been completed. Review the stored booking balance
+              and complete secure payment through Stripe.
             </Text>
 
             <View style={styles.heroCard}>
@@ -257,19 +425,29 @@ export default function PayRideScreen() {
               </View>
 
               <View style={styles.heroCopy}>
-                <Text style={styles.heroTitle}>Amount Due</Text>
-                <Text style={styles.heroPrice}>${totalFare.toFixed(2)}</Text>
-                <Text style={styles.heroText}>Secure payment powered by Stripe.</Text>
+                <Text style={styles.heroTitle}>Balance Due</Text>
+                <Text style={styles.heroPrice}>
+                  ${totalFare.toFixed(2)}
+                </Text>
+                <Text style={styles.heroText}>
+                  Secure payment powered by Stripe.
+                </Text>
               </View>
             </View>
 
             <View style={styles.statusGrid}>
-              <StatusPill title="Ride" value="Completed" styles={styles} />
+              <StatusPill
+                title="Ride"
+                value="Completed"
+                styles={styles}
+              />
+
               <StatusPill
                 title="Invoice"
                 value={booking?.invoice_status || "Pending"}
                 styles={styles}
               />
+
               <StatusPill
                 title="Payment"
                 value={booking?.payment_status || "Unpaid"}
@@ -280,32 +458,72 @@ export default function PayRideScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <ReceiptText size={22} color={colors.gold} />
-                <Text style={styles.cardTitle}>Payment Summary</Text>
+                <Text style={styles.cardTitle}>
+                  Payment Summary
+                </Text>
               </View>
 
-              <Row label="Booking ID" value={bookingId} styles={styles} />
-              <Row label="Invoice" value={booking?.invoice_no || "N/A"} styles={styles} />
+              <Row
+                label="Booking Number"
+                value={bookingNumber}
+                styles={styles}
+              />
+
+              <Row
+                label="Invoice Number"
+                value={invoiceNumber}
+                styles={styles}
+              />
+
               <Row
                 label="Passenger"
-                value={booking?.passenger_name || booking?.name || "N/A"}
+                value={
+                  booking?.passenger_name ||
+                  booking?.name ||
+                  "N/A"
+                }
                 styles={styles}
               />
+
               <Row
                 label="Pickup"
-                value={booking?.pickup_address || booking?.pickup || "N/A"}
+                value={
+                  booking?.pickup_address ||
+                  booking?.pickup ||
+                  "N/A"
+                }
                 styles={styles}
               />
+
               <Row
                 label="Drop-off"
-                value={booking?.dropoff_address || booking?.dropoff || "N/A"}
+                value={
+                  booking?.dropoff_address ||
+                  booking?.dropoff ||
+                  "N/A"
+                }
                 styles={styles}
               />
+
               <Row
-                label="Total Fare"
+                label="Subtotal"
+                value={`$${subtotal.toFixed(2)}`}
+                styles={styles}
+              />
+
+              <Row
+                label="Total Discount"
+                value={`-$${totalDiscount.toFixed(2)}`}
+                styles={styles}
+              />
+
+              <Row
+                label="Balance Due"
                 value={`$${totalFare.toFixed(2)}`}
                 strong
                 styles={styles}
               />
+
               <Row
                 label="Payment Status"
                 value={booking?.payment_status || "unpaid"}
@@ -316,41 +534,64 @@ export default function PayRideScreen() {
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <DollarSign size={22} color={colors.gold} />
-                <Text style={styles.cardTitle}>Payout Breakdown</Text>
+                <Text style={styles.cardTitle}>
+                  Payout Breakdown
+                </Text>
               </View>
 
-              <Row label="Driver Share" value={`$${driverShare.toFixed(2)}`} styles={styles} />
-              <Row label="Company Share" value={`$${companyShare.toFixed(2)}`} styles={styles} />
+              <Row
+                label="Driver Share"
+                value={`$${driverShare.toFixed(2)}`}
+                styles={styles}
+              />
+
+              <Row
+                label="Company Share"
+                value={`$${companyShare.toFixed(2)}`}
+                styles={styles}
+              />
 
               <Text style={styles.smallNotice}>
-                Driver payout is handled separately through Angel Express operations.
+                These amounts come from the confirmed booking record. The
+                Passenger App does not recalculate the fare or discounts.
               </Text>
             </View>
 
             <View style={styles.noticeCard}>
               <View style={styles.noticeHeader}>
                 <LockKeyhole size={22} color={colors.gold} />
-                <Text style={styles.noticeTitle}>Secure Checkout</Text>
+                <Text style={styles.noticeTitle}>
+                  Secure Checkout
+                </Text>
               </View>
 
               <Text style={styles.noticeText}>
-                Apple Pay, Google Pay, and card options will appear when available on
-                your device. Angel Express does not store your full card details.
+                Apple Pay, Google Pay, and card options will appear when
+                available on your device. Angel Express does not store your
+                full card details.
               </Text>
 
               <View style={styles.secureRow}>
                 <SecureBadge
-                  icon={<ShieldCheck size={15} color="#22c55e" />}
+                  icon={
+                    <ShieldCheck size={15} color="#22c55e" />
+                  }
                   text="Encrypted"
                   styles={styles}
                 />
+
                 <SecureBadge
-                  icon={<BadgeCheck size={15} color="#22c55e" />}
+                  icon={
+                    <BadgeCheck size={15} color="#22c55e" />
+                  }
                   text="Stripe"
                   styles={styles}
                 />
+
                 <SecureBadge
-                  icon={<Sparkles size={15} color="#22c55e" />}
+                  icon={
+                    <Sparkles size={15} color="#22c55e" />
+                  }
                   text="Protected"
                   styles={styles}
                 />
@@ -358,22 +599,31 @@ export default function PayRideScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.payButton, paying && styles.buttonDisabled]}
+              style={[
+                styles.payButton,
+                paying && styles.buttonDisabled,
+              ]}
               onPress={payRide}
               disabled={paying}
             >
               {paying ? (
                 <ActivityIndicator color={colors.navy} />
               ) : (
-                <Text style={styles.payButtonText}>Pay Full Ride Fare</Text>
+                <Text style={styles.payButtonText}>
+                  Pay ${totalFare.toFixed(2)}
+                </Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.backButton}
-              onPress={() => router.replace("/my-trips" as any)}
+              onPress={() =>
+                router.replace("/my-trips" as any)
+              }
             >
-              <Text style={styles.backButtonText}>Back to My Trips</Text>
+              <Text style={styles.backButtonText}>
+                Back to My Trips
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
@@ -396,7 +646,12 @@ function Row({
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, strong && styles.rowValueStrong]}>
+      <Text
+        style={[
+          styles.rowValue,
+          strong && styles.rowValueStrong,
+        ]}
+      >
         {value}
       </Text>
     </View>
@@ -475,6 +730,33 @@ function createStyles(c: any) {
       marginTop: 16,
       fontSize: 16,
       fontWeight: "800",
+    },
+    errorTitle: {
+      color: c.gold,
+      fontSize: 24,
+      fontWeight: "900",
+      textAlign: "center",
+      marginBottom: 10,
+    },
+    errorText: {
+      color: c.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      fontWeight: "700",
+      textAlign: "center",
+      marginBottom: 18,
+    },
+    errorButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 24,
+    },
+    errorButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
     },
 
     topRow: {

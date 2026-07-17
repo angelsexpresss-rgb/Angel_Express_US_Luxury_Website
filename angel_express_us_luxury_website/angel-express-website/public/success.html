@@ -116,6 +116,113 @@ body{
   margin-right:auto;
 }
 
+
+.booking-reference-grid{
+  margin-top:34px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+}
+
+.booking-reference-item,
+.booking-summary-item{
+  padding:18px;
+  border-radius:20px;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+  text-align:left;
+}
+
+.booking-reference-item span,
+.booking-summary-item span{
+  display:block;
+  color:var(--ae-muted);
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:8px;
+}
+
+.booking-reference-item strong,
+.booking-summary-item strong{
+  color:white;
+  line-height:1.45;
+  word-break:break-word;
+}
+
+.booking-reference-item strong{
+  color:var(--ae-gold);
+  font-size:18px;
+}
+
+.booking-summary-panel,
+.booking-timeline{
+  margin-top:28px;
+  padding:28px;
+  border-radius:28px;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+  text-align:left;
+  box-shadow:0 20px 60px rgba(0,0,0,.22);
+}
+
+.booking-summary-panel h2,
+.booking-timeline h2{
+  margin:0 0 20px;
+  color:var(--ae-gold);
+  font-size:25px;
+}
+
+.booking-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+}
+
+.timeline-list{
+  display:grid;
+  gap:16px;
+}
+
+.timeline-item{
+  display:grid;
+  grid-template-columns:46px 1fr;
+  gap:14px;
+  align-items:start;
+}
+
+.timeline-icon{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+}
+
+.timeline-item.complete .timeline-icon{
+  background:rgba(37,211,102,.14);
+  border:1px solid rgba(37,211,102,.35);
+  color:#8ff5b6;
+}
+
+.timeline-item.pending .timeline-icon{
+  background:rgba(212,175,55,.12);
+  border:1px solid rgba(212,175,55,.3);
+  color:var(--ae-gold);
+}
+
+.timeline-item strong{
+  display:block;
+  color:white;
+  margin-bottom:5px;
+}
+
+.timeline-item span{
+  color:var(--ae-muted);
+  line-height:1.55;
+}
+
 .reward-banner{
   display:none;
   margin:34px auto 0;
@@ -312,7 +419,9 @@ body{
 
   .status-grid,
   .trip-features,
-  .reward-grid{
+  .reward-grid,
+  .booking-reference-grid,
+  .booking-summary-grid{
     grid-template-columns:1fr;
   }
 
@@ -326,7 +435,114 @@ body{
   }
 
   .download-banner,
-  .reward-banner{
+  
+.booking-reference-grid{
+  margin-top:34px;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+}
+
+.booking-reference-item,
+.booking-summary-item{
+  padding:18px;
+  border-radius:20px;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+  text-align:left;
+}
+
+.booking-reference-item span,
+.booking-summary-item span{
+  display:block;
+  color:var(--ae-muted);
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:8px;
+}
+
+.booking-reference-item strong,
+.booking-summary-item strong{
+  color:white;
+  line-height:1.45;
+  word-break:break-word;
+}
+
+.booking-reference-item strong{
+  color:var(--ae-gold);
+  font-size:18px;
+}
+
+.booking-summary-panel,
+.booking-timeline{
+  margin-top:28px;
+  padding:28px;
+  border-radius:28px;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+  text-align:left;
+  box-shadow:0 20px 60px rgba(0,0,0,.22);
+}
+
+.booking-summary-panel h2,
+.booking-timeline h2{
+  margin:0 0 20px;
+  color:var(--ae-gold);
+  font-size:25px;
+}
+
+.booking-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+}
+
+.timeline-list{
+  display:grid;
+  gap:16px;
+}
+
+.timeline-item{
+  display:grid;
+  grid-template-columns:46px 1fr;
+  gap:14px;
+  align-items:start;
+}
+
+.timeline-icon{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+}
+
+.timeline-item.complete .timeline-icon{
+  background:rgba(37,211,102,.14);
+  border:1px solid rgba(37,211,102,.35);
+  color:#8ff5b6;
+}
+
+.timeline-item.pending .timeline-icon{
+  background:rgba(212,175,55,.12);
+  border:1px solid rgba(212,175,55,.3);
+  color:var(--ae-gold);
+}
+
+.timeline-item strong{
+  display:block;
+  color:white;
+  margin-bottom:5px;
+}
+
+.timeline-item span{
+  color:var(--ae-muted);
+  line-height:1.55;
+}
+
+.reward-banner{
     padding:24px;
     border-radius:24px;
   }
@@ -335,6 +551,26 @@ body{
     display:grid;
     grid-template-columns:1fr;
   }
+}
+
+@media print{
+  body{background:white;color:#111}
+  #siteHeader,#siteFooter,.success-bg,.success-actions,.download-banner{display:none!important}
+  .success-shell{padding:0}
+  .success-card{
+    box-shadow:none;
+    border:none;
+    background:white;
+    color:#111;
+  }
+  .success-card h1,
+  .booking-summary-item strong,
+  .booking-reference-item strong,
+  .timeline-item strong{color:#111}
+  .success-card p,
+  .booking-summary-item span,
+  .booking-reference-item span,
+  .timeline-item span{color:#444}
 }
 </style>
 </head>
@@ -364,6 +600,77 @@ body{
         Thank you for choosing <strong>Angel Express</strong>.
         Your ride request has been successfully received and submitted to our operations team.
       </p>
+
+      <div class="booking-reference-grid">
+        <div class="booking-reference-item">
+          <span>Booking Number</span>
+          <strong id="successBookingNumber">Pending</strong>
+        </div>
+        <div class="booking-reference-item">
+          <span>Invoice Number</span>
+          <strong id="successInvoiceNumber">Pending</strong>
+        </div>
+        <div class="booking-reference-item">
+          <span>Booking Status</span>
+          <strong id="successBookingStatus">Pending Review</strong>
+        </div>
+        <div class="booking-reference-item">
+          <span>Balance Due</span>
+          <strong id="successBalanceDue">$0.00</strong>
+        </div>
+      </div>
+
+      <div class="booking-summary-panel">
+        <h2><i class="fa-solid fa-route"></i> Booking Summary</h2>
+        <div class="booking-summary-grid">
+          <div class="booking-summary-item">
+            <span>Passenger</span>
+            <strong id="successPassengerName">Not provided</strong>
+          </div>
+          <div class="booking-summary-item">
+            <span>Pickup</span>
+            <strong id="successPickup">Not provided</strong>
+          </div>
+          <div class="booking-summary-item">
+            <span>Drop-off</span>
+            <strong id="successDropoff">Not provided</strong>
+          </div>
+          <div class="booking-summary-item">
+            <span>Pickup Date & Time</span>
+            <strong id="successPickupDateTime">Not provided</strong>
+          </div>
+          <div class="booking-summary-item">
+            <span>Trip Type</span>
+            <strong id="successTripType">Not provided</strong>
+          </div>
+          <div class="booking-summary-item">
+            <span>Ride Category</span>
+            <strong id="successRideCategory">Not provided</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="booking-timeline">
+        <h2><i class="fa-solid fa-list-check"></i> What Happens Next</h2>
+        <div class="timeline-list">
+          <div class="timeline-item complete">
+            <div class="timeline-icon"><i class="fa-solid fa-check"></i></div>
+            <div><strong>Booking Received</strong><span>Your ride request has been recorded.</span></div>
+          </div>
+          <div class="timeline-item complete">
+            <div class="timeline-icon"><i class="fa-solid fa-check"></i></div>
+            <div><strong>Operations Notified</strong><span>Angel Express operations has received your request.</span></div>
+          </div>
+          <div class="timeline-item pending">
+            <div class="timeline-icon"><i class="fa-solid fa-clock"></i></div>
+            <div><strong>Driver Assignment</strong><span>You will receive an update when a chauffeur is assigned.</span></div>
+          </div>
+          <div class="timeline-item pending">
+            <div class="timeline-icon"><i class="fa-solid fa-location-arrow"></i></div>
+            <div><strong>Live Trip Updates</strong><span>Tracking and trip updates will become available after assignment.</span></div>
+          </div>
+        </div>
+      </div>
 
       <div class="reward-banner" id="referralSuccessBanner">
         <h2>
@@ -439,6 +746,16 @@ body{
       </div>
 
       <div class="success-actions">
+        <button type="button" class="btn btn-primary" onclick="printBookingReceipt()">
+          <i class="fa-solid fa-print"></i>
+          Print Receipt
+        </button>
+
+        <button type="button" class="btn btn-secondary" onclick="downloadBookingReceipt()">
+          <i class="fa-solid fa-download"></i>
+          Download Receipt
+        </button>
+
         <a href="index.html" class="btn btn-secondary">
           <i class="fa-solid fa-house"></i>
           Back Home
@@ -449,7 +766,7 @@ body{
           Book Another Ride
         </a>
 
-        <a href="https://wa.me/19728367910" target="_blank" class="btn btn-secondary">
+        <a href="https://wa.me/19728367910" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
           <i class="fa-brands fa-whatsapp"></i>
           Contact Support
         </a>
@@ -481,8 +798,7 @@ body{
           <div class="trip-feature">🛡 Safety Monitoring</div>
           <div class="trip-feature">🎓 Student Travel Mode</div>
           <div class="trip-feature">🏆 Rewards & Referrals</div>
-          <div class="trip-feature">🌎 World Cup Transportation</div>
-        </div>
+                  </div>
       </div>
     </section>
 
@@ -505,6 +821,149 @@ function successBoolean(value) {
 
   return normalized === "true" || normalized === "yes" || normalized === "1";
 }
+
+
+function successFormatDate(value) {
+  if (!value) return "Not provided";
+  const date = new Date(value + "T12:00:00");
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+function successFormatTime(value) {
+  if (!value) return "Not provided";
+  const parts = String(value).split(":").map(Number);
+  if (!Number.isFinite(parts[0])) return value;
+  const date = new Date();
+  date.setHours(parts[0], Number.isFinite(parts[1]) ? parts[1] : 0, 0, 0);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function getSuccessBooking() {
+  const raw =
+    localStorage.getItem("angelLastBooking") ||
+    localStorage.getItem("angelBookingSuccess") ||
+    sessionStorage.getItem("angelLastBooking") ||
+    sessionStorage.getItem("angelBookingSuccess") ||
+    "{}";
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function populateBookingSummary() {
+  const booking = getSuccessBooking();
+
+  const name =
+    booking.passenger_name ||
+    booking.name ||
+    booking.full_name ||
+    [booking.first_name, booking.last_name].filter(Boolean).join(" ").trim() ||
+    "Not provided";
+
+  const bookingNumber =
+    booking.booking_number ||
+    booking.bookingNumber ||
+    "Pending";
+
+  const invoiceNumber =
+    booking.invoice_number ||
+    booking.invoice_no ||
+    booking.invoiceNumber ||
+    "Pending";
+
+  const balance =
+    booking.balance_due ||
+    booking.total_fare ||
+    booking.total ||
+    0;
+
+  const status =
+    booking.booking_status ||
+    booking.status ||
+    "pending";
+
+  const date =
+    booking.ride_date ||
+    booking.date ||
+    "";
+
+  const time =
+    booking.ride_time ||
+    booking.time ||
+    "";
+
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+
+  setText("successBookingNumber", bookingNumber);
+  setText("successInvoiceNumber", invoiceNumber);
+  setText(
+    "successBookingStatus",
+    String(status).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+  setText("successBalanceDue", successMoney(balance));
+  setText("successPassengerName", name);
+  setText("successPickup", booking.pickup || booking.pickup_address || "Not provided");
+  setText("successDropoff", booking.dropoff || booking.dropoff_address || "Not provided");
+  setText(
+    "successPickupDateTime",
+    `${successFormatDate(date)} at ${successFormatTime(time)}`
+  );
+  setText("successTripType", booking.trip_type || booking.tripType || "Not provided");
+  setText("successRideCategory", booking.ride_category || booking.rideCategory || "Not provided");
+}
+
+function printBookingReceipt() {
+  window.print();
+}
+
+function downloadBookingReceipt() {
+  const booking = getSuccessBooking();
+
+  const receipt = [
+    "ANGEL EXPRESS BOOKING RECEIPT",
+    "",
+    `Booking Number: ${booking.booking_number || booking.bookingNumber || "Pending"}`,
+    `Invoice Number: ${booking.invoice_number || booking.invoice_no || "Pending"}`,
+    `Passenger: ${booking.passenger_name || booking.name || "Not provided"}`,
+    `Pickup: ${booking.pickup || booking.pickup_address || "Not provided"}`,
+    `Drop-off: ${booking.dropoff || booking.dropoff_address || "Not provided"}`,
+    `Date: ${booking.ride_date || booking.date || "Not provided"}`,
+    `Time: ${booking.ride_time || booking.time || "Not provided"}`,
+    `Trip Type: ${booking.trip_type || booking.tripType || "Not provided"}`,
+    `Ride Category: ${booking.ride_category || booking.rideCategory || "Not provided"}`,
+    `Status: ${booking.booking_status || booking.status || "Pending"}`,
+    `Balance Due: ${successMoney(booking.balance_due || booking.total_fare || booking.total || 0)}`,
+    "",
+    "Payment is collected after ride completion unless otherwise agreed.",
+    "Support: support@angelexpressus.com | 972-836-7910"
+  ].join("\n");
+
+  const blob = new Blob([receipt], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${booking.booking_number || "angel-express-booking"}-receipt.txt`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 
 function showReferralSuccess() {
   const raw =
@@ -677,8 +1136,12 @@ function revealSuccessPage() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  populateBookingSummary();
   showReferralSuccess();
   revealSuccessPage();
+
+  localStorage.removeItem("angelBooking");
+  localStorage.removeItem("angelBookingDraftV2");
 });
 </script>
 

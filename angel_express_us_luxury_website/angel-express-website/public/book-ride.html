@@ -376,6 +376,77 @@ textarea{
   border:1px solid rgba(212,175,55,.32);
 }
 
+
+.dynamic-panel{
+  display:none;
+  margin-top:18px;
+  padding:22px;
+  border-radius:24px;
+  border:1px solid rgba(212,175,55,.28);
+  background:rgba(5,11,22,.48);
+}
+
+.dynamic-panel.show{
+  display:block;
+}
+
+.profile-status{
+  display:none;
+  margin-top:14px;
+  padding:14px 16px;
+  border-radius:18px;
+  font-weight:800;
+  line-height:1.45;
+  font-size:14px;
+}
+
+.profile-status.success{
+  display:block;
+  color:#092613;
+  background:rgba(56,212,111,.95);
+}
+
+.profile-status.info{
+  display:block;
+  color:white;
+  background:rgba(212,175,55,.13);
+  border:1px solid rgba(212,175,55,.32);
+}
+
+.profile-status.error{
+  display:block;
+  color:white;
+  background:rgba(255,107,107,.18);
+  border:1px solid rgba(255,107,107,.45);
+}
+
+.form-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  margin-top:12px;
+  border-radius:999px;
+  color:var(--ae-gold);
+  border:1px solid rgba(212,175,55,.32);
+  background:rgba(212,175,55,.08);
+  font-size:12px;
+  font-weight:900;
+}
+
+.booking-draft-note{
+  display:none;
+  margin:0 0 22px;
+  padding:14px 16px;
+  border-radius:18px;
+  color:white;
+  background:rgba(212,175,55,.13);
+  border:1px solid rgba(212,175,55,.32);
+  line-height:1.5;
+  font-weight:800;
+  font-size:14px;
+}
+
 .continue-btn{
   width:100%;
   min-height:64px;
@@ -461,20 +532,41 @@ textarea{
         Enter your trip details below. Angel Express will calculate your fare estimate next with referral rewards, student verification, and Student Shared Ride options.
       </p>
 
+      <div id="bookingDraftNotice" class="booking-draft-note"></div>
+
       <div class="form-section">
         <div class="section-title">Passenger Details</div>
 
+        <div class="field-grid">
+          <div>
+            <label>Full Name</label>
+            <input type="text" id="fullName" placeholder="Enter passenger full name" autocomplete="name" required>
+          </div>
+
+          <div>
+            <label>Phone Number</label>
+            <input type="tel" id="phone" placeholder="Enter passenger phone number" autocomplete="tel" required>
+          </div>
+        </div>
+
         <label>Email Address</label>
-        <input type="email" id="email" placeholder="Enter the email you use in the Angel Express app" required>
+        <input type="email" id="email" placeholder="Enter the email used in the Angel Express app" autocomplete="email" required>
 
         <p class="helper-note">
-          Use the same email from your Angel Express app profile so this ride appears in your trip history and student verification can be checked.
+          Use the same email from your Angel Express Passenger App profile. We will securely match your profile, student verification, rewards, and trip history.
         </p>
 
-        <button type="button" id="checkStudentBtn" class="check-student-btn" onclick="bookRideCheckStudentStatus()">
-          Check Student Status
-        </button>
+        <div class="reward-row">
+          <button type="button" id="lookupProfileBtn" class="check-student-btn" onclick="bookRideLookupPassengerProfile()">
+            Find My Profile
+          </button>
 
+          <button type="button" id="checkStudentBtn" class="check-student-btn" onclick="bookRideCheckStudentStatus()">
+            Check Student Status
+          </button>
+        </div>
+
+        <div id="profileStatus" class="profile-status"></div>
         <div id="studentStatus" class="student-status"></div>
       </div>
 
@@ -545,6 +637,26 @@ textarea{
           <button type="button" class="option-btn active" data-type="One Way">One Way</button>
           <button type="button" class="option-btn" data-type="Round Trip">Round Trip</button>
         </div>
+
+        <div id="returnTripPanel" class="dynamic-panel">
+          <div class="field-grid">
+            <div>
+              <label>Return Date</label>
+              <input type="date" id="returnDate">
+            </div>
+
+            <div>
+              <label>Return Time</label>
+              <select id="returnTime">
+                <option value="">Select return time</option>
+              </select>
+            </div>
+          </div>
+
+          <p class="helper-note">
+            Round-trip details are stored with the same booking draft used by the Passenger App.
+          </p>
+        </div>
       </div>
 
       <div class="form-section">
@@ -555,6 +667,57 @@ textarea{
           <button type="button" class="category-btn" data-category="Airport Transfer">Airport Transfer</button>
           <button type="button" class="category-btn" data-category="Student Shared Ride">Student Shared Ride</button>
           <button type="button" class="category-btn" data-category="Tourist/Event Ride">Tourist/Event Ride</button>
+        </div>
+
+        <div id="airportPanel" class="dynamic-panel">
+          <div class="field-grid">
+            <div>
+              <label>Airport</label>
+              <select id="airport">
+                <option value="">Select airport</option>
+                <option value="DFW International Airport">DFW International Airport</option>
+                <option value="Dallas Love Field">Dallas Love Field</option>
+                <option value="Other Airport">Other Airport</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Trip Direction</label>
+              <select id="airportDirection">
+                <option value="">Select direction</option>
+                <option value="Airport Pickup">Airport Pickup</option>
+                <option value="Airport Drop-off">Airport Drop-off</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Airline</label>
+              <input type="text" id="airline" placeholder="Example: American Airlines">
+            </div>
+
+            <div>
+              <label>Flight Number</label>
+              <input type="text" id="flightNumber" placeholder="Example: AA 1234">
+            </div>
+
+            <div>
+              <label>Terminal</label>
+              <input type="text" id="terminal" placeholder="Example: Terminal C">
+            </div>
+
+            <div>
+              <label>Flight Type</label>
+              <select id="flightType">
+                <option value="">Select flight type</option>
+                <option value="Domestic">Domestic</option>
+                <option value="International">International</option>
+              </select>
+            </div>
+          </div>
+
+          <p class="helper-note">
+            Flight details help Angel Express coordinate airport pickup timing and terminal access.
+          </p>
         </div>
 
         <div id="studentPanel" class="student-card">
@@ -579,12 +742,12 @@ textarea{
         <div class="field-grid">
           <div>
             <label>Passengers</label>
-            <input type="number" id="passengers" value="1" min="1">
+            <input type="number" id="passengers" value="1" min="1" max="7">
           </div>
 
           <div>
             <label>Luggage</label>
-            <input type="number" id="luggage" value="0" min="0">
+            <input type="number" id="luggage" value="0" min="0" max="12">
           </div>
         </div>
       </div>
@@ -628,7 +791,7 @@ textarea{
         <div class="section-title">Extra Details</div>
 
         <label>Notes</label>
-        <textarea id="notes" placeholder="Notes e.g. flight number, pickup instructions, luggage details"></textarea>
+        <textarea id="notes" placeholder="Pickup instructions, accessibility needs, child seat request, service animal, or other travel notes"></textarea>
       </div>
 
       <button type="button" class="continue-btn" onclick="bookRideContinueToEstimate()">
@@ -641,8 +804,15 @@ textarea{
 <div id="siteFooter"></div>
 
 <script>
-localStorage.removeItem("angelBooking");
 sessionStorage.removeItem("angelBookingCompleted");
+
+const savedBookingDraft = (() => {
+  try {
+    return JSON.parse(localStorage.getItem("angelBooking") || "null");
+  } catch (error) {
+    return null;
+  }
+})();
 
 const BOOK_RIDE_SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
 const BOOK_RIDE_SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
@@ -660,6 +830,16 @@ let pickupLocation = null;
 let dropoffLocation = null;
 let pickupTimer = null;
 let dropoffTimer = null;
+
+let passengerProfile = {
+  found: false,
+  user_id: null,
+  first_name: "",
+  last_name: "",
+  full_name: "",
+  phone: "",
+  email: ""
+};
 
 let studentProfile = {
   checked: false,
@@ -688,6 +868,8 @@ document.querySelectorAll(".option-btn").forEach((btn) => {
     document.querySelectorAll(".option-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     tripType = btn.dataset.type;
+    updateDynamicPanels();
+    saveBookingDraft();
   });
 });
 
@@ -709,8 +891,250 @@ document.querySelectorAll(".category-btn").forEach((btn) => {
     rideCategory = selectedCategory;
 
     updateStudentPanel();
+    updateDynamicPanels();
+    saveBookingDraft();
   });
 });
+
+
+function showProfileStatus(message, statusType = "info") {
+  const box = document.getElementById("profileStatus");
+
+  if (!box) return;
+
+  box.className = "profile-status " + statusType;
+  box.innerHTML = message;
+}
+
+function buildTimeOptions(selectId) {
+  const select = document.getElementById(selectId);
+
+  if (!select || select.options.length > 1) return;
+
+  for (let hour = 0; hour < 24; hour += 1) {
+    for (const minute of [0, 30]) {
+      const value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      const displayHour = hour % 12 || 12;
+      const period = hour < 12 ? "AM" : "PM";
+      const option = document.createElement("option");
+
+      option.value = value;
+      option.textContent = `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
+      select.appendChild(option);
+    }
+  }
+}
+
+function updateDynamicPanels() {
+  document.getElementById("returnTripPanel")?.classList.toggle("show", tripType === "Round Trip");
+  document.getElementById("airportPanel")?.classList.toggle("show", rideCategory === "Airport Transfer");
+}
+
+function normalizeNameParts(fullName) {
+  const clean = String(fullName || "").trim().replace(/\s+/g, " ");
+  const parts = clean.split(" ").filter(Boolean);
+
+  return {
+    full_name: clean,
+    first_name: parts.shift() || "",
+    last_name: parts.join(" ")
+  };
+}
+
+function saveBookingDraft() {
+  const existing = savedBookingDraft && typeof savedBookingDraft === "object" ? savedBookingDraft : {};
+
+  const draft = {
+    ...existing,
+    bookingDraftVersion: 2,
+    booking_draft_version: 2,
+    fullName: document.getElementById("fullName")?.value?.trim() || "",
+    full_name: document.getElementById("fullName")?.value?.trim() || "",
+    phone: document.getElementById("phone")?.value?.trim() || "",
+    passenger_phone: document.getElementById("phone")?.value?.trim() || "",
+    email: document.getElementById("email")?.value?.trim().toLowerCase() || "",
+    pickup: pickupLocation?.address || document.getElementById("pickup")?.value?.trim() || "",
+    dropoff: dropoffLocation?.address || document.getElementById("dropoff")?.value?.trim() || "",
+    pickup_location: pickupLocation,
+    dropoff_location: dropoffLocation,
+    date: document.getElementById("tripDate")?.value || "",
+    time: document.getElementById("tripTime")?.value || "",
+    return_date: document.getElementById("returnDate")?.value || "",
+    return_time: document.getElementById("returnTime")?.value || "",
+    tripType,
+    trip_type: tripType,
+    rideCategory,
+    ride_category: rideCategory,
+    passengers: document.getElementById("passengers")?.value || "1",
+    luggage: document.getElementById("luggage")?.value || "0",
+    notes: document.getElementById("notes")?.value || "",
+    referral_code: normalizeReferralCode(document.getElementById("referral")?.value || ""),
+    airport: document.getElementById("airport")?.value || "",
+    airport_direction: document.getElementById("airportDirection")?.value || "",
+    airline: document.getElementById("airline")?.value?.trim() || "",
+    flight_number: document.getElementById("flightNumber")?.value?.trim() || "",
+    terminal: document.getElementById("terminal")?.value?.trim() || "",
+    flight_type: document.getElementById("flightType")?.value || "",
+    source: "website",
+    booking_source: "website"
+  };
+
+  localStorage.setItem("angelBooking", JSON.stringify(draft));
+}
+
+function restoreBookingDraft() {
+  if (!savedBookingDraft || typeof savedBookingDraft !== "object") return;
+
+  const setValue = (id, value) => {
+    const field = document.getElementById(id);
+    if (field && value !== undefined && value !== null) field.value = value;
+  };
+
+  setValue("fullName", savedBookingDraft.fullName || savedBookingDraft.full_name || savedBookingDraft.passenger_name || "");
+  setValue("phone", savedBookingDraft.phone || savedBookingDraft.passenger_phone || "");
+  setValue("email", savedBookingDraft.email || savedBookingDraft.passenger_email || "");
+  setValue("pickup", savedBookingDraft.pickup || savedBookingDraft.pickup_address || "");
+  setValue("dropoff", savedBookingDraft.dropoff || savedBookingDraft.dropoff_address || "");
+  setValue("tripDate", savedBookingDraft.date || savedBookingDraft.ride_date || "");
+  setValue("tripTime", savedBookingDraft.time || savedBookingDraft.ride_time || "");
+  setValue("returnDate", savedBookingDraft.return_date || savedBookingDraft.returnDate || "");
+  setValue("returnTime", savedBookingDraft.return_time || savedBookingDraft.returnTime || "");
+  setValue("passengers", savedBookingDraft.passengers || savedBookingDraft.passenger_count || "1");
+  setValue("luggage", savedBookingDraft.luggage || savedBookingDraft.luggage_count || "0");
+  setValue("notes", savedBookingDraft.notes || "");
+  setValue("referral", savedBookingDraft.referral_code || savedBookingDraft.referralCode || savedBookingDraft.referral || "");
+  setValue("airport", savedBookingDraft.airport || "");
+  setValue("airportDirection", savedBookingDraft.airport_direction || savedBookingDraft.airportDirection || "");
+  setValue("airline", savedBookingDraft.airline || "");
+  setValue("flightNumber", savedBookingDraft.flight_number || savedBookingDraft.flightNumber || "");
+  setValue("terminal", savedBookingDraft.terminal || "");
+  setValue("flightType", savedBookingDraft.flight_type || savedBookingDraft.flightType || "");
+
+  tripType = savedBookingDraft.trip_type || savedBookingDraft.tripType || "One Way";
+  rideCategory = savedBookingDraft.ride_category || savedBookingDraft.rideCategory || "Standard Ride";
+
+  document.querySelectorAll(".option-btn").forEach((button) => {
+    button.classList.toggle("active", button.dataset.type === tripType);
+  });
+
+  document.querySelectorAll(".category-btn").forEach((button) => {
+    button.classList.toggle("active", button.dataset.category === rideCategory);
+  });
+
+  pickupLocation = savedBookingDraft.pickup_location || (
+    savedBookingDraft.pickup_lat && savedBookingDraft.pickup_lng
+      ? {
+          address: savedBookingDraft.pickup || savedBookingDraft.pickup_address || "",
+          latitude: Number(savedBookingDraft.pickup_lat),
+          longitude: Number(savedBookingDraft.pickup_lng),
+          placeId: savedBookingDraft.pickupPlaceId || null
+        }
+      : null
+  );
+
+  dropoffLocation = savedBookingDraft.dropoff_location || (
+    savedBookingDraft.dropoff_lat && savedBookingDraft.dropoff_lng
+      ? {
+          address: savedBookingDraft.dropoff || savedBookingDraft.dropoff_address || "",
+          latitude: Number(savedBookingDraft.dropoff_lat),
+          longitude: Number(savedBookingDraft.dropoff_lng),
+          placeId: savedBookingDraft.dropoffPlaceId || null
+        }
+      : null
+  );
+
+  if (pickupLocation) showStatus("pickup", "Saved pickup GPS restored.");
+  if (dropoffLocation) showStatus("dropoff", "Saved drop-off GPS restored.");
+
+  const notice = document.getElementById("bookingDraftNotice");
+
+  if (notice) {
+    notice.style.display = "block";
+    notice.innerHTML = `<i class="fa-solid fa-rotate-left"></i> Your saved booking draft has been restored. Review the details before continuing.`;
+  }
+
+  updateDynamicPanels();
+}
+
+async function bookRideLookupPassengerProfile(showMessage = true) {
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const btn = document.getElementById("lookupProfileBtn");
+
+  if (!email) {
+    if (showMessage) showProfileStatus("Enter your Angel Express account email first.", "error");
+    return null;
+  }
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Finding...";
+    }
+
+    if (showMessage) showProfileStatus("Looking for your Passenger App profile...", "info");
+
+    const { data: profile, error } = await bookRideSupabaseClient
+      .from("passenger_profiles")
+      .select("*")
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (!profile) {
+      passengerProfile = {
+        found: false,
+        user_id: null,
+        first_name: "",
+        last_name: "",
+        full_name: "",
+        phone: "",
+        email
+      };
+
+      if (showMessage) {
+        showProfileStatus("No Passenger App profile was found. You can still continue as a website guest.", "info");
+      }
+
+      return null;
+    }
+
+    const fullName = profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
+
+    passengerProfile = {
+      found: true,
+      user_id: profile.user_id || profile.id || null,
+      first_name: profile.first_name || "",
+      last_name: profile.last_name || "",
+      full_name: fullName,
+      phone: profile.phone || "",
+      email: profile.email || email
+    };
+
+    if (fullName) document.getElementById("fullName").value = fullName;
+    if (profile.phone) document.getElementById("phone").value = profile.phone;
+
+    if (showMessage) {
+      showProfileStatus(`✅ Passenger profile found${fullName ? ` for <strong>${fullName}</strong>` : ""}. Your website booking will connect to your app trip history.`, "success");
+    }
+
+    saveBookingDraft();
+    return profile;
+  } catch (error) {
+    console.error(error);
+
+    if (showMessage) {
+      showProfileStatus("Profile lookup is temporarily unavailable. You can continue by entering your details manually.", "info");
+    }
+
+    return null;
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Find My Profile";
+    }
+  }
+}
 
 function showStatus(type, message, isError = false) {
   const status = document.getElementById(type + "Status");
@@ -868,11 +1292,13 @@ document.getElementById("dropoff")?.addEventListener("input", (event) => {
   }, 450);
 });
 
-document.getElementById("email")?.addEventListener("blur", () => {
+document.getElementById("email")?.addEventListener("blur", async () => {
   const email = document.getElementById("email").value.trim().toLowerCase();
 
   if (email) {
-    bookRideCheckStudentStatus(false);
+    await bookRideLookupPassengerProfile(false);
+    await bookRideCheckStudentStatus(false);
+    saveBookingDraft();
   }
 });
 
@@ -885,6 +1311,10 @@ document.getElementById("referral")?.addEventListener("input", () => {
     box.className = "reward-status";
     box.style.display = "none";
   }
+});
+
+document.querySelectorAll("input, select, textarea").forEach((field) => {
+  field.addEventListener("change", saveBookingDraft);
 });
 
 document.addEventListener("click", (event) => {
@@ -1085,12 +1515,24 @@ async function bookRideApplyReferralCode() {
 }
 
 async function bookRideContinueToEstimate() {
+  const fullName = document.getElementById("fullName").value.trim();
+  const phone = document.getElementById("phone").value.trim();
   const email = document.getElementById("email").value.trim().toLowerCase();
   const pickupValue = document.getElementById("pickup").value.trim();
   const dropoffValue = document.getElementById("dropoff").value.trim();
   const tripDate = document.getElementById("tripDate").value;
   const tripTime = document.getElementById("tripTime").value;
   const rawReferralCode = normalizeReferralCode(document.getElementById("referral").value);
+
+  if (!fullName) {
+    alert("Please enter the passenger's full name.");
+    return;
+  }
+
+  if (!phone) {
+    alert("Please enter the passenger's phone number.");
+    return;
+  }
 
   if (!email) {
     alert("Please enter your email address.");
@@ -1122,6 +1564,38 @@ async function bookRideContinueToEstimate() {
     return;
   }
 
+  const returnDate = document.getElementById("returnDate").value;
+  const returnTime = document.getElementById("returnTime").value;
+
+  if (tripType === "Round Trip" && (!returnDate || !returnTime)) {
+    alert("Please select the return date and return time.");
+    return;
+  }
+
+  if (tripType === "Round Trip" && returnDate < tripDate) {
+    alert("Return date cannot be before the pickup date.");
+    return;
+  }
+
+  if (
+    pickupLocation.latitude === dropoffLocation.latitude &&
+    pickupLocation.longitude === dropoffLocation.longitude
+  ) {
+    alert("Pickup and drop-off cannot be the same location.");
+    return;
+  }
+
+  if (rideCategory === "Airport Transfer") {
+    const airport = document.getElementById("airport").value;
+    const airportDirection = document.getElementById("airportDirection").value;
+
+    if (!airport || !airportDirection) {
+      alert("Please select the airport and airport trip direction.");
+      return;
+    }
+  }
+
+  await bookRideLookupPassengerProfile(false);
   await bookRideCheckStudentStatus(false);
 
   if (rawReferralCode && appliedReferral.referral_code_used !== rawReferralCode) {
@@ -1150,8 +1624,25 @@ async function bookRideContinueToEstimate() {
     if (!proceed) return;
   }
 
+  const nameParts = normalizeNameParts(fullName);
+
   const bookingData = {
+    bookingDraftVersion: 2,
+    booking_draft_version: 2,
+
+    user_id: passengerProfile.user_id,
+    passenger_user_id: passengerProfile.user_id,
+
+    fullName,
+    full_name: fullName,
+    passenger_name: fullName,
+    first_name: nameParts.first_name,
+    last_name: nameParts.last_name,
+
+    phone,
+    passenger_phone: phone,
     email,
+    passenger_email: email,
 
     pickup: pickupLocation.address,
     dropoff: dropoffLocation.address,
@@ -1177,17 +1668,33 @@ async function bookRideContinueToEstimate() {
     ride_date: tripDate,
     ride_time: tripTime,
 
+    returnDate: document.getElementById("returnDate").value || "",
+    return_date: document.getElementById("returnDate").value || "",
+    returnTime: document.getElementById("returnTime").value || "",
+    return_time: document.getElementById("returnTime").value || "",
+
     tripType,
     trip_type: tripType,
 
     rideCategory: studentSharedRide ? "Student Shared Ride" : rideCategory,
     ride_category: studentSharedRide ? "Student Shared Ride" : rideCategory,
 
-    passengers: document.getElementById("passengers").value,
-    luggage: document.getElementById("luggage").value,
-    luggage_count: document.getElementById("luggage").value,
+    passengers: Number(document.getElementById("passengers").value || 1),
+    passenger_count: Number(document.getElementById("passengers").value || 1),
+    luggage: Number(document.getElementById("luggage").value || 0),
+    luggage_count: Number(document.getElementById("luggage").value || 0),
 
-    notes: document.getElementById("notes").value,
+    airport: document.getElementById("airport").value || "",
+    airportDirection: document.getElementById("airportDirection").value || "",
+    airport_direction: document.getElementById("airportDirection").value || "",
+    airline: document.getElementById("airline").value.trim(),
+    flightNumber: document.getElementById("flightNumber").value.trim(),
+    flight_number: document.getElementById("flightNumber").value.trim(),
+    terminal: document.getElementById("terminal").value.trim(),
+    flightType: document.getElementById("flightType").value || "",
+    flight_type: document.getElementById("flightType").value || "",
+
+    notes: document.getElementById("notes").value.trim(),
 
     route: `${pickupLocation.address} → ${dropoffLocation.address}`,
 
@@ -1219,13 +1726,24 @@ async function bookRideContinueToEstimate() {
     studentPoolRoute: `${pickupLocation.address} → ${dropoffLocation.address}`,
     student_pool_route: `${pickupLocation.address} → ${dropoffLocation.address}`,
 
-    source: "website"
+    source: "website",
+    booking_source: "website",
+    channel: "website",
+    pricing_version: "v2",
+    draft_status: "fare_estimate_pending"
   };
 
   localStorage.setItem("angelBooking", JSON.stringify(bookingData));
 
   window.location.href = "fare-estimate.html";
 }
+buildTimeOptions("returnTime");
+updateDynamicPanels();
+restoreBookingDraft();
+
+const minimumDate = new Date().toISOString().split("T")[0];
+document.getElementById("tripDate").min = minimumDate;
+document.getElementById("returnDate").min = minimumDate;
 </script>
 
 <script src="app.js"></script>

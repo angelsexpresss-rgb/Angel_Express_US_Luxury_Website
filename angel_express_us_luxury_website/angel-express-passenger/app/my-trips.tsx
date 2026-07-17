@@ -48,10 +48,56 @@ const ASSIGNED_STATUSES = [
 ];
 
 const IN_PROGRESS_STATUSES = ["in_progress"];
-
-const COMPLETED_STATUSES = ["completed", "Completed"];
-
+const COMPLETED_STATUSES = ["completed"];
 const CANCELLED_STATUSES = ["cancelled", "canceled"];
+
+function firstValue(...values: any[]) {
+  return values.find(
+    (value) => value !== undefined && value !== null && value !== ""
+  );
+}
+
+function numberValue(...values: any[]) {
+  const value = firstValue(...values);
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function titleCaseFromCode(value?: string) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function displayRideCategory(trip: any) {
+  const label = firstValue(
+    trip.ride_category_label,
+    trip.ride_category_name,
+    trip.ride_category
+  );
+
+  const map: Record<string, string> = {
+    private: "Standard Ride",
+    student_private: "Student Ride",
+    student_pool: "Student Shared Ride",
+    airport: "Airport Transfer",
+    tourist_event: "Tourist/Event Ride",
+    corporate: "Corporate Ride",
+  };
+
+  return map[String(label || "").toLowerCase()] || titleCaseFromCode(label) || "Standard Ride";
+}
+
+function displayTripType(trip: any) {
+  const value = String(
+    firstValue(trip.trip_type_label, trip.trip_type, trip.tripType, "")
+  ).toLowerCase();
+
+  if (value.includes("round")) return "Round Trip";
+  if (value.includes("one")) return "One Way";
+
+  return titleCaseFromCode(value) || "One Way";
+}
 
 export default function MyTripsScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
@@ -59,7 +105,6 @@ export default function MyTripsScreen() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [trips, setTrips] = useState<any[]>([]);
 
   const bgScale = useRef(new Animated.Value(1)).current;
@@ -105,7 +150,10 @@ export default function MyTripsScreen() {
       } = await supabase.auth.getUser();
 
       if (userError) throw userError;
-      if (!user) return;
+      if (!user) {
+        setTrips([]);
+        return;
+      }
 
       const userEmail = user.email?.trim().toLowerCase() || "";
 
@@ -173,7 +221,9 @@ export default function MyTripsScreen() {
       normalize(trip.status) === "driver_arrived"
   ).length;
 
-  const completedTrips = trips.filter((trip) => isCompletedStatus(trip.status)).length;
+  const completedTrips = trips.filter((trip) =>
+    isCompletedStatus(trip.status)
+  ).length;
 
   const unpaidCompletedTrips = trips.filter(
     (trip) =>
@@ -242,20 +292,29 @@ export default function MyTripsScreen() {
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.heroTitle}>{trips.length} Total Trip{trips.length === 1 ? "" : "s"}</Text>
+                <Text style={styles.heroTitle}>
+                  {trips.length} Total Trip{trips.length === 1 ? "" : "s"}
+                </Text>
                 <Text style={styles.heroText}>
-                  {activeTrips} active • {completedTrips} completed • {unpaidCompletedTrips} payment due
+                  {activeTrips} active • {completedTrips} completed •{" "}
+                  {unpaidCompletedTrips} payment due
                 </Text>
               </View>
             </View>
 
             <View style={styles.quickRow}>
-              <TouchableOpacity style={styles.quickButton} onPress={() => router.push("/book-ride" as any)}>
+              <TouchableOpacity
+                style={styles.quickButton}
+                onPress={() => router.push("/book-ride" as any)}
+              >
                 <CarFront size={18} color={colors.gold} />
                 <Text style={styles.quickText}>Book Ride</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.quickButton} onPress={() => loadTrips(true)}>
+              <TouchableOpacity
+                style={styles.quickButton}
+                onPress={() => loadTrips(true)}
+              >
                 <RefreshCcw size={18} color={colors.gold} />
                 <Text style={styles.quickText}>Refresh</Text>
               </TouchableOpacity>
@@ -343,26 +402,73 @@ function TripCard({
     trip.destination ||
     "Drop-off not added";
 
-  const date = trip.ride_date || trip.date || trip.pickup_date || "Date not added";
-  const time = trip.ride_time || trip.time || trip.pickup_time || "Time not added";
+  const date =
+    trip.ride_date ||
+    trip.date ||
+    trip.pickup_date ||
+    (trip.scheduled_at
+      ? new Date(trip.scheduled_at).toLocaleDateString()
+      : "Date not added");
+
+  const time =
+    trip.ride_time ||
+    trip.time ||
+    trip.pickup_time ||
+    (trip.scheduled_at
+      ? new Date(trip.scheduled_at).toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : "Time not added");
 
   const normalizedStatus = normalize(trip.status);
   const displayStatus = getDisplayStatus(trip.status);
-
   const paymentStatus = normalize(trip.payment_status || "unpaid");
 
-  const invoice = trip.invoice_no || "No invoice yet";
-  const total = Number(trip.total_fare || trip.total || trip.total_price || trip.amount || 0);
-  const source = trip.source || trip.source_app || "app";
-  const miles = Number(trip.estimated_miles || trip.miles || 0);
+  const bookingNumber = String(
+    firstValue(trip.booking_number, trip.booking_no, trip.id, "Pending")
+  );
 
+  const invoiceNumber = String(
+    firstValue(trip.invoice_number, trip.invoice_no, "Pending")
+  );
+
+  const total = numberValue(
+    trip.total_fare,
+    trip.final_fare,
+    trip.balance_due,
+    trip.total,
+    trip.total_price,
+    trip.amount,
+    0
+  );
+
+  const source = firstValue(trip.source_platform, trip.source, trip.source_app, "app");
+  const miles = numberValue(
+    trip.route_distance_miles,
+    trip.distance_miles,
+    trip.estimated_miles,
+    trip.miles,
+    0
+  );
+
+  const pricingVersion = String(
+    firstValue(trip.pricing_version, trip.pricing_model, "")
+  );
+
+  const rideCategory = displayRideCategory(trip);
+  const tripType = displayTripType(trip);
   const driverId = trip.driver_id || trip.assigned_driver_id;
 
-  const canPayRide = isCompletedStatus(normalizedStatus) && paymentStatus !== "paid";
-  const isPaid = isCompletedStatus(normalizedStatus) && paymentStatus === "paid";
+  const canPayRide =
+    isCompletedStatus(normalizedStatus) && paymentStatus !== "paid";
+
+  const isPaid =
+    isCompletedStatus(normalizedStatus) && paymentStatus === "paid";
 
   const canTrackLive =
-    isAssignedStatus(normalizedStatus) || isInProgressStatus(normalizedStatus);
+    isAssignedStatus(normalizedStatus) ||
+    isInProgressStatus(normalizedStatus);
 
   useEffect(() => {
     if (driverId) {
@@ -420,7 +526,10 @@ function TripCard({
       pathname: "/manage-booking" as any,
       params: {
         booking_id: String(trip.id || ""),
-        invoice_no: String(trip.invoice_no || ""),
+        bookingId: String(trip.id || ""),
+        booking_number: bookingNumber,
+        invoice_no: invoiceNumber,
+        invoice_number: invoiceNumber,
       },
     });
   }
@@ -430,7 +539,10 @@ function TripCard({
       pathname: "/rate-driver" as any,
       params: {
         booking_id: String(trip.id || ""),
-        invoice_no: String(trip.invoice_no || ""),
+        bookingId: String(trip.id || ""),
+        booking_number: bookingNumber,
+        invoice_no: invoiceNumber,
+        invoice_number: invoiceNumber,
       },
     });
   }
@@ -440,6 +552,7 @@ function TripCard({
       pathname: "/pay-ride" as any,
       params: {
         bookingId: String(trip.id || ""),
+        booking_id: String(trip.id || ""),
       },
     });
   }
@@ -449,7 +562,10 @@ function TripCard({
       pathname: "/live-trip" as any,
       params: {
         booking_id: String(trip.id || ""),
-        invoice_no: String(trip.invoice_no || ""),
+        bookingId: String(trip.id || ""),
+        booking_number: bookingNumber,
+        invoice_no: invoiceNumber,
+        invoice_number: invoiceNumber,
       },
     });
   }
@@ -457,12 +573,21 @@ function TripCard({
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.invoiceRow}>
-          <ReceiptText size={18} color={colors.gold} />
-          <Text style={styles.invoice}>{invoice}</Text>
+        <View style={styles.referenceBlock}>
+          <View style={styles.invoiceRow}>
+            <ReceiptText size={18} color={colors.gold} />
+            <Text style={styles.invoice}>Booking: {bookingNumber}</Text>
+          </View>
+
+          <Text style={styles.invoiceSub}>Invoice: {invoiceNumber}</Text>
         </View>
 
-        <View style={[styles.statusPill, getStatusPillStyle(normalizedStatus, styles)]}>
+        <View
+          style={[
+            styles.statusPill,
+            getStatusPillStyle(normalizedStatus, styles),
+          ]}
+        >
           <Text style={styles.status}>{displayStatus}</Text>
         </View>
       </View>
@@ -482,17 +607,25 @@ function TripCard({
           </View>
 
           {driverLoading ? (
-            <Text style={styles.driverMuted}>Loading chauffeur details...</Text>
+            <Text style={styles.driverMuted}>
+              Loading chauffeur details...
+            </Text>
           ) : driver ? (
             <>
               <Text style={styles.driverName}>
                 {driver.full_name ||
-                  `${driver.first_name || ""} ${driver.last_name || ""}`.trim() ||
+                  `${driver.first_name || ""} ${
+                    driver.last_name || ""
+                  }`.trim() ||
                   "Angel Express Chauffeur"}
               </Text>
 
               <View style={styles.driverMetaRow}>
-                <Star size={16} color={colors.gold} fill={colors.gold} />
+                <Star
+                  size={16}
+                  color={colors.gold}
+                  fill={colors.gold}
+                />
                 <Text style={styles.driverRating}>
                   {Number(driver.rating || 5).toFixed(1)} Rating •{" "}
                   {driver.total_trips || 0} Trips
@@ -503,13 +636,25 @@ function TripCard({
                 {driver.driver_level || "Bronze"} Chauffeur
               </Text>
 
-              <InfoLine label="Vehicle" value={
-                [driver.vehicle_year, driver.vehicle_make, driver.vehicle_model]
-                  .filter(Boolean)
-                  .join(" ") || "Vehicle not added"
-              } styles={styles} />
+              <InfoLine
+                label="Vehicle"
+                value={
+                  [
+                    driver.vehicle_year,
+                    driver.vehicle_make,
+                    driver.vehicle_model,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || "Vehicle not added"
+                }
+                styles={styles}
+              />
 
-              <InfoLine label="Plate Number" value={driver.plate_number || "Not provided"} styles={styles} />
+              <InfoLine
+                label="Plate Number"
+                value={driver.plate_number || "Not provided"}
+                styles={styles}
+              />
 
               <InfoLine
                 label="Experience"
@@ -530,12 +675,18 @@ function TripCard({
               </View>
 
               <View style={styles.driverContactRow}>
-                <TouchableOpacity style={styles.driverContactButton} onPress={callDriver}>
+                <TouchableOpacity
+                  style={styles.driverContactButton}
+                  onPress={callDriver}
+                >
                   <Phone size={16} color={colors.navy} />
                   <Text style={styles.driverContactText}>Call</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.driverContactButton} onPress={textDriver}>
+                <TouchableOpacity
+                  style={styles.driverContactButton}
+                  onPress={textDriver}
+                >
                   <MessageCircle size={16} color={colors.navy} />
                   <Text style={styles.driverContactText}>Text</Text>
                 </TouchableOpacity>
@@ -572,12 +723,54 @@ function TripCard({
       </View>
 
       <View style={styles.details}>
-        <Detail icon={<CalendarDays size={16} color={colors.gold} />} text={`Date: ${date}`} styles={styles} />
-        <Detail icon={<CalendarDays size={16} color={colors.gold} />} text={`Time: ${time}`} styles={styles} />
-        <Detail icon={<MapPinned size={16} color={colors.gold} />} text={`Distance: ${miles} miles`} styles={styles} />
-        <Detail icon={<CreditCard size={16} color={colors.gold} />} text={`Total: $${total.toFixed(2)}`} styles={styles} />
-        <Detail icon={<CreditCard size={16} color={colors.gold} />} text={`Payment: ${paymentStatus}`} styles={styles} />
-        <Detail icon={<ReceiptText size={16} color={colors.gold} />} text={`Source: ${source}`} styles={styles} />
+        <Detail
+          icon={<CalendarDays size={16} color={colors.gold} />}
+          text={`Date: ${date}`}
+          styles={styles}
+        />
+        <Detail
+          icon={<Clock3 size={16} color={colors.gold} />}
+          text={`Time: ${time}`}
+          styles={styles}
+        />
+        <Detail
+          icon={<CarFront size={16} color={colors.gold} />}
+          text={`Ride: ${rideCategory}`}
+          styles={styles}
+        />
+        <Detail
+          icon={<Navigation size={16} color={colors.gold} />}
+          text={`Trip Type: ${tripType}`}
+          styles={styles}
+        />
+        <Detail
+          icon={<MapPinned size={16} color={colors.gold} />}
+          text={`Distance: ${miles.toFixed(1)} miles`}
+          styles={styles}
+        />
+        <Detail
+          icon={<CreditCard size={16} color={colors.gold} />}
+          text={`Total: $${total.toFixed(2)}`}
+          styles={styles}
+        />
+        <Detail
+          icon={<CreditCard size={16} color={colors.gold} />}
+          text={`Payment: ${paymentStatus}`}
+          styles={styles}
+        />
+        <Detail
+          icon={<ReceiptText size={16} color={colors.gold} />}
+          text={`Source: ${source}`}
+          styles={styles}
+        />
+
+        {pricingVersion ? (
+          <Detail
+            icon={<ShieldCheck size={16} color={colors.gold} />}
+            text={`Pricing Version: ${pricingVersion}`}
+            styles={styles}
+          />
+        ) : null}
       </View>
 
       {canTrackLive && (
@@ -589,8 +782,12 @@ function TripCard({
 
       {canPayRide && (
         <View style={styles.paymentBox}>
-          <Text style={styles.paymentTitle}>Ride Completed — Payment Due</Text>
-          <Text style={styles.paymentText}>Full Ride Fare: ${total.toFixed(2)}</Text>
+          <Text style={styles.paymentTitle}>
+            Ride Completed — Payment Due
+          </Text>
+          <Text style={styles.paymentText}>
+            Full Ride Fare: ${total.toFixed(2)}
+          </Text>
 
           <TouchableOpacity style={styles.goldButton} onPress={openPayRide}>
             <CreditCard size={17} color={colors.navy} />
@@ -606,16 +803,25 @@ function TripCard({
         </View>
       )}
 
-      {!isCompletedStatus(normalizedStatus) && !isCancelledStatus(normalizedStatus) && (
-        <TouchableOpacity style={styles.manageButton} onPress={openManageBooking}>
-          <Text style={styles.manageButtonText}>Manage Booking</Text>
-        </TouchableOpacity>
-      )}
+      {!isCompletedStatus(normalizedStatus) &&
+        !isCancelledStatus(normalizedStatus) && (
+          <TouchableOpacity
+            style={styles.manageButton}
+            onPress={openManageBooking}
+          >
+            <Text style={styles.manageButtonText}>Manage Booking</Text>
+          </TouchableOpacity>
+        )}
 
       {isCompletedStatus(normalizedStatus) && (
-        <TouchableOpacity style={styles.rateButton} onPress={openRateDriver}>
+        <TouchableOpacity
+          style={styles.rateButton}
+          onPress={openRateDriver}
+        >
           <Star size={17} color={colors.gold} />
-          <Text style={styles.rateButtonText}>Rate Your Chauffeur</Text>
+          <Text style={styles.rateButtonText}>
+            Rate Your Chauffeur
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -787,7 +993,7 @@ function isInProgressStatus(status: string) {
 }
 
 function isCompletedStatus(status: string) {
-  return COMPLETED_STATUSES.map((s) => normalize(s)).includes(normalize(status));
+  return COMPLETED_STATUSES.includes(normalize(status));
 }
 
 function isCancelledStatus(status: string) {
@@ -989,7 +1195,8 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "space-between",
       gap: 12,
-      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.08)" : "#FFF8E8",
+      backgroundColor:
+        c.mode === "dark" ? "rgba(212,175,55,0.08)" : "#FFF8E8",
     },
     dropdownLeft: {
       flexDirection: "row",
@@ -1046,6 +1253,9 @@ function createStyles(c: any) {
       marginBottom: 14,
       alignItems: "center",
     },
+    referenceBlock: {
+      flex: 1,
+    },
     invoiceRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -1057,6 +1267,13 @@ function createStyles(c: any) {
       fontSize: 15,
       fontWeight: "900",
       flex: 1,
+    },
+    invoiceSub: {
+      color: c.text2,
+      fontSize: 12.5,
+      fontWeight: "800",
+      marginTop: 4,
+      marginLeft: 26,
     },
     statusPill: {
       borderWidth: 1,
@@ -1110,7 +1327,8 @@ function createStyles(c: any) {
       flex: 1,
     },
     driverCard: {
-      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.08)" : "#FFF8E8",
+      backgroundColor:
+        c.mode === "dark" ? "rgba(212,175,55,0.08)" : "#FFF8E8",
       borderWidth: 1,
       borderColor: c.border,
       borderRadius: 18,

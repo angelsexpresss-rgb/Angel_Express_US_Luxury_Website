@@ -30,6 +30,64 @@ import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
 const REFERRAL_DISCOUNT = 10;
 
+type AddressSuggestion = {
+  label: string;
+  longitude: number;
+  latitude: number;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+};
+
+function normalizeStateCode(value?: string) {
+  const state = (value || "").trim();
+
+  const stateMap: Record<string, string> = {
+    texas: "TX",
+    oklahoma: "OK",
+  };
+
+  return stateMap[state.toLowerCase()] || state.toUpperCase() || "TX";
+}
+
+function detectAirportDetails(pickup: string, dropoff: string) {
+  const pickupText = pickup.toLowerCase();
+  const dropoffText = dropoff.toLowerCase();
+
+  const detectCode = (value: string) => {
+    if (
+      value.includes("dfw") ||
+      value.includes("dallas fort worth international")
+    ) {
+      return "DFW";
+    }
+
+    if (
+      value.includes("love field") ||
+      value.includes("dallas love field") ||
+      value.includes(" dal airport")
+    ) {
+      return "DAL";
+    }
+
+    return "";
+  };
+
+  const pickupCode = detectCode(pickupText);
+  const dropoffCode = detectCode(dropoffText);
+
+  if (pickupCode) {
+    return { airportCode: pickupCode, airportAction: "pickup" };
+  }
+
+  if (dropoffCode) {
+    return { airportCode: dropoffCode, airportAction: "dropoff" };
+  }
+
+  return { airportCode: "", airportAction: "" };
+}
+
 export default function BookRideScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -42,8 +100,16 @@ export default function BookRideScreen() {
   const [dropoffLat, setDropoffLat] = useState<number | null>(null);
   const [dropoffLng, setDropoffLng] = useState<number | null>(null);
 
-  const [pickupSuggestions, setPickupSuggestions] = useState<any[]>([]);
-  const [dropoffSuggestions, setDropoffSuggestions] = useState<any[]>([]);
+  const [pickupCity, setPickupCity] = useState("");
+  const [pickupState, setPickupState] = useState("TX");
+  const [pickupPostalCode, setPickupPostalCode] = useState("");
+
+  const [dropoffCity, setDropoffCity] = useState("");
+  const [dropoffState, setDropoffState] = useState("TX");
+  const [dropoffPostalCode, setDropoffPostalCode] = useState("");
+
+  const [pickupSuggestions, setPickupSuggestions] = useState<AddressSuggestion[]>([]);
+  const [dropoffSuggestions, setDropoffSuggestions] = useState<AddressSuggestion[]>([]);
 
   const [rideDate, setRideDate] = useState(new Date());
   const [rideTime, setRideTime] = useState(new Date());
@@ -69,6 +135,7 @@ export default function BookRideScreen() {
   const [referralChecking, setReferralChecking] = useState(false);
   const [referrerUserId, setReferrerUserId] = useState("");
   const [referralMessage, setReferralMessage] = useState("");
+  const [creatingDraft, setCreatingDraft] = useState(false);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -137,10 +204,16 @@ export default function BookRideScreen() {
       setPickupAddress(text);
       setPickupLat(null);
       setPickupLng(null);
+      setPickupCity("");
+      setPickupState("TX");
+      setPickupPostalCode("");
     } else {
       setDropoffAddress(text);
       setDropoffLat(null);
       setDropoffLng(null);
+      setDropoffCity("");
+      setDropoffState("TX");
+      setDropoffPostalCode("");
     }
 
     if (text.length < 4) {
@@ -172,6 +245,10 @@ export default function BookRideScreen() {
             label: address,
             longitude: item.geometry.coordinates[0],
             latitude: item.geometry.coordinates[1],
+            city: props.city || props.town || props.village || props.county || "",
+            state: normalizeStateCode(props.state),
+            postalCode: props.postcode || "",
+            country: props.country || "",
           };
         }) || [];
 
@@ -191,6 +268,24 @@ export default function BookRideScreen() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  }
+
+  function buildScheduledAt() {
+    const scheduledAt = new Date(rideDate);
+    scheduledAt.setHours(rideTime.getHours(), rideTime.getMinutes(), 0, 0);
+    return scheduledAt;
+  }
+
+  function getNormalizedRideCategory(activeCategory: string) {
+    if (activeCategory === "Student Shared Ride") return "student_pool";
+    if (activeCategory === "Airport Transfer") return "airport";
+    if (activeCategory === "Tourist/Event Ride") return "tourist_event";
+
+    if (studentVerified && studentDiscountEligible) {
+      return "student_private";
+    }
+
+    return "private";
   }
 
   function resetReferral() {
@@ -292,20 +387,37 @@ export default function BookRideScreen() {
     }
   }
 
-  function continueToFareEstimate() {
+  async function continueToFareEstimate() {
+    if (creatingDraft) return;
+
     if (!pickupAddress || !dropoffAddress) {
-      Alert.alert(
-        "Missing Information",
-        "Please enter pickup and drop-off addresses."
-      );
+      Alert.alert("Missing Information", "Please enter pickup and drop-off addresses.");
       return;
     }
 
-    if (!pickupLat || !pickupLng || !dropoffLat || !dropoffLng) {
+    if (
+      pickupLat === null ||
+      pickupLng === null ||
+      dropoffLat === null ||
+      dropoffLng === null
+    ) {
       Alert.alert(
         "Select Address Suggestions",
         "Please select pickup and drop-off addresses from the suggestions so GPS coordinates can be saved for chauffeur navigation."
       );
+      return;
+    }
+
+    const passengerCount = Number.parseInt(passengers, 10);
+    const luggageTotal = Number.parseInt(luggageCount, 10);
+
+    if (!Number.isInteger(passengerCount) || passengerCount < 1 || passengerCount > 4) {
+      Alert.alert("Passenger Limit", "Please enter between 1 and 4 passengers.");
+      return;
+    }
+
+    if (!Number.isInteger(luggageTotal) || luggageTotal < 0) {
+      Alert.alert("Luggage Count", "Please enter a valid luggage count.");
       return;
     }
 
@@ -317,50 +429,138 @@ export default function BookRideScreen() {
       return;
     }
 
+    const scheduledAt = buildScheduledAt();
+
+    if (scheduledAt.getTime() < Date.now() - 10 * 60 * 1000) {
+      Alert.alert(
+        "Invalid Ride Time",
+        "Please select a ride date and time that is not in the past."
+      );
+      return;
+    }
+
     const activeRideCategory = studentSharedRide
       ? "Student Shared Ride"
       : rideCategory;
 
-    router.push({
-      pathname: "/fare-estimate" as any,
-      params: {
-        pickupAddress: pickupAddress.trim(),
-        dropoffAddress: dropoffAddress.trim(),
+    const normalizedRideCategory = getNormalizedRideCategory(activeRideCategory);
+    const normalizedTripType = tripType === "Round Trip" ? "round_trip" : "one_way";
+    const { airportCode, airportAction } = detectAirportDetails(
+      pickupAddress,
+      dropoffAddress
+    );
 
-        pickupLat: pickupLat.toString(),
-        pickupLng: pickupLng.toString(),
-        dropoffLat: dropoffLat.toString(),
-        dropoffLng: dropoffLng.toString(),
+    if (activeRideCategory === "Airport Transfer" && !airportCode) {
+      Alert.alert(
+        "Select a Supported Airport",
+        "For airport pricing, select DFW Airport or Dallas Love Field in either the pickup or drop-off address."
+      );
+      return;
+    }
 
-        rideDate: formatDate(rideDate),
-        rideTime: formatTime(rideTime),
+    try {
+      setCreatingDraft(true);
 
-        tripType,
-        rideCategory: activeRideCategory,
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-        passengers,
-        luggageCount,
+      if (userError) throw userError;
+      if (!user) {
+        throw new Error("Please sign in again before booking your ride.");
+      }
+
+      const payload = {
+        source_platform: "passenger_app",
+
+        pickup_address: pickupAddress.trim(),
+        pickup_city: pickupCity.trim(),
+        pickup_state: pickupState || "TX",
+        pickup_postal_code: pickupPostalCode.trim(),
+        pickup_latitude: pickupLat,
+        pickup_longitude: pickupLng,
+
+        dropoff_address: dropoffAddress.trim(),
+        dropoff_city: dropoffCity.trim(),
+        dropoff_state: dropoffState || "TX",
+        dropoff_postal_code: dropoffPostalCode.trim(),
+        dropoff_latitude: dropoffLat,
+        dropoff_longitude: dropoffLng,
+
+        scheduled_at: scheduledAt.toISOString(),
+
+        trip_type: normalizedTripType,
+        ride_category: normalizedRideCategory,
+        ride_category_label: activeRideCategory,
+
+        passenger_count: passengerCount,
+        luggage_count: luggageTotal,
         notes: notes.trim(),
 
-        referralCode: referralApplied ? referralCode.trim().toUpperCase() : "",
-        referrerUserId: referralApplied ? referrerUserId : "",
-        referralDiscount: referralApplied ? String(REFERRAL_DISCOUNT) : "0",
-        referralApplied: referralApplied ? "true" : "false",
-        promoCode: referralApplied ? referralCode.trim().toUpperCase() : "",
+        airport_code: airportCode || null,
+        airport_action: airportAction || null,
 
-        studentVerified: studentVerified ? "true" : "false",
-        student_verified: studentVerified ? "true" : "false",
-        studentDiscountEligible: studentDiscountEligible ? "true" : "false",
-        student_discount_eligible: studentDiscountEligible ? "true" : "false",
-        studentCampus,
-        student_campus: studentCampus,
+        student_verified: studentVerified,
+        student_discount_eligible: studentDiscountEligible,
+        student_campus: studentCampus.trim(),
 
-        studentSharedRide: studentSharedRide ? "true" : "false",
-        student_shared_ride: studentSharedRide ? "true" : "false",
-        studentPoolRoute: `${pickupAddress.trim()} → ${dropoffAddress.trim()}`,
-        student_pool_route: `${pickupAddress.trim()} → ${dropoffAddress.trim()}`,
-      },
-    });
+        expected_pool_size: normalizedRideCategory === "student_pool" ? 3 : null,
+
+        student_pool_route:
+          normalizedRideCategory === "student_pool"
+            ? `${pickupAddress.trim()} → ${dropoffAddress.trim()}`
+            : null,
+
+        referral_code: referralApplied
+          ? referralCode.trim().toUpperCase()
+          : null,
+
+        referrer_user_id: referralApplied ? referrerUserId : null,
+        referral_applied: referralApplied,
+
+        promotion_code: referralApplied
+          ? referralCode.trim().toUpperCase()
+          : null,
+
+        metadata: {
+          legacy_trip_type_label: tripType,
+          legacy_ride_category_label: activeRideCategory,
+          referral_discount_preview: referralApplied ? REFERRAL_DISCOUNT : 0,
+        },
+      };
+
+      const { data, error } = await supabase.rpc("create_booking_draft_v2", {
+        p_request: payload,
+      });
+
+      if (error) throw error;
+
+      const draftId = data?.draft_id;
+      const accessToken = data?.access_token;
+
+      if (!draftId) {
+        throw new Error("The booking draft was created without a draft ID.");
+      }
+
+      router.push({
+        pathname: "/fare-estimate" as any,
+        params: {
+          draftId: String(draftId),
+          accessToken: accessToken ? String(accessToken) : "",
+        },
+      });
+    } catch (error: any) {
+      console.error("Create booking draft error:", error);
+
+      Alert.alert(
+        "Could Not Start Booking",
+        error?.message ||
+          "Angel Express could not save your ride details. Please try again."
+      );
+    } finally {
+      setCreatingDraft(false);
+    }
   }
 
   const pageTranslate = pageFade.interpolate({
@@ -468,6 +668,9 @@ export default function BookRideScreen() {
                     setPickupAddress(item.label);
                     setPickupLat(item.latitude);
                     setPickupLng(item.longitude);
+                    setPickupCity(item.city);
+                    setPickupState(item.state || "TX");
+                    setPickupPostalCode(item.postalCode);
                     setPickupSuggestions([]);
                   }}
                 >
@@ -475,7 +678,7 @@ export default function BookRideScreen() {
                 </TouchableOpacity>
               ))}
 
-              {pickupLat && pickupLng ? (
+              {pickupLat !== null && pickupLng !== null ? (
                 <Text style={styles.gpsText}>✓ Pickup GPS saved</Text>
               ) : null}
 
@@ -501,6 +704,9 @@ export default function BookRideScreen() {
                     setDropoffAddress(item.label);
                     setDropoffLat(item.latitude);
                     setDropoffLng(item.longitude);
+                    setDropoffCity(item.city);
+                    setDropoffState(item.state || "TX");
+                    setDropoffPostalCode(item.postalCode);
                     setDropoffSuggestions([]);
                   }}
                 >
@@ -508,7 +714,7 @@ export default function BookRideScreen() {
                 </TouchableOpacity>
               ))}
 
-              {dropoffLat && dropoffLng ? (
+              {dropoffLat !== null && dropoffLng !== null ? (
                 <Text style={styles.gpsText}>✓ Drop-off GPS saved</Text>
               ) : null}
 
@@ -607,7 +813,7 @@ export default function BookRideScreen() {
                   <View style={styles.studentBoxText}>
                     <Text style={styles.studentTitle}>Student Travel Mode Active</Text>
                     <Text style={styles.studentText}>
-                      20% verified student discount is eligible. Student Shared Ride can be selected.
+                      Verified student-private pricing is active. Student Shared Ride can also be selected.
                     </Text>
                   </View>
                 </View>
@@ -730,13 +936,26 @@ export default function BookRideScreen() {
               ) : null}
 
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[
+                  styles.submitButton,
+                  creatingDraft && styles.submitButtonDisabled,
+                ]}
                 onPress={continueToFareEstimate}
                 activeOpacity={0.88}
+                disabled={creatingDraft}
               >
-                <Text style={styles.submitButtonText}>
-                  Continue to Fare Estimate
-                </Text>
+                {creatingDraft ? (
+                  <View style={styles.submitLoadingRow}>
+                    <ActivityIndicator color={colors.navy} />
+                    <Text style={styles.submitButtonText}>
+                      Saving Ride Details
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.submitButtonText}>
+                    Continue to Fare Estimate
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -1168,6 +1387,15 @@ function createStyles(c: any) {
       justifyContent: "center",
       marginTop: 24,
       ...v5Shadow(c),
+    },
+    submitButtonDisabled: {
+      opacity: 0.72,
+    },
+    submitLoadingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
     },
     submitButtonText: {
       color: c.navy,

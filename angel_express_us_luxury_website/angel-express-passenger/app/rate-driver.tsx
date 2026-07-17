@@ -26,20 +26,48 @@ import {
 import { supabase } from "../lib/supabase";
 import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
+function firstAvailable(...values: any[]) {
+  for (const value of values) {
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return String(value).trim();
+    }
+  }
+
+  return "";
+}
+
+function normalize(value: any) {
+  return String(value || "").trim().toLowerCase();
+}
+
 export default function RateDriverScreen() {
   const params = useLocalSearchParams();
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const bookingId = Number(params.booking_id || 0);
-  const invoiceNo = String(params.invoice_no || "");
+  const bookingId = String(
+    params.booking_id ||
+      params.bookingId ||
+      ""
+  );
+
+  const invoiceNumber = String(
+    params.invoice_number ||
+      params.invoice_no ||
+      ""
+  );
+
+  const [booking, setBooking] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const [comfort, setComfort] = useState(5);
   const [operational, setOperational] = useState(5);
   const [reliability, setReliability] = useState(5);
   const [safety, setSafety] = useState(5);
   const [comment, setComment] = useState("");
+
   const [saving, setSaving] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -65,15 +93,176 @@ export default function RateDriverScreen() {
       duration: 650,
       useNativeDriver: true,
     }).start();
+
+    loadBooking();
   }, []);
 
   const overall = Number(
     ((comfort + operational + reliability + safety) / 4).toFixed(1)
   );
 
+  function getBookingNumber() {
+    return firstAvailable(
+      booking?.booking_number,
+      booking?.booking_no,
+      booking?.id,
+      bookingId,
+      "N/A"
+    );
+  }
+
+  function getInvoiceNumber() {
+    return firstAvailable(
+      booking?.invoice_number,
+      booking?.invoice_no,
+      invoiceNumber,
+      "N/A"
+    );
+  }
+
+  function getDriverId() {
+    return firstAvailable(
+      booking?.driver_id,
+      booking?.assigned_driver_id,
+      booking?.chauffeur_id
+    );
+  }
+
+  async function loadBooking() {
+    try {
+      setLoading(true);
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+
+      if (!user) {
+        Alert.alert("Not Logged In", "Please sign in again.");
+        router.replace("/login" as any);
+        return;
+      }
+
+      let bookingData: any = null;
+
+      if (bookingId) {
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("id", bookingId)
+          .maybeSingle();
+
+        if (error) throw error;
+        bookingData = data;
+      } else if (invoiceNumber) {
+        const { data: newInvoiceData, error: newInvoiceError } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("invoice_number", invoiceNumber)
+          .maybeSingle();
+
+        if (
+          newInvoiceError &&
+          !String(newInvoiceError.message || "").toLowerCase().includes("column")
+        ) {
+          throw newInvoiceError;
+        }
+
+        bookingData = newInvoiceData;
+
+        if (!bookingData) {
+          const { data: oldInvoiceData, error: oldInvoiceError } =
+            await supabase
+              .from("bookings")
+              .select("*")
+              .eq("invoice_no", invoiceNumber)
+              .maybeSingle();
+
+          if (oldInvoiceError) throw oldInvoiceError;
+          bookingData = oldInvoiceData;
+        }
+      }
+
+      if (!bookingData) {
+        throw new Error("The ride could not be found.");
+      }
+
+      const userEmail = normalize(user.email);
+
+      const bookingOwnerId = firstAvailable(
+        bookingData?.user_id,
+        bookingData?.passenger_id
+      );
+
+      const bookingEmail = normalize(
+        firstAvailable(
+          bookingData?.email,
+          bookingData?.passenger_email
+        )
+      );
+
+      const ownerMatches =
+        !bookingOwnerId || bookingOwnerId === String(user.id);
+
+      const emailMatches =
+        !bookingEmail || bookingEmail === userEmail;
+
+      if (!ownerMatches && !emailMatches) {
+        throw new Error("You are not authorized to review this ride.");
+      }
+
+      if (normalize(bookingData.status) !== "completed") {
+        throw new Error(
+          "This ride must be completed before you can submit a review."
+        );
+      }
+
+      const driverId = firstAvailable(
+        bookingData?.driver_id,
+        bookingData?.assigned_driver_id,
+        bookingData?.chauffeur_id
+      );
+
+      if (!driverId) {
+        throw new Error(
+          "This completed ride does not have an assigned driver to review."
+        );
+      }
+
+      setBooking(bookingData);
+
+      const { data: existingReview, error: reviewLookupError } = await supabase
+        .from("driver_reviews")
+        .select("id")
+        .eq("booking_id", bookingData.id)
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (reviewLookupError) throw reviewLookupError;
+
+      setAlreadyReviewed(Boolean(existingReview));
+    } catch (error: any) {
+      Alert.alert(
+        "Review Unavailable",
+        error.message || "Could not load this completed ride.",
+        [
+          {
+            text: "Back to My Trips",
+            onPress: () => router.replace("/my-trips" as any),
+          },
+        ]
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function submitReview() {
     try {
-      if (saving) return;
+      if (saving || alreadyReviewed) return;
 
       setSaving(true);
 
@@ -85,84 +274,167 @@ export default function RateDriverScreen() {
       if (userError) throw userError;
       if (!user) throw new Error("Please sign in again.");
 
-      let booking: any = null;
-
-      if (bookingId) {
-        const { data: bookingData, error: bookingError } = await supabase
-          .from("bookings")
-          .select("*")
-          .eq("id", bookingId)
-          .maybeSingle();
-
-        if (bookingError) throw bookingError;
-
-        booking = bookingData;
-      } else if (invoiceNo) {
-        const { data: bookingData, error: bookingError } = await supabase
-          .from("bookings")
-          .select("*")
-          .eq("invoice_no", invoiceNo)
-          .maybeSingle();
-
-        if (bookingError) throw bookingError;
-
-        booking = bookingData;
+      if (!booking?.id) {
+        throw new Error("The ride could not be verified.");
       }
 
-      const driverId =
-        booking?.driver_id ||
-        booking?.assigned_driver_id ||
-        booking?.chauffeur_id ||
-        null;
+      if (normalize(booking.status) !== "completed") {
+        throw new Error(
+          "This ride must be completed before you can submit a review."
+        );
+      }
+
+      const bookingOwnerId = firstAvailable(
+        booking?.user_id,
+        booking?.passenger_id
+      );
+
+      const bookingEmail = normalize(
+        firstAvailable(
+          booking?.email,
+          booking?.passenger_email
+        )
+      );
+
+      const userEmail = normalize(user.email);
+
+      const ownerMatches =
+        !bookingOwnerId || bookingOwnerId === String(user.id);
+
+      const emailMatches =
+        !bookingEmail || bookingEmail === userEmail;
+
+      if (!ownerMatches && !emailMatches) {
+        throw new Error("You are not authorized to review this ride.");
+      }
+
+      const driverId = getDriverId();
 
       if (!driverId) {
-        Alert.alert(
-          "Driver Not Found",
-          "This ride does not have an assigned driver to review yet."
+        throw new Error(
+          "This ride does not have an assigned driver to review."
         );
-        return;
       }
 
-      const { error } = await supabase.from("driver_reviews").insert({
-        booking_id: bookingId || booking?.id || null,
-        invoice_no: invoiceNo || booking?.invoice_no || null,
+      const { data: existingReview, error: duplicateError } = await supabase
+        .from("driver_reviews")
+        .select("id")
+        .eq("booking_id", booking.id)
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
 
+      if (duplicateError) throw duplicateError;
+
+      if (existingReview) {
+        setAlreadyReviewed(true);
+        throw new Error("You have already reviewed this ride.");
+      }
+
+      const reviewPayload = {
+        booking_id: booking.id,
+        invoice_no: getInvoiceNumber() === "N/A" ? null : getInvoiceNumber(),
         driver_id: driverId,
-
         user_id: user.id,
-        passenger_email: user.email,
-
+        passenger_email: user.email || null,
         comfort_rating: comfort,
         operational_rating: operational,
         reliability_rating: reliability,
         safety_rating: safety,
         overall_rating: overall,
-
-        comment: comment.trim(),
-        source: "passenger_app",
+        comment: comment.trim() || null,
         is_visible_to_driver: true,
-      });
+      };
 
-      if (error) throw error;
+      const { error: insertError } = await supabase
+        .from("driver_reviews")
+        .insert(reviewPayload);
 
-      await supabase
+      if (insertError) throw insertError;
+
+      setAlreadyReviewed(true);
+
+      const { error: bookingUpdateError } = await supabase
         .from("bookings")
         .update({
           driver_rating_by_passenger: overall,
-          driver_rating_comment_by_passenger: comment.trim(),
+          driver_rating_comment_by_passenger: comment.trim() || null,
           driver_rating_completed_at: new Date().toISOString(),
         })
-        .eq("id", booking?.id || bookingId);
+        .eq("id", booking.id);
+
+      if (bookingUpdateError) {
+        console.log(
+          "Booking review summary update skipped:",
+          bookingUpdateError.message
+        );
+      }
+
+      await refreshDriverAverage(driverId);
 
       Alert.alert(
         "Review Submitted",
-        "Thank you for rating your Angel Express ride. The driver's live rating has been updated.",
-        [{ text: "OK", onPress: () => router.replace("/my-trips" as any) }]
+        "Thank you for rating your Angel Express ride.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.replace("/my-trips" as any),
+          },
+        ]
       );
     } catch (error: any) {
-      Alert.alert("Review Error", error.message || "Could not submit review.");
+      Alert.alert(
+        "Review Error",
+        error.message || "Could not submit review."
+      );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function refreshDriverAverage(driverId: string) {
+    try {
+      const { data: reviews, error: reviewsError } = await supabase
+        .from("driver_reviews")
+        .select("overall_rating")
+        .eq("driver_id", driverId);
+
+      if (reviewsError) throw reviewsError;
+
+      const validRatings = (reviews || [])
+        .map((review: any) => Number(review.overall_rating))
+        .filter(
+          (value: number) =>
+            Number.isFinite(value) && value >= 1 && value <= 5
+        );
+
+      if (!validRatings.length) return;
+
+      const average =
+        validRatings.reduce(
+          (total: number, value: number) => total + value,
+          0
+        ) / validRatings.length;
+
+      const roundedAverage = Number(average.toFixed(2));
+
+      const { error: driverUpdateError } = await supabase
+        .from("drivers")
+        .update({
+          rating: roundedAverage,
+          average_rating: roundedAverage,
+          rating_count: validRatings.length,
+        })
+        .eq("id", driverId);
+
+      if (driverUpdateError) {
+        console.log(
+          "Driver aggregate rating update skipped:",
+          driverUpdateError.message
+        );
+      }
+    } catch (error) {
+      console.log("Driver rating refresh skipped:", error);
     }
   }
 
@@ -171,9 +443,20 @@ export default function RateDriverScreen() {
     outputRange: [24, 0],
   });
 
+  if (loading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator color={colors.gold} size="large" />
+        <Text style={styles.loadingText}>Loading completed ride...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
-      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+      <Animated.View
+        style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}
+      >
         <ImageBackground
           source={require("../assets/images/dashboard-bg.png")}
           style={styles.background}
@@ -189,12 +472,18 @@ export default function RateDriverScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
               <ArrowLeft size={19} color={colors.gold} />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <TouchableOpacity
+              style={styles.themePill}
+              onPress={toggleTheme}
+            >
               <Text style={styles.themeText}>
                 {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
               </Text>
@@ -217,31 +506,74 @@ export default function RateDriverScreen() {
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Star size={30} color={colors.navy} fill={colors.navy} />
+                <Star
+                  size={30}
+                  color={colors.navy}
+                  fill={colors.navy}
+                />
               </View>
 
               <View style={styles.heroCopy}>
                 <Text style={styles.heroTitle}>Overall Rating</Text>
                 <Text style={styles.heroScore}>{overall} / 5</Text>
                 <Text style={styles.heroText}>
-                  {invoiceNo ? `Invoice ${invoiceNo}` : "Completed ride review"}
+                  Booking {getBookingNumber()}
+                </Text>
+                <Text style={styles.heroText}>
+                  Invoice {getInvoiceNumber()}
                 </Text>
               </View>
             </View>
 
+            {alreadyReviewed && (
+              <View style={styles.reviewedCard}>
+                <ShieldCheck size={22} color={colors.gold} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.reviewedTitle}>
+                    Review Already Submitted
+                  </Text>
+                  <Text style={styles.reviewedText}>
+                    You have already rated this completed ride.
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.scoreGrid}>
-              <ScorePill title="Comfort" value={comfort} styles={styles} />
-              <ScorePill title="Operations" value={operational} styles={styles} />
-              <ScorePill title="Reliability" value={reliability} styles={styles} />
-              <ScorePill title="Safety" value={safety} styles={styles} />
+              <ScorePill
+                title="Comfort"
+                value={comfort}
+                styles={styles}
+              />
+              <ScorePill
+                title="Operations"
+                value={operational}
+                styles={styles}
+              />
+              <ScorePill
+                title="Reliability"
+                value={reliability}
+                styles={styles}
+              />
+              <ScorePill
+                title="Safety"
+                value={safety}
+                styles={styles}
+              />
             </View>
 
             <RatingRow
-              icon={<HeartHandshake size={24} color={colors.gold} />}
+              icon={
+                <HeartHandshake
+                  size={24}
+                  color={colors.gold}
+                />
+              }
               title="Comfort"
               description="Vehicle cleanliness, ride smoothness, and passenger comfort."
               value={comfort}
               setValue={setComfort}
+              disabled={alreadyReviewed}
               styles={styles}
             />
 
@@ -251,6 +583,7 @@ export default function RateDriverScreen() {
               description="Professional conduct, communication, and ride organization."
               value={operational}
               setValue={setOperational}
+              disabled={alreadyReviewed}
               styles={styles}
             />
 
@@ -260,6 +593,7 @@ export default function RateDriverScreen() {
               description="On-time pickup, dependable service, and route confidence."
               value={reliability}
               setValue={setReliability}
+              disabled={alreadyReviewed}
               styles={styles}
             />
 
@@ -269,12 +603,16 @@ export default function RateDriverScreen() {
               description="Safe driving, calm experience, and passenger protection."
               value={safety}
               setValue={setSafety}
+              disabled={alreadyReviewed}
               styles={styles}
             />
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <MessageSquareText size={22} color={colors.gold} />
+                <MessageSquareText
+                  size={22}
+                  color={colors.gold}
+                />
                 <Text style={styles.cardTitle}>Ride Comment</Text>
               </View>
 
@@ -283,13 +621,22 @@ export default function RateDriverScreen() {
               </Text>
 
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  alreadyReviewed && styles.disabledInput,
+                ]}
                 placeholder="Leave a comment about your ride..."
                 placeholderTextColor={colors.placeholder}
                 value={comment}
                 onChangeText={setComment}
                 multiline
+                editable={!alreadyReviewed}
+                maxLength={1000}
               />
+
+              <Text style={styles.characterCount}>
+                {comment.length}/1000
+              </Text>
             </View>
 
             <View style={styles.noticeCard}>
@@ -299,29 +646,40 @@ export default function RateDriverScreen() {
               </View>
 
               <Text style={styles.noticeText}>
-                Your review helps Angel Express improve driver quality, safety,
-                passenger comfort, and service reliability. It also updates the
-                driver's live rating in the driver app.
+                Your review helps Angel Express improve driver quality,
+                safety, passenger comfort, and service reliability.
               </Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.submitButton, saving && styles.disabledButton]}
+              style={[
+                styles.submitButton,
+                (saving || alreadyReviewed) &&
+                  styles.disabledButton,
+              ]}
               onPress={submitReview}
-              disabled={saving}
+              disabled={saving || alreadyReviewed}
             >
               {saving ? (
                 <ActivityIndicator color={colors.navy} />
               ) : (
-                <Text style={styles.submitButtonText}>Submit Review</Text>
+                <Text style={styles.submitButtonText}>
+                  {alreadyReviewed
+                    ? "Review Already Submitted"
+                    : "Submit Review"}
+                </Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.outlineButton}
-              onPress={() => router.replace("/my-trips" as any)}
+              onPress={() =>
+                router.replace("/my-trips" as any)
+              }
             >
-              <Text style={styles.outlineButtonText}>Back to My Trips</Text>
+              <Text style={styles.outlineButtonText}>
+                Back to My Trips
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
@@ -336,6 +694,7 @@ function RatingRow({
   description,
   value,
   setValue,
+  disabled,
   styles,
 }: {
   icon: React.ReactNode;
@@ -343,16 +702,24 @@ function RatingRow({
   description: string;
   value: number;
   setValue: (v: number) => void;
+  disabled: boolean;
   styles: any;
 }) {
   return (
-    <View style={styles.ratingCard}>
+    <View
+      style={[
+        styles.ratingCard,
+        disabled && styles.disabledCard,
+      ]}
+    >
       <View style={styles.ratingHeader}>
         <View style={styles.iconBox}>{icon}</View>
 
         <View style={styles.ratingTextBox}>
           <Text style={styles.ratingTitle}>{title}</Text>
-          <Text style={styles.ratingDescription}>{description}</Text>
+          <Text style={styles.ratingDescription}>
+            {description}
+          </Text>
         </View>
 
         <View style={styles.ratingBadge}>
@@ -362,8 +729,14 @@ function RatingRow({
 
       <View style={styles.stars}>
         {[1, 2, 3, 4, 5].map((star) => (
-          <TouchableOpacity key={star} onPress={() => setValue(star)}>
-            <Text style={styles.star}>{star <= value ? "★" : "☆"}</Text>
+          <TouchableOpacity
+            key={star}
+            onPress={() => setValue(star)}
+            disabled={disabled}
+          >
+            <Text style={styles.star}>
+              {star <= value ? "★" : "☆"}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -390,12 +763,42 @@ function ScorePill({
 
 function createStyles(c: any) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
-    bgWrap: { ...StyleSheet.absoluteFillObject },
-    background: { flex: 1 },
-    overlay: { flex: 1, backgroundColor: c.overlay },
-    container: { flex: 1 },
-    content: { padding: 22, paddingTop: 58, paddingBottom: 52 },
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 52,
+    },
+    centerContainer: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    loadingText: {
+      color: c.text,
+      marginTop: 14,
+      fontSize: 16,
+      fontWeight: "800",
+    },
     topRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -413,7 +816,11 @@ function createStyles(c: any) {
       paddingVertical: 10,
       paddingHorizontal: 14,
     },
-    backText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
     themePill: {
       borderWidth: 1,
       borderColor: c.border,
@@ -422,7 +829,11 @@ function createStyles(c: any) {
       paddingVertical: 10,
       paddingHorizontal: 14,
     },
-    themeText: { color: c.gold, fontSize: 12, fontWeight: "900" },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
     kicker: {
       color: c.gold,
       fontSize: 12,
@@ -461,7 +872,9 @@ function createStyles(c: any) {
       justifyContent: "center",
       marginRight: 14,
     },
-    heroCopy: { flex: 1 },
+    heroCopy: {
+      flex: 1,
+    },
     heroTitle: {
       color: c.navy,
       fontSize: 18,
@@ -481,6 +894,30 @@ function createStyles(c: any) {
       fontWeight: "800",
       opacity: 0.82,
     },
+    reviewedCard: {
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      ...v5Shadow(c),
+    },
+    reviewedTitle: {
+      color: c.gold,
+      fontSize: 16,
+      fontWeight: "900",
+      marginBottom: 3,
+    },
+    reviewedText: {
+      color: c.text2,
+      fontSize: 13.5,
+      lineHeight: 20,
+      fontWeight: "700",
+    },
     scoreGrid: {
       flexDirection: "row",
       gap: 9,
@@ -496,7 +933,11 @@ function createStyles(c: any) {
       alignItems: "center",
       ...v5Shadow(c),
     },
-    scoreValue: { color: c.gold, fontSize: 22, fontWeight: "900" },
+    scoreValue: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+    },
     scoreTitle: {
       color: c.text,
       fontSize: 10,
@@ -512,6 +953,9 @@ function createStyles(c: any) {
       padding: 18,
       marginBottom: 16,
       ...v5Shadow(c),
+    },
+    disabledCard: {
+      opacity: 0.72,
     },
     ratingHeader: {
       flexDirection: "row",
@@ -529,8 +973,14 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-    ratingTextBox: { flex: 1 },
-    ratingTitle: { color: c.gold, fontSize: 19, fontWeight: "900" },
+    ratingTextBox: {
+      flex: 1,
+    },
+    ratingTitle: {
+      color: c.gold,
+      fontSize: 19,
+      fontWeight: "900",
+    },
     ratingDescription: {
       color: c.text2,
       fontSize: 13.5,
@@ -546,9 +996,19 @@ function createStyles(c: any) {
       paddingVertical: 7,
       paddingHorizontal: 10,
     },
-    ratingBadgeText: { color: c.gold, fontSize: 12, fontWeight: "900" },
-    stars: { flexDirection: "row", gap: 8 },
-    star: { color: c.gold, fontSize: 35 },
+    ratingBadgeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    stars: {
+      flexDirection: "row",
+      gap: 8,
+    },
+    star: {
+      color: c.gold,
+      fontSize: 35,
+    },
     card: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -564,7 +1024,12 @@ function createStyles(c: any) {
       gap: 10,
       marginBottom: 14,
     },
-    cardTitle: { color: c.gold, fontSize: 21, fontWeight: "900", flex: 1 },
+    cardTitle: {
+      color: c.gold,
+      fontSize: 21,
+      fontWeight: "900",
+      flex: 1,
+    },
     helperText: {
       color: c.text2,
       fontSize: 14.5,
@@ -584,6 +1049,16 @@ function createStyles(c: any) {
       fontSize: 16,
       fontWeight: "700",
     },
+    disabledInput: {
+      opacity: 0.7,
+    },
+    characterCount: {
+      color: c.text2,
+      fontSize: 12,
+      fontWeight: "800",
+      textAlign: "right",
+      marginTop: 8,
+    },
     noticeCard: {
       backgroundColor: c.card,
       borderWidth: 1,
@@ -599,7 +1074,11 @@ function createStyles(c: any) {
       gap: 10,
       marginBottom: 12,
     },
-    noticeTitle: { color: c.gold, fontSize: 21, fontWeight: "900" },
+    noticeTitle: {
+      color: c.gold,
+      fontSize: 21,
+      fontWeight: "900",
+    },
     noticeText: {
       color: c.text2,
       fontSize: 15,
@@ -621,7 +1100,9 @@ function createStyles(c: any) {
       fontSize: 16,
       textTransform: "uppercase",
     },
-    disabledButton: { opacity: 0.7 },
+    disabledButton: {
+      opacity: 0.7,
+    },
     outlineButton: {
       borderWidth: 1,
       borderColor: c.border,
@@ -631,6 +1112,10 @@ function createStyles(c: any) {
       marginTop: 14,
       backgroundColor: c.card,
     },
-    outlineButtonText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+    outlineButtonText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
   });
 }

@@ -15,9 +15,12 @@ import {
 import {
   ArrowLeft,
   CalendarClock,
+  CarFront,
+  CheckCircle2,
   Edit3,
   MapPin,
   MessageSquareText,
+  ReceiptText,
   Route,
   ShieldCheck,
   Timer,
@@ -30,35 +33,97 @@ import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 const OPTIONS = [
   {
     title: "Cancel Ride",
+    code: "cancel_ride",
     subtitle: "Request cancellation review for this booking.",
     icon: XCircle,
+    requiresDetails: true,
   },
   {
     title: "Change Pickup Location",
+    code: "change_pickup",
     subtitle: "Update where your chauffeur should pick you up.",
     icon: MapPin,
+    requiresDetails: true,
   },
   {
     title: "Change Drop-off Location",
+    code: "change_dropoff",
     subtitle: "Update your destination before the ride starts.",
     icon: Route,
+    requiresDetails: true,
   },
   {
     title: "Change Date",
+    code: "change_date",
     subtitle: "Request a new ride date.",
     icon: CalendarClock,
+    requiresDetails: true,
   },
   {
     title: "Change Time",
+    code: "change_time",
     subtitle: "Request a new pickup time.",
     icon: Timer,
+    requiresDetails: true,
   },
   {
     title: "Other Request",
+    code: "other_request",
     subtitle: "Ask Angel Express operations for help.",
     icon: MessageSquareText,
+    requiresDetails: true,
   },
 ];
+
+function firstValue(...values: any[]) {
+  return values.find(
+    (value) => value !== undefined && value !== null && value !== ""
+  );
+}
+
+function normalize(value: any) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function titleCase(value: any) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function displayRideCategory(booking: any) {
+  const value = firstValue(
+    booking?.ride_category_label,
+    booking?.ride_category_name,
+    booking?.ride_category
+  );
+
+  const map: Record<string, string> = {
+    private: "Standard Ride",
+    student_private: "Student Ride",
+    student_pool: "Student Shared Ride",
+    airport: "Airport Transfer",
+    tourist_event: "Tourist/Event Ride",
+    corporate: "Corporate Ride",
+  };
+
+  return map[normalize(value)] || titleCase(value) || "Standard Ride";
+}
+
+function displayTripType(booking: any) {
+  const value = normalize(
+    firstValue(
+      booking?.trip_type_label,
+      booking?.trip_type,
+      booking?.tripType
+    )
+  );
+
+  if (value.includes("round")) return "Round Trip";
+  if (value.includes("one")) return "One Way";
+
+  return titleCase(value) || "One Way";
+}
 
 export default function ManageBookingScreen() {
   const params = useLocalSearchParams();
@@ -66,12 +131,17 @@ export default function ManageBookingScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const bookingId = String(params.booking_id || "");
-  const invoiceNo = String(params.invoice_no || "");
+  const bookingId = String(params.booking_id || params.bookingId || "");
+  const routeInvoiceNumber = String(
+    params.invoice_number || params.invoice_no || ""
+  );
+  const routeBookingNumber = String(params.booking_number || "");
 
   const [requestType, setRequestType] = useState("");
   const [details, setDetails] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loadingBooking, setLoadingBooking] = useState(true);
+  const [booking, setBooking] = useState<any>(null);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -97,13 +167,131 @@ export default function ManageBookingScreen() {
       duration: 650,
       useNativeDriver: true,
     }).start();
+
+    loadBooking();
   }, []);
+
+  async function loadBooking() {
+    try {
+      setLoadingBooking(true);
+
+      if (!bookingId) {
+        throw new Error("Missing booking ID.");
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+      if (!user) throw new Error("Please sign in again.");
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("id", bookingId)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) throw new Error("Booking not found.");
+
+      const bookingOwnerId = String(
+        firstValue(data.user_id, data.passenger_id, "")
+      );
+
+      const bookingEmail = normalize(
+        firstValue(data.email, data.passenger_email, "")
+      );
+
+      const userEmail = normalize(user.email);
+
+      const ownerMatches =
+        !bookingOwnerId || bookingOwnerId === String(user.id);
+
+      const emailMatches =
+        !bookingEmail || bookingEmail === userEmail;
+
+      if (!ownerMatches && !emailMatches) {
+        throw new Error("You are not authorized to manage this booking.");
+      }
+
+      setBooking(data);
+    } catch (error: any) {
+      Alert.alert(
+        "Booking Error",
+        error.message || "Could not load this booking.",
+        [
+          {
+            text: "View My Trips",
+            onPress: () => router.replace("/my-trips" as any),
+          },
+        ]
+      );
+    } finally {
+      setLoadingBooking(false);
+    }
+  }
 
   async function submitRequest() {
     try {
-      if (!requestType) {
-        Alert.alert("Select Request Type", "Please choose what you want to change.");
+      if (!booking) {
+        Alert.alert("Booking Missing", "This booking could not be loaded.");
         return;
+      }
+
+      if (!requestType) {
+        Alert.alert(
+          "Select Request Type",
+          "Please choose what you want to change."
+        );
+        return;
+      }
+
+      const selectedOption = OPTIONS.find(
+        (option) => option.title === requestType
+      );
+
+      if (selectedOption?.requiresDetails && !details.trim()) {
+        Alert.alert(
+          "Add Request Details",
+          "Please provide the new information or reason for this request."
+        );
+        return;
+      }
+
+      const status = normalize(booking.status);
+      const paymentStatus = normalize(booking.payment_status);
+
+      if (["cancelled", "canceled"].includes(status)) {
+        Alert.alert(
+          "Booking Already Cancelled",
+          "This booking has already been cancelled."
+        );
+        return;
+      }
+
+      if (status === "completed") {
+        Alert.alert(
+          "Ride Already Completed",
+          "Completed rides can no longer be changed. Please use support for payment or receipt assistance."
+        );
+        return;
+      }
+
+      if (status === "in_progress") {
+        Alert.alert(
+          "Ride In Progress",
+          "This ride has already started. Contact your chauffeur or Angel Express support for immediate assistance."
+        );
+        return;
+      }
+
+      if (selectedOption?.code === "cancel_ride" && paymentStatus === "paid") {
+        Alert.alert(
+          "Paid Booking",
+          "This paid booking requires manual cancellation and refund review by Angel Express operations."
+        );
       }
 
       setSaving(true);
@@ -116,16 +304,42 @@ export default function ManageBookingScreen() {
       if (userError) throw userError;
       if (!user) throw new Error("Please sign in again.");
 
-      const { error } = await supabase.from("booking_change_requests").insert({
-        booking_id: bookingId || null,
-        invoice_no: invoiceNo || null,
+      const bookingNumber = String(
+        firstValue(
+          booking.booking_number,
+          booking.booking_no,
+          routeBookingNumber,
+          booking.id
+        )
+      );
+
+      const invoiceNumber = String(
+        firstValue(
+          booking.invoice_number,
+          booking.invoice_no,
+          routeInvoiceNumber,
+          ""
+        )
+      );
+
+      /*
+       * Keep this insert limited to the columns that already exist in the
+       * current booking_change_requests table. Extra booking context can be
+       * retrieved by the Owner App through booking_id.
+       */
+      const payload = {
+        booking_id: bookingId,
+        invoice_no: invoiceNumber || null,
         user_id: user.id,
-        passenger_email: user.email,
+        passenger_email: user.email || null,
         request_type: requestType,
         request_details: details.trim(),
         status: "Pending Review",
-        source: "passenger_app",
-      });
+      };
+
+      const { error } = await supabase
+        .from("booking_change_requests")
+        .insert(payload);
 
       if (error) throw error;
 
@@ -135,16 +349,18 @@ export default function ManageBookingScreen() {
         [
           {
             text: "View My Trips",
-            onPress: () => router.push("/my-trips" as any),
+            onPress: () => router.replace("/my-trips" as any),
           },
-          { text: "OK" },
         ]
       );
 
       setDetails("");
       setRequestType("");
     } catch (error: any) {
-      Alert.alert("Request Error", error.message || "Could not submit request.");
+      Alert.alert(
+        "Request Error",
+        error.message || "Could not submit request."
+      );
     } finally {
       setSaving(false);
     }
@@ -155,9 +371,103 @@ export default function ManageBookingScreen() {
     outputRange: [24, 0],
   });
 
+  const bookingNumber = String(
+    firstValue(
+      booking?.booking_number,
+      booking?.booking_no,
+      routeBookingNumber,
+      bookingId,
+      "N/A"
+    )
+  );
+
+  const invoiceNumber = String(
+    firstValue(
+      booking?.invoice_number,
+      booking?.invoice_no,
+      routeInvoiceNumber,
+      "N/A"
+    )
+  );
+
+  const pickup = String(
+    firstValue(
+      booking?.pickup_address,
+      booking?.pickup,
+      booking?.pickup_location,
+      "Pickup not available"
+    )
+  );
+
+  const dropoff = String(
+    firstValue(
+      booking?.dropoff_address,
+      booking?.dropoff,
+      booking?.dropoff_location,
+      booking?.destination,
+      "Drop-off not available"
+    )
+  );
+
+  const rideDate = String(
+    firstValue(
+      booking?.ride_date,
+      booking?.date,
+      booking?.pickup_date,
+      booking?.scheduled_at
+        ? new Date(booking.scheduled_at).toLocaleDateString()
+        : "",
+      "Not available"
+    )
+  );
+
+  const rideTime = String(
+    firstValue(
+      booking?.ride_time,
+      booking?.time,
+      booking?.pickup_time,
+      booking?.scheduled_at
+        ? new Date(booking.scheduled_at).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })
+        : "",
+      "Not available"
+    )
+  );
+
+  if (loadingBooking) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.gold} />
+        <Text style={styles.loadingText}>Loading booking...</Text>
+      </View>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>Booking Unavailable</Text>
+        <Text style={styles.errorText}>
+          This booking could not be loaded or you may not have access to it.
+        </Text>
+
+        <TouchableOpacity
+          style={styles.errorButton}
+          onPress={() => router.replace("/my-trips" as any)}
+        >
+          <Text style={styles.errorButtonText}>Back to My Trips</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
-      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+      <Animated.View
+        style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}
+      >
         <ImageBackground
           source={require("../assets/images/dashboard-bg.png")}
           style={styles.background}
@@ -173,12 +483,18 @@ export default function ManageBookingScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
               <ArrowLeft size={19} color={colors.gold} />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <TouchableOpacity
+              style={styles.themePill}
+              onPress={toggleTheme}
+            >
               <Text style={styles.themeText}>
                 {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
               </Text>
@@ -195,8 +511,8 @@ export default function ManageBookingScreen() {
             <Text style={styles.title}>Manage Booking</Text>
 
             <Text style={styles.subtitle}>
-              Submit a change or cancellation request. Angel Express operations will
-              review it before your ride is updated.
+              Submit a change or cancellation request. Angel Express operations
+              will review it before your ride is updated.
             </Text>
 
             <View style={styles.heroCard}>
@@ -207,15 +523,73 @@ export default function ManageBookingScreen() {
               <View style={styles.heroCopy}>
                 <Text style={styles.heroTitle}>Booking Change Request</Text>
                 <Text style={styles.heroText}>
-                  {invoiceNo ? `Invoice ${invoiceNo}` : "No invoice number provided"}
+                  Booking {bookingNumber}
+                </Text>
+                <Text style={styles.heroText}>
+                  Invoice {invoiceNumber}
                 </Text>
               </View>
+            </View>
+
+            <View style={styles.summaryCard}>
+              <View style={styles.cardHeader}>
+                <ReceiptText size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>Booking Summary</Text>
+              </View>
+
+              <SummaryRow
+                label="Booking Number"
+                value={bookingNumber}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Invoice Number"
+                value={invoiceNumber}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Status"
+                value={titleCase(booking.status || "pending")}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Ride Category"
+                value={displayRideCategory(booking)}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Trip Type"
+                value={displayTripType(booking)}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Pickup"
+                value={pickup}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Drop-off"
+                value={dropoff}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Date"
+                value={rideDate}
+                styles={styles}
+              />
+              <SummaryRow
+                label="Time"
+                value={rideTime}
+                styles={styles}
+              />
             </View>
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <ShieldCheck size={22} color={colors.gold} />
-                <Text style={styles.cardTitle}>What do you need help with?</Text>
+                <Text style={styles.cardTitle}>
+                  What do you need help with?
+                </Text>
               </View>
 
               {OPTIONS.map((option) => {
@@ -225,11 +599,19 @@ export default function ManageBookingScreen() {
                 return (
                   <TouchableOpacity
                     key={option.title}
-                    style={[styles.option, selected && styles.selectedOption]}
+                    style={[
+                      styles.option,
+                      selected && styles.selectedOption,
+                    ]}
                     onPress={() => setRequestType(option.title)}
                     activeOpacity={0.86}
                   >
-                    <View style={[styles.optionIcon, selected && styles.optionIconActive]}>
+                    <View
+                      style={[
+                        styles.optionIcon,
+                        selected && styles.optionIconActive,
+                      ]}
+                    >
                       <Icon
                         size={20}
                         color={selected ? colors.navy : colors.gold}
@@ -245,6 +627,7 @@ export default function ManageBookingScreen() {
                       >
                         {option.title}
                       </Text>
+
                       <Text
                         style={[
                           styles.optionSubtitle,
@@ -275,18 +658,23 @@ export default function ManageBookingScreen() {
               </View>
 
               <Text style={styles.helperText}>
-                Add the new address, new date/time, cancellation reason, flight update,
-                or any details Angel Express should review.
+                Add the new address, new date/time, cancellation reason,
+                flight update, or any details Angel Express should review.
               </Text>
 
               <TextInput
                 style={styles.input}
-                placeholder="Additional details..."
+                placeholder="Describe your requested change..."
                 placeholderTextColor={colors.placeholder}
                 multiline
                 value={details}
                 onChangeText={setDetails}
+                maxLength={1500}
               />
+
+              <Text style={styles.characterCount}>
+                {details.length}/1500
+              </Text>
             </View>
 
             <View style={styles.noticeCard}>
@@ -296,32 +684,58 @@ export default function ManageBookingScreen() {
               </View>
 
               <Text style={styles.noticeText}>
-                This does not automatically change your booking. Angel Express will
-                review your request and contact you if confirmation is needed.
+                This request does not automatically change your booking.
+                Pricing-related changes may require a new fare quote before
+                approval. Angel Express will contact you if confirmation or
+                payment adjustment is needed.
               </Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.submitButton, saving && styles.buttonDisabled]}
+              style={[
+                styles.submitButton,
+                saving && styles.buttonDisabled,
+              ]}
               onPress={submitRequest}
               disabled={saving}
             >
               {saving ? (
                 <ActivityIndicator color={colors.navy} />
               ) : (
-                <Text style={styles.submitButtonText}>Submit Request</Text>
+                <Text style={styles.submitButtonText}>
+                  Submit Request
+                </Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.backTripsButton}
-              onPress={() => router.push("/my-trips" as any)}
+              onPress={() => router.replace("/my-trips" as any)}
             >
-              <Text style={styles.backTripsText}>Back to My Trips</Text>
+              <Text style={styles.backTripsText}>
+                Back to My Trips
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
+    </View>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  styles,
+}: {
+  label: string;
+  value: string;
+  styles: any;
+}) {
+  return (
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue}>{value}</Text>
     </View>
   );
 }
@@ -350,6 +764,47 @@ function createStyles(c: any) {
       padding: 22,
       paddingTop: 58,
       paddingBottom: 54,
+    },
+
+    center: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    loadingText: {
+      color: c.text,
+      marginTop: 16,
+      fontSize: 16,
+      fontWeight: "800",
+    },
+    errorTitle: {
+      color: c.gold,
+      fontSize: 24,
+      fontWeight: "900",
+      textAlign: "center",
+      marginBottom: 10,
+    },
+    errorText: {
+      color: c.text2,
+      fontSize: 15,
+      lineHeight: 22,
+      fontWeight: "700",
+      textAlign: "center",
+      marginBottom: 18,
+    },
+    errorButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 24,
+    },
+    errorButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
     },
 
     topRow: {
@@ -453,6 +908,15 @@ function createStyles(c: any) {
       marginBottom: 18,
       ...v5Shadow(c),
     },
+    summaryCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
     cardHeader: {
       flexDirection: "row",
       alignItems: "center",
@@ -464,6 +928,26 @@ function createStyles(c: any) {
       fontSize: 21,
       fontWeight: "900",
       flex: 1,
+    },
+
+    summaryRow: {
+      marginBottom: 13,
+      borderBottomWidth: 1,
+      borderBottomColor: c.borderSoft,
+      paddingBottom: 10,
+    },
+    summaryLabel: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    summaryValue: {
+      color: c.text,
+      fontSize: 15,
+      lineHeight: 22,
+      fontWeight: "800",
     },
 
     option: {
@@ -546,6 +1030,13 @@ function createStyles(c: any) {
       textAlignVertical: "top",
       fontSize: 16,
       fontWeight: "700",
+    },
+    characterCount: {
+      color: c.muted,
+      fontSize: 12,
+      fontWeight: "800",
+      textAlign: "right",
+      marginTop: 8,
     },
 
     noticeCard: {

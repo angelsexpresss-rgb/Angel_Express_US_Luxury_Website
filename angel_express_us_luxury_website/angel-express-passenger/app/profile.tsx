@@ -1,10 +1,12 @@
-import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   ImageBackground,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -17,23 +19,68 @@ import {
   ArrowLeft,
   BadgeCheck,
   BookOpen,
+  CreditCard,
+  Gift,
   GraduationCap,
   LockKeyhole,
+  MapPin,
+  RefreshCw,
   Save,
   ShieldCheck,
   Star,
   Trash2,
+  Trophy,
   UserRound,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
 import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
+function numberValue(...values: any[]) {
+  for (const value of values) {
+    const parsed = Number(value);
+
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return 0;
+}
+
+function cleanStatus(value: any) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function verificationLabel(value: any, verified: boolean) {
+  if (verified) return "Verified Student";
+
+  const status = cleanStatus(value);
+
+  if (["pending", "pending_review", "submitted", "under_review"].includes(status)) {
+    return "Pending Review";
+  }
+
+  if (["rejected", "declined", "denied"].includes(status)) {
+    return "Verification Rejected";
+  }
+
+  if (["expired", "inactive"].includes(status)) {
+    return "Verification Expired";
+  }
+
+  return "Not Submitted";
+}
+
 export default function ProfileScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [termsModalVisible, setTermsModalVisible] = useState(false);
 
@@ -59,17 +106,64 @@ export default function ProfileScreen() {
   const [acPreference, setAcPreference] = useState("");
   const [conversationPreference, setConversationPreference] = useState("");
 
+  const [favoritePickup, setFavoritePickup] = useState("");
+  const [favoriteDropoff, setFavoriteDropoff] = useState("");
+  const [preferredPaymentMethod, setPreferredPaymentMethod] = useState("");
+
   const [termsAccepted, setTermsAccepted] = useState(false);
 
   const [passengerRating, setPassengerRating] = useState("5.0");
   const [totalRatings, setTotalRatings] = useState(0);
   const [lastRatingNote, setLastRatingNote] = useState("");
 
-  useEffect(() => {
-    loadProfile();
-  }, []);
+  const [referralCode, setReferralCode] = useState("");
+  const [rewardPoints, setRewardPoints] = useState(0);
+  const [referralCredits, setReferralCredits] = useState(0);
 
-  async function loadPassengerRating(currentUserId: string, currentEmail: string) {
+  const [completedTrips, setCompletedTrips] = useState(0);
+  const [lifetimeMiles, setLifetimeMiles] = useState(0);
+  const [lifetimeSavings, setLifetimeSavings] = useState(0);
+
+  const bgScale = useRef(new Animated.Value(1)).current;
+  const pageFade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bgScale, {
+          toValue: 1.04,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgScale, {
+          toValue: 1,
+          duration: 8500,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    loop.start();
+
+    Animated.timing(pageFade, {
+      toValue: 1,
+      duration: 650,
+      useNativeDriver: true,
+    }).start();
+
+    return () => loop.stop();
+  }, [bgScale, pageFade]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
+
+  async function loadPassengerRating(
+    currentUserId: string,
+    currentEmail: string
+  ) {
     try {
       const cleanEmail = currentEmail?.trim().toLowerCase() || "";
 
@@ -80,8 +174,10 @@ export default function ProfileScreen() {
         .maybeSingle();
 
       if (!userSummaryError && summaryByUser) {
-        setPassengerRating(Number(summaryByUser.average_rating || 5).toFixed(1));
-        setTotalRatings(Number(summaryByUser.total_reviews || 0));
+        setPassengerRating(
+          numberValue(summaryByUser.average_rating, 5).toFixed(1)
+        );
+        setTotalRatings(numberValue(summaryByUser.total_reviews, 0));
         setLastRatingNote(summaryByUser.last_note || "");
         return;
       }
@@ -94,8 +190,10 @@ export default function ProfileScreen() {
           .maybeSingle();
 
         if (!emailSummaryError && summaryByEmail) {
-          setPassengerRating(Number(summaryByEmail.average_rating || 5).toFixed(1));
-          setTotalRatings(Number(summaryByEmail.total_reviews || 0));
+          setPassengerRating(
+            numberValue(summaryByEmail.average_rating, 5).toFixed(1)
+          );
+          setTotalRatings(numberValue(summaryByEmail.total_reviews, 0));
           setLastRatingNote(summaryByEmail.last_note || "");
           return;
         }
@@ -111,9 +209,70 @@ export default function ProfileScreen() {
     }
   }
 
-  async function loadProfile() {
+  async function loadTripStats(currentUserId: string, currentEmail: string) {
     try {
-      setLoading(true);
+      const cleanEmail = currentEmail.trim().toLowerCase();
+
+      const filter = cleanEmail
+        ? `user_id.eq.${currentUserId},email.ilike.${cleanEmail},passenger_email.ilike.${cleanEmail}`
+        : `user_id.eq.${currentUserId}`;
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*")
+        .or(filter)
+        .in("status", ["Completed", "completed"]);
+
+      if (error) throw error;
+
+      const trips = data || [];
+
+      setCompletedTrips(trips.length);
+
+      setLifetimeMiles(
+        trips.reduce(
+          (sum, trip) =>
+            sum +
+            numberValue(
+              trip.actual_miles,
+              trip.estimated_miles,
+              trip.distance_miles,
+              trip.miles
+            ),
+          0
+        )
+      );
+
+      setLifetimeSavings(
+        trips.reduce(
+          (sum, trip) =>
+            sum +
+            numberValue(
+              trip.student_discount,
+              trip.student_discount_amount,
+              trip.referral_discount,
+              trip.referral_discount_amount,
+              trip.discount_amount,
+              trip.discount
+            ),
+          0
+        )
+      );
+    } catch (error) {
+      console.log("Profile trip statistics unavailable:", error);
+      setCompletedTrips(0);
+      setLifetimeMiles(0);
+      setLifetimeSavings(0);
+    }
+  }
+
+  async function loadProfile(isRefresh = false) {
+    try {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
 
       const {
         data: { user },
@@ -131,7 +290,12 @@ export default function ProfileScreen() {
       setUserId(user.id);
       setEmail(user.email || "");
 
-      await loadPassengerRating(user.id, user.email || "");
+      const currentEmail = user.email || "";
+
+      await Promise.all([
+        loadPassengerRating(user.id, currentEmail),
+        loadTripStats(user.id, currentEmail),
+      ]);
 
       const { data: passenger } = await supabase
         .from("passengers")
@@ -152,11 +316,25 @@ export default function ProfileScreen() {
       setPhone(profile?.phone || passenger?.phone || "");
       setEmail(profile?.email || passenger?.email || user.email || "");
 
-      setEmergencyName(profile?.emergency_name || "");
-      setEmergencyPhone(profile?.emergency_phone || "");
-      setEmergencyEmail(profile?.emergency_contact_email || "");
+      setEmergencyName(
+        profile?.emergency_name ||
+          profile?.emergency_contact_name ||
+          ""
+      );
+      setEmergencyPhone(
+        profile?.emergency_phone ||
+          profile?.emergency_contact_phone ||
+          ""
+      );
+      setEmergencyEmail(
+        profile?.emergency_contact_email ||
+          profile?.emergency_email ||
+          ""
+      );
 
-      setStudentStatus(Boolean(profile?.student_status || profile?.student_verified));
+      setStudentStatus(
+        Boolean(profile?.student_status || profile?.student_verified)
+      );
       setStudentVerified(Boolean(profile?.student_verified));
       setStudentVerificationStatus(
         profile?.student_verification_status || "Not Submitted"
@@ -167,11 +345,38 @@ export default function ProfileScreen() {
       setMusicPreference(profile?.music_preference || "");
       setAcPreference(profile?.ac_preference || "");
       setConversationPreference(profile?.conversation_preference || "");
+
+      setFavoritePickup(
+        profile?.favorite_pickup ||
+          profile?.favorite_pickup_location ||
+          profile?.preferred_pickup ||
+          ""
+      );
+      setFavoriteDropoff(
+        profile?.favorite_dropoff ||
+          profile?.favorite_dropoff_location ||
+          profile?.preferred_dropoff ||
+          ""
+      );
+      setPreferredPaymentMethod(
+        profile?.preferred_payment_method ||
+          profile?.payment_preference ||
+          ""
+      );
+
       setTermsAccepted(Boolean(profile?.terms_accepted));
+
+      setReferralCode(profile?.referral_code || "");
+      setRewardPoints(numberValue(profile?.reward_points, 0));
+      setReferralCredits(numberValue(profile?.referral_credits, 0));
     } catch (error: any) {
-      Alert.alert("Profile Error", error.message || "Could not load profile.");
+      Alert.alert(
+        "Profile Error",
+        error.message || "Could not load profile."
+      );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
@@ -195,7 +400,7 @@ Account Email: ${email || "Please enter your account email here"}
 Thank you.`;
 
             router.push(
-              `mailto:angelexpresss@gmail.com?subject=${encodeURIComponent(
+              `mailto:support@angelexpressus.com?subject=${encodeURIComponent(
                 subject
               )}&body=${encodeURIComponent(body)}` as any
             );
@@ -207,16 +412,26 @@ Thank you.`;
 
   async function saveProfile() {
     if (!userId) {
-      Alert.alert("Error", "User not found. Please sign in again.");
+      Alert.alert(
+        "Error",
+        "User not found. Please sign in again."
+      );
       return;
     }
 
-    if (!firstName || !lastName || !phone || !email) {
-      Alert.alert("Missing Information", "Please complete your name, phone, and email.");
+    if (!firstName.trim() || !lastName.trim() || !phone.trim() || !email.trim()) {
+      Alert.alert(
+        "Missing Information",
+        "Please complete your name, phone, and email."
+      );
       return;
     }
 
-    if (!emergencyName || !emergencyPhone || !emergencyEmail) {
+    if (
+      !emergencyName.trim() ||
+      !emergencyPhone.trim() ||
+      !emergencyEmail.trim()
+    ) {
       Alert.alert(
         "Emergency Contact Required",
         "Please add your emergency contact name, phone, and email before continuing."
@@ -240,11 +455,11 @@ Thank you.`;
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
 
         emergency_name: emergencyName.trim(),
         emergency_phone: emergencyPhone.trim(),
-        emergency_contact_email: emergencyEmail.trim(),
+        emergency_contact_email: emergencyEmail.trim().toLowerCase(),
 
         student_status: studentStatus,
         preferred_route: preferredRoute.trim(),
@@ -252,6 +467,10 @@ Thank you.`;
         music_preference: musicPreference.trim(),
         ac_preference: acPreference.trim(),
         conversation_preference: conversationPreference.trim(),
+
+        favorite_pickup: favoritePickup.trim(),
+        favorite_dropoff: favoriteDropoff.trim(),
+        preferred_payment_method: preferredPaymentMethod.trim(),
 
         terms_accepted: termsAccepted,
         profile_completed: true,
@@ -263,213 +482,585 @@ Thank you.`;
 
       if (error) throw error;
 
-      Alert.alert("Profile Saved", "Your profile has been updated.", [
-        { text: "Continue", onPress: () => router.replace("/dashboard" as any) },
-      ]);
+      Alert.alert(
+        "Profile Saved",
+        "Your profile has been updated.",
+        [
+          {
+            text: "Continue",
+            onPress: () => router.replace("/dashboard" as any),
+          },
+        ]
+      );
     } catch (error: any) {
-      Alert.alert("Save Error", error.message || "Could not save profile.");
+      Alert.alert(
+        "Save Error",
+        error.message || "Could not save profile."
+      );
     } finally {
       setSaving(false);
     }
   }
 
+  const completionFields = [
+    firstName,
+    lastName,
+    phone,
+    email,
+    emergencyName,
+    emergencyPhone,
+    emergencyEmail,
+    preferredRoute,
+    favoritePickup,
+    favoriteDropoff,
+    preferredPaymentMethod,
+  ];
+
+  const completedFieldCount = completionFields.filter(
+    (value) => String(value || "").trim().length > 0
+  ).length;
+
+  const completionPercent = Math.round(
+    (completedFieldCount / completionFields.length) * 100
+  );
+
+  const verificationText = verificationLabel(
+    studentVerificationStatus,
+    studentVerified
+  );
+
+  const pageTranslate = pageFade.interpolate({
+    inputRange: [0, 1],
+    outputRange: [24, 0],
+  });
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={colors.gold} size="large" />
-        <Text style={styles.loadingText}>Loading profile...</Text>
+        <Text style={styles.loadingText}>
+          Loading profile...
+        </Text>
       </View>
     );
   }
 
   return (
-    <ImageBackground
-      source={require("../assets/images/dashboard-bg.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.root}>
+      <Animated.View
+        style={[
+          styles.bgWrap,
+          { transform: [{ scale: bgScale }] },
+        ]}
+      >
+        <ImageBackground
+          source={require("../assets/images/dashboard-bg.png")}
+          style={styles.background}
+          resizeMode="cover"
+        />
+      </Animated.View>
+
       <View style={styles.overlay}>
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadProfile(true)}
+              tintColor={colors.gold}
+            />
+          }
         >
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
               <ArrowLeft size={19} color={colors.gold} />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
-              <Text style={styles.themeText}>
-                {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.topActions}>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={() => loadProfile(true)}
+                disabled={refreshing}
+              >
+                {refreshing ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.gold}
+                  />
+                ) : (
+                  <RefreshCw size={18} color={colors.gold} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.themePill}
+                onPress={toggleTheme}
+              >
+                <Text style={styles.themeText}>
+                  {themeMode === "dark"
+                    ? "☀️ Light"
+                    : "🌙 Dark"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <Text style={styles.kicker}>PASSENGER ACCOUNT</Text>
-          <Text style={styles.title}>Profile</Text>
-          <Text style={styles.subtitle}>
-            Keep your passenger profile, safety contact, travel preferences, student
-            mode, and live chauffeur rating connected.
-          </Text>
+          <Animated.View
+            style={{
+              opacity: pageFade,
+              transform: [{ translateY: pageTranslate }],
+            }}
+          >
+            <Text style={styles.kicker}>PASSENGER ACCOUNT</Text>
+            <Text style={styles.title}>Profile</Text>
+            <Text style={styles.subtitle}>
+              Keep your passenger profile, safety contact, travel
+              preferences, rewards, and student status connected.
+            </Text>
 
-          <View style={styles.ratingCard}>
-            <View style={styles.ratingIcon}>
-              <Star size={28} color={colors.navy} fill={colors.navy} />
+            <View style={styles.completionCard}>
+              <View style={styles.completionHeader}>
+                <View>
+                  <Text style={styles.completionLabel}>
+                    Profile Completion
+                  </Text>
+                  <Text style={styles.completionValue}>
+                    {completionPercent}%
+                  </Text>
+                </View>
+
+                <UserRound size={30} color={colors.navy} />
+              </View>
+
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { width: `${completionPercent}%` },
+                  ]}
+                />
+              </View>
+
+              <Text style={styles.completionText}>
+                Complete your profile to improve booking speed,
+                safety coordination, and personalized travel.
+              </Text>
             </View>
 
-            <View style={{ flex: 1 }}>
-              <Text style={styles.ratingTitle}>Passenger Rating</Text>
-              <Text style={styles.ratingValue}>⭐ {passengerRating}</Text>
-              <Text style={styles.ratingSubtitle}>
-                Based on {totalRatings} chauffeur review{totalRatings === 1 ? "" : "s"}
-              </Text>
-              {lastRatingNote ? (
-                <Text style={styles.ratingNote} numberOfLines={2}>
-                  Latest note: {lastRatingNote}
+            <View style={styles.ratingCard}>
+              <View style={styles.ratingIcon}>
+                <Star
+                  size={28}
+                  color={colors.navy}
+                  fill={colors.navy}
+                />
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ratingTitle}>
+                  Passenger Rating
                 </Text>
+                <Text style={styles.ratingValue}>
+                  ⭐ {passengerRating}
+                </Text>
+                <Text style={styles.ratingSubtitle}>
+                  Based on {totalRatings} chauffeur review
+                  {totalRatings === 1 ? "" : "s"}
+                </Text>
+
+                {lastRatingNote ? (
+                  <Text
+                    style={styles.ratingNote}
+                    numberOfLines={2}
+                  >
+                    Latest note: {lastRatingNote}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={styles.statsGrid}>
+              <StatCard
+                title="Completed Rides"
+                value={String(completedTrips)}
+                icon={<Trophy size={19} color={colors.gold} />}
+                styles={styles}
+              />
+
+              <StatCard
+                title="Lifetime Miles"
+                value={lifetimeMiles.toFixed(1)}
+                icon={<MapPin size={19} color={colors.gold} />}
+                styles={styles}
+              />
+
+              <StatCard
+                title="Money Saved"
+                value={`$${lifetimeSavings.toFixed(2)}`}
+                icon={<Gift size={19} color={colors.gold} />}
+                styles={styles}
+              />
+
+              <StatCard
+                title="Reward Points"
+                value={String(rewardPoints)}
+                icon={<Star size={19} color={colors.gold} />}
+                styles={styles}
+              />
+
+              <StatCard
+                title="Ride Credits"
+                value={`$${referralCredits.toFixed(2)}`}
+                icon={<CreditCard size={19} color={colors.gold} />}
+                styles={styles}
+              />
+
+              <StatCard
+                title="Referral Code"
+                value={referralCode || "Not set"}
+                icon={<BadgeCheck size={19} color={colors.gold} />}
+                styles={styles}
+                smallValue
+              />
+            </View>
+
+            <Section
+              title="Account Information"
+              styles={styles}
+              icon={<UserRound size={19} color={colors.gold} />}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="First Name"
+              placeholderTextColor={colors.placeholder}
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              placeholderTextColor={colors.placeholder}
+              value={lastName}
+              onChangeText={setLastName}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Phone"
+              placeholderTextColor={colors.placeholder}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={colors.placeholder}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <Section
+              title="Emergency Contact"
+              styles={styles}
+              icon={<ShieldCheck size={19} color={colors.gold} />}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Emergency Contact Name"
+              placeholderTextColor={colors.placeholder}
+              value={emergencyName}
+              onChangeText={setEmergencyName}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Emergency Contact Phone"
+              placeholderTextColor={colors.placeholder}
+              value={emergencyPhone}
+              onChangeText={setEmergencyPhone}
+              keyboardType="phone-pad"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Emergency Contact Email"
+              placeholderTextColor={colors.placeholder}
+              value={emergencyEmail}
+              onChangeText={setEmergencyEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <Section
+              title="Student Travel Mode+"
+              styles={styles}
+              icon={<GraduationCap size={19} color={colors.gold} />}
+            />
+
+            <View style={styles.card}>
+              <View style={styles.switchRowInner}>
+                <View style={styles.switchTextBox}>
+                  <Text style={styles.switchTitle}>
+                    Student Passenger
+                  </Text>
+
+                  <Text style={styles.switchSubtitle}>
+                    Turn this on if you are a student passenger.
+                    Verified students unlock discounts, Student
+                    Pool+, and campus travel features.
+                  </Text>
+                </View>
+
+                <Switch
+                  value={studentStatus}
+                  onValueChange={setStudentStatus}
+                  trackColor={{
+                    false: colors.borderSoft,
+                    true: colors.gold,
+                  }}
+                  thumbColor={
+                    studentStatus ? "#FFFFFF" : "#CBD5E1"
+                  }
+                />
+              </View>
+
+              <View style={styles.studentBadge}>
+                <Text style={styles.studentBadgeText}>
+                  {verificationText}
+                </Text>
+              </View>
+
+              {studentStatus && !studentVerified ? (
+                <TouchableOpacity
+                  style={styles.goldButton}
+                  onPress={() =>
+                    router.push("/student-verification" as any)
+                  }
+                >
+                  <BadgeCheck size={18} color={colors.navy} />
+                  <Text style={styles.goldButtonText}>
+                    {verificationText === "Pending Review"
+                      ? "View Verification"
+                      : "Verify Student Status"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {studentStatus && studentVerified ? (
+                <TouchableOpacity
+                  style={styles.goldButton}
+                  onPress={() =>
+                    router.push("/student-travel" as any)
+                  }
+                >
+                  <GraduationCap
+                    size={18}
+                    color={colors.navy}
+                  />
+                  <Text style={styles.goldButtonText}>
+                    Open Student Travel Mode+
+                  </Text>
+                </TouchableOpacity>
               ) : null}
             </View>
-          </View>
 
-          <Section title="Account Information" styles={styles} icon={<UserRound size={19} color={colors.gold} />} />
+            <Section
+              title="Travel Preferences"
+              styles={styles}
+              icon={<Star size={19} color={colors.gold} />}
+            />
 
-          <TextInput style={styles.input} placeholder="First Name" placeholderTextColor={colors.placeholder} value={firstName} onChangeText={setFirstName} />
-          <TextInput style={styles.input} placeholder="Last Name" placeholderTextColor={colors.placeholder} value={lastName} onChangeText={setLastName} />
-          <TextInput style={styles.input} placeholder="Phone" placeholderTextColor={colors.placeholder} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <TextInput style={styles.input} placeholder="Email" placeholderTextColor={colors.placeholder} value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+            <TextInput
+              style={styles.input}
+              placeholder="Preferred Route e.g. Dallas to Austin"
+              placeholderTextColor={colors.placeholder}
+              value={preferredRoute}
+              onChangeText={setPreferredRoute}
+            />
 
-          <Section title="Emergency Contact" styles={styles} icon={<ShieldCheck size={19} color={colors.gold} />} />
+            <TextInput
+              style={styles.input}
+              placeholder="Luggage Preference e.g. 2 bags, carry-on only"
+              placeholderTextColor={colors.placeholder}
+              value={luggagePreference}
+              onChangeText={setLuggagePreference}
+            />
 
-          <TextInput style={styles.input} placeholder="Emergency Contact Name" placeholderTextColor={colors.placeholder} value={emergencyName} onChangeText={setEmergencyName} />
-          <TextInput style={styles.input} placeholder="Emergency Contact Phone" placeholderTextColor={colors.placeholder} value={emergencyPhone} onChangeText={setEmergencyPhone} keyboardType="phone-pad" />
-          <TextInput style={styles.input} placeholder="Emergency Contact Email" placeholderTextColor={colors.placeholder} value={emergencyEmail} onChangeText={setEmergencyEmail} autoCapitalize="none" keyboardType="email-address" />
+            <TextInput
+              style={styles.input}
+              placeholder="Music Preference e.g. quiet ride, gospel, afrobeats"
+              placeholderTextColor={colors.placeholder}
+              value={musicPreference}
+              onChangeText={setMusicPreference}
+            />
 
-          <Section title="Student Travel Mode+" styles={styles} icon={<GraduationCap size={19} color={colors.gold} />} />
+            <TextInput
+              style={styles.input}
+              placeholder="AC Preference e.g. cool, warm, normal"
+              placeholderTextColor={colors.placeholder}
+              value={acPreference}
+              onChangeText={setAcPreference}
+            />
 
-          <View style={styles.card}>
-            <View style={styles.switchRowInner}>
-              <View style={styles.switchTextBox}>
-                <Text style={styles.switchTitle}>Student Passenger</Text>
-                <Text style={styles.switchSubtitle}>
-                  Turn this on if you are a student passenger. Verified students unlock
-                  student discounts, Student Pool+, and campus travel features.
-                </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Conversation Preference e.g. quiet ride, open to chat"
+              placeholderTextColor={colors.placeholder}
+              value={conversationPreference}
+              onChangeText={setConversationPreference}
+            />
+
+            <Section
+              title="Saved Travel Details"
+              styles={styles}
+              icon={<MapPin size={19} color={colors.gold} />}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Favorite Pickup Location"
+              placeholderTextColor={colors.placeholder}
+              value={favoritePickup}
+              onChangeText={setFavoritePickup}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Favorite Drop-off Location"
+              placeholderTextColor={colors.placeholder}
+              value={favoriteDropoff}
+              onChangeText={setFavoriteDropoff}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Preferred Payment Method e.g. Card, Zelle, Cash App"
+              placeholderTextColor={colors.placeholder}
+              value={preferredPaymentMethod}
+              onChangeText={setPreferredPaymentMethod}
+            />
+
+            <Section
+              title="Terms & Privacy"
+              styles={styles}
+              icon={<LockKeyhole size={19} color={colors.gold} />}
+            />
+
+            <View style={styles.card}>
+              <View style={styles.switchRowInner}>
+                <View style={styles.switchTextBox}>
+                  <Text style={styles.switchTitle}>
+                    I accept Angel Express Terms & Conditions
+                  </Text>
+
+                  <Text style={styles.switchSubtitle}>
+                    Required before booking and using safety
+                    features.
+                  </Text>
+                </View>
+
+                <Switch
+                  value={termsAccepted}
+                  onValueChange={setTermsAccepted}
+                  trackColor={{
+                    false: colors.borderSoft,
+                    true: colors.gold,
+                  }}
+                  thumbColor={
+                    termsAccepted ? "#FFFFFF" : "#CBD5E1"
+                  }
+                />
               </View>
 
-              <Switch
-                value={studentStatus}
-                onValueChange={setStudentStatus}
-                trackColor={{ false: colors.borderSoft, true: colors.gold }}
-                thumbColor={studentStatus ? "#FFFFFF" : "#CBD5E1"}
-              />
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => setTermsModalVisible(true)}
+              >
+                <BookOpen size={16} color={colors.gold} />
+                <Text style={styles.linkText}>
+                  Read Terms & Conditions
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.linkButton}
+                onPress={() => router.push("/privacy" as any)}
+              >
+                <LockKeyhole size={16} color={colors.gold} />
+                <Text style={styles.linkText}>
+                  View Privacy Policy
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.studentBadge}>
-              <Text style={styles.studentBadgeText}>
-                {studentVerified ? "Verified Student" : `Status: ${studentVerificationStatus}`}
+            <TouchableOpacity
+              style={[
+                styles.saveButton,
+                saving && styles.buttonDisabled,
+              ]}
+              onPress={saveProfile}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color={colors.navy} />
+              ) : (
+                <>
+                  <Save size={19} color={colors.navy} />
+                  <Text style={styles.saveButtonText}>
+                    Save Profile
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.secondaryButtonText}>
+                Back
               </Text>
-            </View>
-
-            {studentStatus && !studentVerified ? (
-              <TouchableOpacity
-                style={styles.goldButton}
-                onPress={() => router.push("/student-verification" as any)}
-              >
-                <BadgeCheck size={18} color={colors.navy} />
-                <Text style={styles.goldButtonText}>Verify Student Status</Text>
-              </TouchableOpacity>
-            ) : null}
-
-            {studentStatus && studentVerified ? (
-              <TouchableOpacity
-                style={styles.goldButton}
-                onPress={() => router.push("/student-travel" as any)}
-              >
-                <GraduationCap size={18} color={colors.navy} />
-                <Text style={styles.goldButtonText}>Open Student Travel Mode+</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          <Section title="Travel Preferences" styles={styles} icon={<Star size={19} color={colors.gold} />} />
-
-          <TextInput style={styles.input} placeholder="Preferred Route e.g. Dallas to Austin" placeholderTextColor={colors.placeholder} value={preferredRoute} onChangeText={setPreferredRoute} />
-          <TextInput style={styles.input} placeholder="Luggage Preference e.g. 2 bags, carry-on only" placeholderTextColor={colors.placeholder} value={luggagePreference} onChangeText={setLuggagePreference} />
-          <TextInput style={styles.input} placeholder="Music Preference e.g. quiet ride, gospel, afrobeats" placeholderTextColor={colors.placeholder} value={musicPreference} onChangeText={setMusicPreference} />
-          <TextInput style={styles.input} placeholder="AC Preference e.g. cool, warm, normal" placeholderTextColor={colors.placeholder} value={acPreference} onChangeText={setAcPreference} />
-          <TextInput style={styles.input} placeholder="Conversation Preference e.g. quiet ride, open to chat" placeholderTextColor={colors.placeholder} value={conversationPreference} onChangeText={setConversationPreference} />
-
-          <Section title="Terms & Privacy" styles={styles} icon={<LockKeyhole size={19} color={colors.gold} />} />
-
-          <View style={styles.card}>
-            <View style={styles.switchRowInner}>
-              <View style={styles.switchTextBox}>
-                <Text style={styles.switchTitle}>
-                  I accept Angel Express Terms & Conditions
-                </Text>
-                <Text style={styles.switchSubtitle}>
-                  Required before booking and using safety features.
-                </Text>
-              </View>
-
-              <Switch
-                value={termsAccepted}
-                onValueChange={setTermsAccepted}
-                trackColor={{ false: colors.borderSoft, true: colors.gold }}
-                thumbColor={termsAccepted ? "#FFFFFF" : "#CBD5E1"}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => setTermsModalVisible(true)}
-            >
-              <BookOpen size={16} color={colors.gold} />
-              <Text style={styles.linkText}>Read Terms & Conditions</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.linkButton}
-              onPress={() => router.push("/privacy" as any)}
+              style={styles.deleteButton}
+              onPress={requestAccountDeletion}
             >
-              <LockKeyhole size={16} color={colors.gold} />
-              <Text style={styles.linkText}>View Privacy Policy</Text>
+              <Trash2 size={18} color={colors.danger} />
+              <Text style={styles.deleteButtonText}>
+                Request Account Deletion
+              </Text>
             </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.buttonDisabled]}
-            onPress={saveProfile}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={colors.navy} />
-            ) : (
-              <>
-                <Save size={19} color={colors.navy} />
-                <Text style={styles.saveButtonText}>Save Profile</Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => router.back()}>
-            <Text style={styles.secondaryButtonText}>Back</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.deleteButton} onPress={requestAccountDeletion}>
-            <Trash2 size={18} color={colors.danger} />
-            <Text style={styles.deleteButtonText}>Request Account Deletion</Text>
-          </TouchableOpacity>
+          </Animated.View>
         </ScrollView>
 
-        <Modal visible={termsModalVisible} animationType="slide" transparent>
+        <Modal
+          visible={termsModalVisible}
+          animationType="slide"
+          transparent
+        >
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.modalTitle}>Angel Express Terms & Conditions</Text>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+              >
+                <Text style={styles.modalTitle}>
+                  Angel Express Terms & Conditions
+                </Text>
 
                 <TermsText styles={styles} />
               </ScrollView>
@@ -478,13 +1069,15 @@ Thank you.`;
                 style={styles.modalButton}
                 onPress={() => setTermsModalVisible(false)}
               >
-                <Text style={styles.modalButtonText}>Close</Text>
+                <Text style={styles.modalButtonText}>
+                  Close
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
@@ -505,24 +1098,79 @@ function Section({
   );
 }
 
+function StatCard({
+  title,
+  value,
+  icon,
+  styles,
+  smallValue = false,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  styles: any;
+  smallValue?: boolean;
+}) {
+  return (
+    <View style={styles.statCard}>
+      {icon}
+      <Text
+        style={[
+          styles.statValue,
+          smallValue && styles.statValueSmall,
+        ]}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
+      <Text style={styles.statTitle}>{title}</Text>
+    </View>
+  );
+}
+
 function TermsText({ styles }: { styles: any }) {
   return (
     <>
       <Text style={styles.modalText}>
-        By using Angel Express Mobility, you agree to use the Passenger App,
-        booking system, ride support, payment features, live tracking, safety
-        tools, and communication features responsibly.
+        By using Angel Express Mobility, you agree to use the
+        Passenger App, booking system, ride support, payment
+        features, live tracking, safety tools, and communication
+        features responsibly.
       </Text>
 
       {[
-        ["1. Ride Bookings", "Passengers must provide accurate pickup, drop-off, date, time, contact, luggage, airport, and trip information. Angel Express may contact you to confirm or adjust details before the ride."],
-        ["2. Payments", "Passengers are responsible for paying approved ride fares, additional charges, tolls, waiting time, route changes, and special trip requests where applicable. Payment availability may depend on approved Angel Express payment methods."],
-        ["3. Safety & Conduct", "Passengers must behave respectfully toward drivers and Angel Express staff. Unsafe, abusive, unlawful, or disruptive behavior may lead to ride cancellation, account restriction, or refusal of future service."],
-        ["4. Student Travel Mode+", "Student discounts and Student Pool+ features are available only to passengers who submit valid student information and receive approval. Angel Express may reject, suspend, or review student benefits at any time."],
-        ["5. Live Tracking & Safety Features", "Safety Share, Family Check-In+, and live trip tracking are provided to support safer travel. These tools depend on device, network, app, GPS, and system availability."],
-        ["6. Cancellations & Changes", "Trip changes, cancellations, delays, no-shows, waiting time, and route changes may affect pricing or service availability. Contact support as early as possible for assistance."],
-        ["7. Privacy", "Angel Express uses your information to manage your account, bookings, safety features, driver coordination, support, notifications, and service improvements. Your information is not sold."],
-        ["8. Agreement", "By accepting these terms, you confirm that your information is accurate and that you agree to Angel Express service rules, safety expectations, payment responsibilities, and privacy practices."],
+        [
+          "1. Ride Bookings",
+          "Passengers must provide accurate pickup, drop-off, date, time, contact, luggage, airport, and trip information. Angel Express may contact you to confirm or adjust details before the ride.",
+        ],
+        [
+          "2. Payments",
+          "Passengers are responsible for paying approved ride fares, additional charges, tolls, waiting time, route changes, and special trip requests where applicable. Payment availability may depend on approved Angel Express payment methods.",
+        ],
+        [
+          "3. Safety & Conduct",
+          "Passengers must behave respectfully toward drivers and Angel Express staff. Unsafe, abusive, unlawful, or disruptive behavior may lead to ride cancellation, account restriction, or refusal of future service.",
+        ],
+        [
+          "4. Student Travel Mode+",
+          "Student discounts and Student Pool+ features are available only to passengers who submit valid student information and receive approval. Angel Express may reject, suspend, or review student benefits at any time.",
+        ],
+        [
+          "5. Live Tracking & Safety Features",
+          "Safety Share, Family Check-In+, and live trip tracking are provided to support safer travel. These tools depend on device, network, app, GPS, and system availability.",
+        ],
+        [
+          "6. Cancellations & Changes",
+          "Trip changes, cancellations, delays, no-shows, waiting time, and route changes may affect pricing or service availability. Contact support as early as possible for assistance.",
+        ],
+        [
+          "7. Privacy",
+          "Angel Express uses your information to manage your account, bookings, safety features, driver coordination, support, notifications, and service improvements. Your information is not sold.",
+        ],
+        [
+          "8. Agreement",
+          "By accepting these terms, you confirm that your information is accurate and that you agree to Angel Express service rules, safety expectations, payment responsibilities, and privacy practices.",
+        ],
       ].map(([title, text]) => (
         <View key={title}>
           <Text style={styles.modalSection}>{title}</Text>
@@ -535,22 +1183,50 @@ function TermsText({ styles }: { styles: any }) {
 
 function createStyles(c: any) {
   return StyleSheet.create({
-    background: { flex: 1 },
-    overlay: { flex: 1, backgroundColor: c.overlay },
-    container: { flex: 1 },
-    content: { padding: 22, paddingTop: 58, paddingBottom: 54 },
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
     loadingContainer: {
       flex: 1,
       backgroundColor: c.bg,
       alignItems: "center",
       justifyContent: "center",
     },
-    loadingText: { color: c.text, marginTop: 12, fontWeight: "800" },
+    loadingText: {
+      color: c.text,
+      marginTop: 12,
+      fontWeight: "800",
+    },
     topRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 20,
+    },
+    topActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
     },
     backButton: {
       flexDirection: "row",
@@ -563,7 +1239,21 @@ function createStyles(c: any) {
       paddingVertical: 10,
       paddingHorizontal: 14,
     },
-    backText: { color: c.gold, fontSize: 15, fontWeight: "900" },
+    backText: {
+      color: c.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    refreshButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     themePill: {
       borderWidth: 1,
       borderColor: c.border,
@@ -572,7 +1262,11 @@ function createStyles(c: any) {
       paddingVertical: 10,
       paddingHorizontal: 14,
     },
-    themeText: { color: c.gold, fontSize: 12, fontWeight: "900" },
+    themeText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
     kicker: {
       color: c.gold,
       fontSize: 12,
@@ -593,6 +1287,48 @@ function createStyles(c: any) {
       marginBottom: 22,
       fontWeight: "700",
     },
+    completionCard: {
+      backgroundColor: c.gold,
+      borderRadius: 24,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    completionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 14,
+    },
+    completionLabel: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    completionValue: {
+      color: c.navy,
+      fontSize: 34,
+      fontWeight: "900",
+      marginTop: 3,
+    },
+    progressTrack: {
+      height: 12,
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.38)",
+      overflow: "hidden",
+      marginBottom: 10,
+    },
+    progressFill: {
+      height: "100%",
+      backgroundColor: c.navy,
+    },
+    completionText: {
+      color: c.navy,
+      opacity: 0.82,
+      lineHeight: 20,
+      fontSize: 13.5,
+      fontWeight: "800",
+    },
     ratingCard: {
       backgroundColor: c.gold,
       borderRadius: 24,
@@ -600,7 +1336,7 @@ function createStyles(c: any) {
       flexDirection: "row",
       alignItems: "center",
       gap: 14,
-      marginBottom: 24,
+      marginBottom: 20,
       ...v5Shadow(c),
     },
     ratingIcon: {
@@ -611,9 +1347,21 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-    ratingTitle: { color: c.navy, fontSize: 16, fontWeight: "900" },
-    ratingValue: { color: c.navy, fontSize: 35, fontWeight: "900" },
-    ratingSubtitle: { color: c.navy, opacity: 0.8, fontWeight: "800" },
+    ratingTitle: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    ratingValue: {
+      color: c.navy,
+      fontSize: 35,
+      fontWeight: "900",
+    },
+    ratingSubtitle: {
+      color: c.navy,
+      opacity: 0.8,
+      fontWeight: "800",
+    },
     ratingNote: {
       color: c.navy,
       opacity: 0.8,
@@ -621,6 +1369,38 @@ function createStyles(c: any) {
       lineHeight: 18,
       marginTop: 7,
       fontWeight: "700",
+    },
+    statsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      marginBottom: 12,
+    },
+    statCard: {
+      width: "48%",
+      backgroundColor: c.card,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 16,
+      marginBottom: 12,
+      ...v5Shadow(c),
+    },
+    statValue: {
+      color: c.gold,
+      fontSize: 23,
+      fontWeight: "900",
+      marginTop: 8,
+      marginBottom: 5,
+    },
+    statValueSmall: {
+      fontSize: 16,
+    },
+    statTitle: {
+      color: c.text,
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: "800",
     },
     sectionRow: {
       flexDirection: "row",
@@ -639,7 +1419,11 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-    sectionTitle: { color: c.gold, fontSize: 19, fontWeight: "900" },
+    sectionTitle: {
+      color: c.gold,
+      fontSize: 19,
+      fontWeight: "900",
+    },
     input: {
       backgroundColor: c.input,
       color: c.inputText,
@@ -666,8 +1450,14 @@ function createStyles(c: any) {
       justifyContent: "space-between",
       gap: 12,
     },
-    switchTextBox: { flex: 1 },
-    switchTitle: { color: c.text, fontSize: 16, fontWeight: "900" },
+    switchTextBox: {
+      flex: 1,
+    },
+    switchTitle: {
+      color: c.text,
+      fontSize: 16,
+      fontWeight: "900",
+    },
     switchSubtitle: {
       color: c.text2,
       fontSize: 13,
@@ -685,7 +1475,11 @@ function createStyles(c: any) {
       paddingHorizontal: 12,
       marginTop: 14,
     },
-    studentBadgeText: { color: c.gold, fontWeight: "900", fontSize: 13 },
+    studentBadgeText: {
+      color: c.gold,
+      fontWeight: "900",
+      fontSize: 13,
+    },
     goldButton: {
       backgroundColor: c.gold,
       paddingVertical: 14,
@@ -696,7 +1490,11 @@ function createStyles(c: any) {
       gap: 8,
       marginTop: 14,
     },
-    goldButtonText: { color: c.navy, fontWeight: "900", fontSize: 15 },
+    goldButtonText: {
+      color: c.navy,
+      fontWeight: "900",
+      fontSize: 15,
+    },
     linkButton: {
       alignItems: "center",
       justifyContent: "center",
@@ -723,8 +1521,14 @@ function createStyles(c: any) {
       marginBottom: 14,
       ...v5Shadow(c),
     },
-    saveButtonText: { color: c.navy, fontSize: 17, fontWeight: "900" },
-    buttonDisabled: { opacity: 0.6 },
+    saveButtonText: {
+      color: c.navy,
+      fontSize: 17,
+      fontWeight: "900",
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
     secondaryButton: {
       borderWidth: 1,
       borderColor: c.borderSoft,
@@ -734,7 +1538,11 @@ function createStyles(c: any) {
       marginBottom: 14,
       backgroundColor: c.card,
     },
-    secondaryButtonText: { color: c.text, fontSize: 16, fontWeight: "900" },
+    secondaryButtonText: {
+      color: c.text,
+      fontSize: 16,
+      fontWeight: "900",
+    },
     deleteButton: {
       borderWidth: 1,
       borderColor: c.danger,
@@ -747,7 +1555,11 @@ function createStyles(c: any) {
       marginTop: 10,
       backgroundColor: c.dangerSoft,
     },
-    deleteButtonText: { color: c.danger, fontSize: 15, fontWeight: "900" },
+    deleteButtonText: {
+      color: c.danger,
+      fontSize: 15,
+      fontWeight: "900",
+    },
     modalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0,0,0,0.75)",
@@ -775,7 +1587,11 @@ function createStyles(c: any) {
       marginTop: 14,
       marginBottom: 6,
     },
-    modalText: { color: c.text, fontSize: 15, lineHeight: 24 },
+    modalText: {
+      color: c.text,
+      fontSize: 15,
+      lineHeight: 24,
+    },
     modalButton: {
       backgroundColor: c.gold,
       paddingVertical: 15,
@@ -783,6 +1599,10 @@ function createStyles(c: any) {
       alignItems: "center",
       marginTop: 18,
     },
-    modalButtonText: { color: c.navy, fontSize: 16, fontWeight: "900" },
+    modalButtonText: {
+      color: c.navy,
+      fontSize: 16,
+      fontWeight: "900",
+    },
   });
 }

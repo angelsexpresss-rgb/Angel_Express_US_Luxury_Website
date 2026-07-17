@@ -1,4 +1,4 @@
-import { useLocalSearchParams, router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,7 +17,9 @@ import MapView, { Marker, Polyline } from "react-native-maps";
 import {
   ArrowLeft,
   CarFront,
+  CheckCircle2,
   Clock3,
+  CreditCard,
   ExternalLink,
   MapPinned,
   Navigation,
@@ -25,7 +27,9 @@ import {
   RefreshCcw,
   Route,
   ShieldCheck,
+  Star,
   UserRound,
+  XCircle,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
@@ -41,24 +45,77 @@ const LIVE_STATUSES = [
   "in_progress",
 ];
 
+const STOPPED_STATUSES = ["completed", "cancelled", "canceled"];
+
+function firstAvailable(...values: any[]) {
+  for (const value of values) {
+    if (value !== null && value !== undefined && String(value).trim() !== "") {
+      return String(value).trim();
+    }
+  }
+  return "";
+}
+
+function normalize(value: any) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function numberValue(...values: any[]) {
+  const value = values.find(
+    (item) => item !== undefined && item !== null && item !== ""
+  );
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getStatusLabel(value: any) {
+  const status = normalize(value);
+
+  if (status === "pending") return "Pending";
+  if (status === "confirmed") return "Confirmed";
+  if (status === "driver_assigned") return "Driver Assigned";
+  if (status === "assigned") return "Driver Assigned";
+  if (status === "accepted") return "Driver Accepted";
+  if (status === "driver_accepted") return "Driver Accepted";
+  if (status === "driver_arrived") return "Driver Arrived";
+  if (status === "in_progress") return "In Progress";
+  if (status === "completed") return "Completed";
+  if (status === "cancelled" || status === "canceled") return "Cancelled";
+
+  return String(value || "Pending").replace(/_/g, " ");
+}
+
+function isTrackableStatus(status: any) {
+  return LIVE_STATUSES.includes(normalize(status));
+}
+
+function isStoppedStatus(status: any) {
+  return STOPPED_STATUSES.includes(normalize(status));
+}
+
 export default function LiveTripScreen() {
   const params = useLocalSearchParams();
 
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const invoiceNo = String(params.invoice_no || "");
-  const bookingId = String(params.booking_id || "");
+  const bookingId = String(
+    params.booking_id || params.bookingId || ""
+  );
+
+  const invoiceNumber = String(
+    params.invoice_number || params.invoice_no || ""
+  );
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
   const [trip, setTrip] = useState<any>(null);
   const [location, setLocation] = useState<any>(null);
   const [driverProfile, setDriverProfile] = useState<any>(null);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
+  const mapRef = useRef<MapView | null>(null);
 
   useEffect(() => {
     Animated.loop(
@@ -83,64 +140,33 @@ export default function LiveTripScreen() {
     }).start();
 
     loadLiveTrip(true);
+  }, []);
+
+  useEffect(() => {
+    if (!trip || !isTrackableStatus(trip.status)) return;
 
     const interval = setInterval(() => {
       loadLiveTrip(false);
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [trip?.id, trip?.status]);
 
-  function firstAvailable(...values: any[]) {
-    for (const value of values) {
-      if (value !== null && value !== undefined && String(value).trim() !== "") {
-        return String(value).trim();
-      }
+  useEffect(() => {
+    const coordinate = getDriverCoords();
+
+    if (coordinate && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: coordinate.latitude,
+          longitude: coordinate.longitude,
+          latitudeDelta: 0.06,
+          longitudeDelta: 0.06,
+        },
+        650
+      );
     }
-
-    return "";
-  }
-
-  function cleanStatus(value: any) {
-    return String(value || "").toLowerCase().trim();
-  }
-
-  function getStatusLabel(value: any) {
-    const status = cleanStatus(value);
-
-    if (status === "pending") return "Pending";
-    if (status === "confirmed") return "Confirmed";
-    if (status === "driver_assigned") return "Driver Assigned";
-    if (status === "assigned") return "Driver Assigned";
-    if (status === "accepted") return "Driver Accepted";
-    if (status === "driver_accepted") return "Driver Accepted";
-    if (status === "driver_arrived") return "Driver Arrived";
-    if (status === "in_progress") return "In Progress";
-    if (status === "completed") return "Completed";
-    if (status === "cancelled" || status === "canceled") return "Cancelled";
-
-    return String(value || "Pending").replace(/_/g, " ");
-  }
-
-  function getStatusMessage() {
-    const status = cleanStatus(trip?.status);
-
-    if (hasDriverLocation) return "Your chauffeur is sharing live GPS.";
-
-    if (status === "driver_assigned" || status === "assigned") {
-      return "Your chauffeur has accepted the ride. GPS will appear once the driver opens Active Trip.";
-    }
-
-    if (status === "driver_arrived") {
-      return "Your chauffeur has arrived. Live GPS will update as the trip continues.";
-    }
-
-    if (status === "in_progress") {
-      return "Your trip is in progress. Waiting for the latest GPS update.";
-    }
-
-    return "Waiting for chauffeur GPS location.";
-  }
+  }, [location?.latitude, location?.longitude]);
 
   async function loadLiveTrip(showLoader = true) {
     try {
@@ -160,8 +186,7 @@ export default function LiveTripScreen() {
         return;
       }
 
-      const userEmail = user.email?.trim().toLowerCase() || "";
-
+      const userEmail = normalize(user.email);
       let booking: any = null;
 
       if (bookingId) {
@@ -173,15 +198,29 @@ export default function LiveTripScreen() {
 
         if (error) throw error;
         booking = data;
-      } else if (invoiceNo) {
-        const { data, error } = await supabase
+      } else if (invoiceNumber) {
+        const { data: byNewInvoice, error: newInvoiceError } = await supabase
           .from("bookings")
           .select("*")
-          .eq("invoice_no", invoiceNo)
+          .eq("invoice_number", invoiceNumber)
           .maybeSingle();
 
-        if (error) throw error;
-        booking = data;
+        if (newInvoiceError && !String(newInvoiceError.message || "").includes("column")) {
+          throw newInvoiceError;
+        }
+
+        booking = byNewInvoice;
+
+        if (!booking) {
+          const { data: byLegacyInvoice, error: oldInvoiceError } = await supabase
+            .from("bookings")
+            .select("*")
+            .eq("invoice_no", invoiceNumber)
+            .maybeSingle();
+
+          if (oldInvoiceError) throw oldInvoiceError;
+          booking = byLegacyInvoice;
+        }
       } else {
         let query = supabase
           .from("bookings")
@@ -202,6 +241,26 @@ export default function LiveTripScreen() {
         booking = data;
       }
 
+      if (booking) {
+        const bookingOwnerId = String(
+          firstAvailable(booking.user_id, booking.passenger_id)
+        );
+
+        const bookingEmail = normalize(
+          firstAvailable(booking.email, booking.passenger_email)
+        );
+
+        const ownerMatches =
+          !bookingOwnerId || bookingOwnerId === String(user.id);
+
+        const emailMatches =
+          !bookingEmail || bookingEmail === userEmail;
+
+        if (!ownerMatches && !emailMatches) {
+          throw new Error("You are not authorized to view this trip.");
+        }
+      }
+
       setTrip(booking || null);
 
       if (!booking) {
@@ -210,8 +269,10 @@ export default function LiveTripScreen() {
         return;
       }
 
-      await loadDriverProfile(booking);
-      await loadDriverLiveLocation(booking);
+      await Promise.all([
+        loadDriverProfile(booking),
+        loadDriverLiveLocation(booking),
+      ]);
     } catch (error: any) {
       Alert.alert(
         "Live Tracking Error",
@@ -253,30 +314,46 @@ export default function LiveTripScreen() {
   async function loadDriverLiveLocation(booking: any) {
     try {
       let liveLocation: any = null;
+      const driverId = firstAvailable(
+        booking?.driver_id,
+        booking?.assigned_driver_id
+      );
 
       if (booking?.id) {
-        const { data, error } = await supabase
+        let query = supabase
           .from("driver_live_locations")
           .select("*")
-          .eq("booking_id", booking.id)
+          .eq("booking_id", booking.id);
+
+        if (driverId) {
+          query = query.eq("driver_id", driverId);
+        }
+
+        const { data, error } = await query
           .order("last_updated", { ascending: false })
           .limit(1)
           .maybeSingle();
 
         if (error) throw error;
-
         liveLocation = data;
       }
 
-      if (!liveLocation && booking?.invoice_no) {
-        const { data } = await supabase
-          .from("live_trip_locations")
-          .select("*")
-          .eq("invoice_no", booking.invoice_no)
-          .limit(1)
-          .maybeSingle();
+      if (!liveLocation) {
+        const legacyInvoice = firstAvailable(
+          booking?.invoice_number,
+          booking?.invoice_no
+        );
 
-        liveLocation = data;
+        if (legacyInvoice) {
+          const { data } = await supabase
+            .from("live_trip_locations")
+            .select("*")
+            .eq("invoice_no", legacyInvoice)
+            .limit(1)
+            .maybeSingle();
+
+          liveLocation = data;
+        }
       }
 
       setLocation(liveLocation || null);
@@ -287,8 +364,15 @@ export default function LiveTripScreen() {
   }
 
   function getDriverName() {
-    const first = firstAvailable(driverProfile?.first_name, driverProfile?.firstname);
-    const last = firstAvailable(driverProfile?.last_name, driverProfile?.lastname);
+    const first = firstAvailable(
+      driverProfile?.first_name,
+      driverProfile?.firstname
+    );
+
+    const last = firstAvailable(
+      driverProfile?.last_name,
+      driverProfile?.lastname
+    );
 
     return firstAvailable(
       location?.driver_name,
@@ -367,8 +451,19 @@ export default function LiveTripScreen() {
   }
 
   function getPickupCoords() {
-    const latitude = Number(trip?.pickup_lat || location?.pickup_lat);
-    const longitude = Number(trip?.pickup_lng || location?.pickup_lng);
+    const latitude = numberValue(
+      trip?.pickup_latitude,
+      trip?.pickup_lat,
+      location?.pickup_latitude,
+      location?.pickup_lat
+    );
+
+    const longitude = numberValue(
+      trip?.pickup_longitude,
+      trip?.pickup_lng,
+      location?.pickup_longitude,
+      location?.pickup_lng
+    );
 
     if (!latitude || !longitude) return null;
 
@@ -376,8 +471,19 @@ export default function LiveTripScreen() {
   }
 
   function getDropoffCoords() {
-    const latitude = Number(trip?.dropoff_lat || location?.dropoff_lat);
-    const longitude = Number(trip?.dropoff_lng || location?.dropoff_lng);
+    const latitude = numberValue(
+      trip?.dropoff_latitude,
+      trip?.dropoff_lat,
+      location?.dropoff_latitude,
+      location?.dropoff_lat
+    );
+
+    const longitude = numberValue(
+      trip?.dropoff_longitude,
+      trip?.dropoff_lng,
+      location?.dropoff_longitude,
+      location?.dropoff_lng
+    );
 
     if (!latitude || !longitude) return null;
 
@@ -385,21 +491,98 @@ export default function LiveTripScreen() {
   }
 
   function getDriverCoords() {
-    if (!location?.latitude || !location?.longitude) return null;
+    const latitude = Number(location?.latitude);
+    const longitude = Number(location?.longitude);
+
+    if (!latitude || !longitude) return null;
+
+    return { latitude, longitude };
+  }
+
+  function getLocationTimestamp() {
+    return firstAvailable(
+      location?.last_updated,
+      location?.updated_at,
+      location?.created_at
+    );
+  }
+
+  function getLocationFreshness() {
+    const timestamp = getLocationTimestamp();
+
+    if (!timestamp) {
+      return {
+        label: "Offline",
+        message: "Waiting for the chauffeur to begin sharing GPS.",
+      };
+    }
+
+    const ageMs = Date.now() - new Date(timestamp).getTime();
+    const ageMinutes = ageMs / 60000;
+
+    if (ageMinutes <= 2) {
+      return {
+        label: "Live",
+        message: "Your chauffeur is sharing live GPS.",
+      };
+    }
+
+    if (ageMinutes <= 10) {
+      return {
+        label: "Recently Updated",
+        message: "The latest chauffeur location was received recently.",
+      };
+    }
+
+    if (ageMinutes <= 60) {
+      return {
+        label: "Location Stale",
+        message: "The chauffeur location has not updated recently.",
+      };
+    }
 
     return {
-      latitude: Number(location.latitude),
-      longitude: Number(location.longitude),
+      label: "Offline",
+      message: "The saved chauffeur location is no longer current.",
     };
+  }
+
+  function getStatusMessage() {
+    const status = normalize(trip?.status);
+    const freshness = getLocationFreshness();
+
+    if (status === "completed") {
+      return "This ride has been completed. Live tracking has ended.";
+    }
+
+    if (status === "cancelled" || status === "canceled") {
+      return "This ride has been cancelled. Live tracking is unavailable.";
+    }
+
+    if (getDriverCoords()) return freshness.message;
+
+    if (status === "driver_assigned" || status === "assigned") {
+      return "Your chauffeur has accepted the ride. GPS will appear once the driver opens Active Trip.";
+    }
+
+    if (status === "driver_arrived") {
+      return "Your chauffeur has arrived. Live GPS will update as the trip continues.";
+    }
+
+    if (status === "in_progress") {
+      return "Your trip is in progress. Waiting for the latest GPS update.";
+    }
+
+    return "Waiting for chauffeur GPS location.";
   }
 
   function openInMaps() {
     const driverCoords = getDriverCoords();
 
-    if (!driverCoords) {
+    if (!driverCoords || isStoppedStatus(trip?.status)) {
       Alert.alert(
         "Driver Location Not Available",
-        "Driver GPS will appear once your chauffeur opens the active trip screen."
+        "A current driver location is not available for this trip."
       );
       return;
     }
@@ -419,6 +602,46 @@ export default function LiveTripScreen() {
     Linking.openURL(`tel:${String(phone).replace(/[^\d+]/g, "")}`);
   }
 
+  function openPayRide() {
+    router.push({
+      pathname: "/pay-ride" as any,
+      params: {
+        bookingId: String(trip?.id || ""),
+        booking_id: String(trip?.id || ""),
+      },
+    });
+  }
+
+  function openRateDriver() {
+    router.push({
+      pathname: "/rate-driver" as any,
+      params: {
+        bookingId: String(trip?.id || ""),
+        booking_id: String(trip?.id || ""),
+        booking_number: getBookingNumber(),
+        invoice_number: getInvoiceNumber(),
+        invoice_no: getInvoiceNumber(),
+      },
+    });
+  }
+
+  function getBookingNumber() {
+    return firstAvailable(
+      trip?.booking_number,
+      trip?.booking_no,
+      trip?.id,
+      "N/A"
+    );
+  }
+
+  function getInvoiceNumber() {
+    return firstAvailable(
+      trip?.invoice_number,
+      trip?.invoice_no,
+      "N/A"
+    );
+  }
+
   const pageTranslate = pageFade.interpolate({
     inputRange: [0, 1],
     outputRange: [24, 0],
@@ -429,6 +652,11 @@ export default function LiveTripScreen() {
   const dropoffCoordinate = getDropoffCoords();
 
   const hasDriverLocation = Boolean(driverCoordinate);
+  const freshness = getLocationFreshness();
+  const status = normalize(trip?.status);
+  const isCompleted = status === "completed";
+  const isCancelled = status === "cancelled" || status === "canceled";
+  const isPaid = normalize(trip?.payment_status) === "paid";
 
   const mapCenter =
     driverCoordinate ||
@@ -454,12 +682,12 @@ export default function LiveTripScreen() {
           <MapPinned size={38} color={colors.gold} />
           <Text style={styles.emptyTitle}>Trip Not Found</Text>
           <Text style={styles.emptyText}>
-            No active accepted trip was found for your account yet.
+            No active accepted trip was found for your account.
           </Text>
 
           <TouchableOpacity
             style={styles.goldButton}
-            onPress={() => router.push("/my-trips" as any)}
+            onPress={() => router.replace("/my-trips" as any)}
           >
             <Text style={styles.goldButtonText}>View My Trips</Text>
           </TouchableOpacity>
@@ -477,7 +705,9 @@ export default function LiveTripScreen() {
 
   return (
     <View style={styles.root}>
-      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+      <Animated.View
+        style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}
+      >
         <ImageBackground
           source={require("../assets/images/dashboard-bg.png")}
           style={styles.background}
@@ -499,12 +729,18 @@ export default function LiveTripScreen() {
           }
         >
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
               <ArrowLeft size={19} color={colors.gold} />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
+            <TouchableOpacity
+              style={styles.themePill}
+              onPress={toggleTheme}
+            >
               <Text style={styles.themeText}>
                 {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
               </Text>
@@ -521,36 +757,56 @@ export default function LiveTripScreen() {
             <Text style={styles.title}>Track Live Trip</Text>
 
             <Text style={styles.subtitle}>
-              Track your Angel Express chauffeur, pickup, drop-off, vehicle, and trip
-              phase in real time.
+              Track your Angel Express chauffeur, pickup, drop-off, vehicle,
+              and trip phase in real time.
             </Text>
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Navigation size={31} color={colors.navy} />
+                {isCompleted ? (
+                  <CheckCircle2 size={31} color={colors.navy} />
+                ) : isCancelled ? (
+                  <XCircle size={31} color={colors.navy} />
+                ) : (
+                  <Navigation size={31} color={colors.navy} />
+                )}
               </View>
 
               <View style={{ flex: 1 }}>
-                <Text style={styles.heroTitle}>{getStatusLabel(trip.status)}</Text>
+                <Text style={styles.heroTitle}>
+                  {getStatusLabel(trip.status)}
+                </Text>
                 <Text style={styles.heroText}>
-                  {hasDriverLocation
-                    ? "Live GPS connected"
+                  {isCompleted
+                    ? "Trip completed"
+                    : isCancelled
+                    ? "Trip cancelled"
+                    : hasDriverLocation
+                    ? `${freshness.label} GPS`
                     : "Waiting for chauffeur GPS"}
                 </Text>
               </View>
             </View>
 
-            <View style={styles.quickRow}>
-              <TouchableOpacity style={styles.quickButton} onPress={() => loadLiveTrip(false)}>
-                <RefreshCcw size={18} color={colors.gold} />
-                <Text style={styles.quickText}>Refresh</Text>
-              </TouchableOpacity>
+            {!isStoppedStatus(trip.status) && (
+              <View style={styles.quickRow}>
+                <TouchableOpacity
+                  style={styles.quickButton}
+                  onPress={() => loadLiveTrip(false)}
+                >
+                  <RefreshCcw size={18} color={colors.gold} />
+                  <Text style={styles.quickText}>Refresh</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity style={styles.quickButton} onPress={callDriver}>
-                <Phone size={18} color={colors.gold} />
-                <Text style={styles.quickText}>Call Driver</Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.quickButton}
+                  onPress={callDriver}
+                >
+                  <Phone size={18} color={colors.gold} />
+                  <Text style={styles.quickText}>Call Driver</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.statusCard}>
               <View style={styles.cardHeader}>
@@ -558,74 +814,79 @@ export default function LiveTripScreen() {
                 <Text style={styles.cardTitle}>Ride Status</Text>
               </View>
 
-              <Text style={styles.statusText}>{getStatusLabel(trip.status)}</Text>
+              <Text style={styles.statusText}>
+                {getStatusLabel(trip.status)}
+              </Text>
 
               <Text style={styles.text}>{getStatusMessage()}</Text>
             </View>
 
-            <View style={styles.mapShell}>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: mapCenter.latitude,
-                  longitude: mapCenter.longitude,
-                  latitudeDelta: 0.08,
-                  longitudeDelta: 0.08,
-                }}
-                region={{
-                  latitude: mapCenter.latitude,
-                  longitude: mapCenter.longitude,
-                  latitudeDelta: 0.08,
-                  longitudeDelta: 0.08,
-                }}
-              >
-                {driverCoordinate && (
-                  <Marker
-                    coordinate={driverCoordinate}
-                    title={getDriverName()}
-                    description={getVehicle()}
-                  />
-                )}
-
-                {pickupCoordinate && (
-                  <Marker
-                    coordinate={pickupCoordinate}
-                    title="Pickup"
-                    description={getPickup()}
-                    pinColor="green"
-                  />
-                )}
-
-                {dropoffCoordinate && (
-                  <Marker
-                    coordinate={dropoffCoordinate}
-                    title="Drop-off"
-                    description={getDropoff()}
-                    pinColor="orange"
-                  />
-                )}
-
-                {driverCoordinate &&
-                  pickupCoordinate &&
-                  cleanStatus(trip.status) !== "in_progress" && (
-                    <Polyline
-                      coordinates={[driverCoordinate, pickupCoordinate]}
-                      strokeWidth={4}
-                      strokeColor={colors.gold}
+            {!isStoppedStatus(trip.status) && (
+              <View style={styles.mapShell}>
+                <MapView
+                  ref={mapRef}
+                  style={styles.map}
+                  initialRegion={{
+                    latitude: mapCenter.latitude,
+                    longitude: mapCenter.longitude,
+                    latitudeDelta: 0.08,
+                    longitudeDelta: 0.08,
+                  }}
+                >
+                  {driverCoordinate && (
+                    <Marker
+                      coordinate={driverCoordinate}
+                      title={getDriverName()}
+                      description={getVehicle()}
                     />
                   )}
 
-                {driverCoordinate &&
-                  dropoffCoordinate &&
-                  cleanStatus(trip.status) === "in_progress" && (
-                    <Polyline
-                      coordinates={[driverCoordinate, dropoffCoordinate]}
-                      strokeWidth={4}
-                      strokeColor={colors.gold}
+                  {pickupCoordinate && (
+                    <Marker
+                      coordinate={pickupCoordinate}
+                      title="Pickup"
+                      description={getPickup()}
+                      pinColor="green"
                     />
                   )}
-              </MapView>
-            </View>
+
+                  {dropoffCoordinate && (
+                    <Marker
+                      coordinate={dropoffCoordinate}
+                      title="Drop-off"
+                      description={getDropoff()}
+                      pinColor="orange"
+                    />
+                  )}
+
+                  {driverCoordinate &&
+                    pickupCoordinate &&
+                    status !== "in_progress" && (
+                      <Polyline
+                        coordinates={[
+                          driverCoordinate,
+                          pickupCoordinate,
+                        ]}
+                        strokeWidth={4}
+                        strokeColor={colors.gold}
+                      />
+                    )}
+
+                  {driverCoordinate &&
+                    dropoffCoordinate &&
+                    status === "in_progress" && (
+                      <Polyline
+                        coordinates={[
+                          driverCoordinate,
+                          dropoffCoordinate,
+                        ]}
+                        strokeWidth={4}
+                        strokeColor={colors.gold}
+                      />
+                    )}
+                </MapView>
+              </View>
+            )}
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -633,55 +894,100 @@ export default function LiveTripScreen() {
                 <Text style={styles.cardTitle}>Driver Details</Text>
               </View>
 
-              <Row label="Driver" value={getDriverName()} styles={styles} />
-              <Row label="Phone" value={getDriverPhone() || "Not available yet"} styles={styles} />
-              <Row label="Vehicle" value={getVehicle()} styles={styles} />
-              <Row label="Plate Number" value={getPlateNumber()} styles={styles} />
+              <Row
+                label="Driver"
+                value={getDriverName()}
+                styles={styles}
+              />
+
+              <Row
+                label="Phone"
+                value={getDriverPhone() || "Not available yet"}
+                styles={styles}
+              />
+
+              <Row
+                label="Vehicle"
+                value={getVehicle()}
+                styles={styles}
+              />
+
+              <Row
+                label="Plate Number"
+                value={getPlateNumber()}
+                styles={styles}
+              />
+
               <Row
                 label="ETA"
                 value={
                   location?.eta_minutes
-                    ? `${Math.round(Number(location.eta_minutes))} minutes`
+                    ? `${Math.round(
+                        Number(location.eta_minutes)
+                      )} minutes`
+                    : isStoppedStatus(trip.status)
+                    ? "Not applicable"
                     : "Calculating"
                 }
                 styles={styles}
               />
+
               <Row
                 label="Trip Phase"
-                value={location?.trip_phase || getStatusLabel(trip.status)}
+                value={
+                  location?.trip_phase ||
+                  getStatusLabel(trip.status)
+                }
                 styles={styles}
               />
+
+              <Row
+                label="GPS Status"
+                value={
+                  isStoppedStatus(trip.status)
+                    ? "Tracking ended"
+                    : freshness.label
+                }
+                styles={styles}
+              />
+
               <Row
                 label="Last Updated"
                 value={
-                  location?.last_updated
-                    ? new Date(location.last_updated).toLocaleString()
-                    : location?.updated_at
-                    ? new Date(location.updated_at).toLocaleString()
+                  getLocationTimestamp()
+                    ? new Date(
+                        getLocationTimestamp()
+                      ).toLocaleString()
                     : "Waiting for GPS update"
                 }
                 styles={styles}
               />
 
-              <View style={styles.driverActions}>
-                <TouchableOpacity
-                  style={styles.secondaryAction}
-                  onPress={callDriver}
-                  activeOpacity={0.85}
-                >
-                  <Phone size={17} color={colors.gold} />
-                  <Text style={styles.secondaryActionText}>Call Driver</Text>
-                </TouchableOpacity>
+              {!isStoppedStatus(trip.status) && (
+                <View style={styles.driverActions}>
+                  <TouchableOpacity
+                    style={styles.secondaryAction}
+                    onPress={callDriver}
+                    activeOpacity={0.85}
+                  >
+                    <Phone size={17} color={colors.gold} />
+                    <Text style={styles.secondaryActionText}>
+                      Call Driver
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.secondaryAction}
-                  onPress={openInMaps}
-                  activeOpacity={0.85}
-                >
-                  <ExternalLink size={17} color={colors.gold} />
-                  <Text style={styles.secondaryActionText}>Open Maps</Text>
-                </TouchableOpacity>
-              </View>
+                  <TouchableOpacity
+                    style={styles.secondaryAction}
+                    onPress={openInMaps}
+                    activeOpacity={0.85}
+                  >
+                    <ExternalLink size={17} color={colors.gold} />
+                    <Text style={styles.secondaryActionText}>
+                      Open Maps
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             <View style={styles.card}>
@@ -690,18 +996,55 @@ export default function LiveTripScreen() {
                 <Text style={styles.cardTitle}>Trip Details</Text>
               </View>
 
-              <Row label="Invoice" value={trip.invoice_no || "N/A"} styles={styles} />
-              <Row label="Status" value={getStatusLabel(trip.status)} styles={styles} />
-              <Row label="Pickup" value={getPickup()} styles={styles} />
-              <Row label="Drop-off" value={getDropoff()} styles={styles} />
               <Row
-                label="Date"
-                value={trip.date || trip.ride_date || trip.pickup_date || "N/A"}
+                label="Booking Number"
+                value={getBookingNumber()}
                 styles={styles}
               />
+
+              <Row
+                label="Invoice Number"
+                value={getInvoiceNumber()}
+                styles={styles}
+              />
+
+              <Row
+                label="Status"
+                value={getStatusLabel(trip.status)}
+                styles={styles}
+              />
+
+              <Row
+                label="Pickup"
+                value={getPickup()}
+                styles={styles}
+              />
+
+              <Row
+                label="Drop-off"
+                value={getDropoff()}
+                styles={styles}
+              />
+
+              <Row
+                label="Date"
+                value={
+                  trip.date ||
+                  trip.ride_date ||
+                  trip.pickup_date ||
+                  "N/A"
+                }
+                styles={styles}
+              />
+
               <Row
                 label="Time"
-                value={trip.time || trip.ride_time || trip.pickup_time || "N/A"}
+                value={
+                  trip.time ||
+                  trip.ride_time ||
+                  trip.pickup_time ||
+                  "N/A"
+                }
                 styles={styles}
               />
             </View>
@@ -725,10 +1068,54 @@ export default function LiveTripScreen() {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.goldButton} onPress={openInMaps}>
-              <ExternalLink size={18} color={colors.navy} />
-              <Text style={styles.goldButtonText}>Open Driver Location in Maps</Text>
-            </TouchableOpacity>
+            {!isStoppedStatus(trip.status) && (
+              <TouchableOpacity
+                style={styles.goldButton}
+                onPress={openInMaps}
+              >
+                <ExternalLink size={18} color={colors.navy} />
+                <Text style={styles.goldButtonText}>
+                  Open Driver Location in Maps
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {isCompleted && !isPaid && (
+              <TouchableOpacity
+                style={styles.goldButton}
+                onPress={openPayRide}
+              >
+                <CreditCard size={18} color={colors.navy} />
+                <Text style={styles.goldButtonText}>
+                  Pay Completed Ride
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {isCompleted && (
+              <TouchableOpacity
+                style={styles.outlineButton}
+                onPress={openRateDriver}
+              >
+                <Star size={18} color={colors.gold} />
+                <Text style={styles.outlineButtonText}>
+                  Rate Your Chauffeur
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {isCancelled && (
+              <TouchableOpacity
+                style={styles.outlineButton}
+                onPress={() =>
+                  router.replace("/my-trips" as any)
+                }
+              >
+                <Text style={styles.outlineButtonText}>
+                  Back to My Trips
+                </Text>
+              </TouchableOpacity>
+            )}
           </Animated.View>
         </ScrollView>
       </View>
@@ -944,7 +1331,6 @@ function createStyles(c: any) {
     },
     mapShell: {
       height: 330,
-      padding: 0,
       overflow: "hidden",
       marginBottom: 18,
       borderRadius: 22,
@@ -1022,6 +1408,8 @@ function createStyles(c: any) {
       paddingHorizontal: 18,
       alignItems: "center",
       justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
       borderWidth: 1,
       borderColor: c.border,
       backgroundColor: c.card,

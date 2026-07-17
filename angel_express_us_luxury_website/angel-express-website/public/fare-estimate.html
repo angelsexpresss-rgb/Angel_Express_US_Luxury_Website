@@ -8,7 +8,6 @@
 
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -17,15 +16,19 @@
   --ae-gold:#D4AF37;
   --ae-muted:#B8C1CC;
   --ae-border:rgba(212,175,55,.28);
+  --ae-green:#38d46f;
+  --ae-red:#ff6b6b;
+  --ae-panel:rgba(13,20,34,.78);
+  --ae-panel-deep:rgba(5,11,22,.78);
 }
 
-*{
-  box-sizing:border-box;
-}
+*{box-sizing:border-box}
+
+html{scroll-behavior:smooth}
 
 body{
   margin:0;
-  background:#050b16;
+  background:var(--ae-navy);
   color:white;
   overflow-x:hidden;
 }
@@ -56,7 +59,8 @@ body{
 }
 
 .fare-wrap{
-  max-width:980px;
+  width:100%;
+  max-width:1180px;
   margin:0 auto;
 }
 
@@ -82,7 +86,7 @@ body{
 }
 
 .fare-card{
-  background:rgba(13,20,34,.78);
+  background:var(--ae-panel);
   border:1px solid var(--ae-border);
   border-radius:34px;
   padding:clamp(24px,5vw,46px);
@@ -112,56 +116,186 @@ body{
   letter-spacing:-2px;
 }
 
-.fare-title span{
-  color:var(--ae-gold);
-}
+.fare-title span{color:var(--ae-gold)}
 
 .fare-subtitle{
   color:#dce5ee;
   font-size:18px;
   line-height:1.7;
-  max-width:720px;
-  margin-bottom:36px;
+  max-width:780px;
+  margin-bottom:34px;
+}
+
+.status-banner{
+  display:none;
+  margin:0 0 24px;
+  padding:15px 17px;
+  border-radius:18px;
+  font-weight:850;
+  line-height:1.5;
+}
+
+.status-banner.info{
+  display:block;
+  background:rgba(212,175,55,.12);
+  border:1px solid rgba(212,175,55,.35);
+}
+
+.status-banner.error{
+  display:block;
+  background:rgba(255,107,107,.14);
+  border:1px solid rgba(255,107,107,.42);
+}
+
+.summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:16px;
+  margin:0 0 26px;
+}
+
+.summary-card{
+  min-height:136px;
+  padding:20px;
+  border-radius:24px;
+  background:rgba(5,11,22,.72);
+  border:1px solid rgba(212,175,55,.22);
+}
+
+.summary-icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#050b16;
+  background:var(--ae-gold);
+  margin-bottom:14px;
+}
+
+.summary-card span{
+  display:block;
+  color:var(--ae-muted);
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1.1px;
+  margin-bottom:7px;
+}
+
+.summary-card strong{
+  display:block;
+  color:white;
+  line-height:1.45;
+  word-break:break-word;
+}
+
+.content-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr);
+  gap:24px;
+  align-items:start;
+}
+
+.left-stack,.right-stack{
+  display:grid;
+  gap:24px;
 }
 
 .fare-box{
-  margin-top:26px;
   padding:28px;
   border-radius:28px;
-  background:rgba(5,11,22,.72);
+  background:var(--ae-panel-deep);
   border:1px solid rgba(212,175,55,.22);
   box-shadow:0 20px 60px rgba(0,0,0,.22);
 }
 
 .fare-box h2{
+  display:flex;
+  align-items:center;
+  gap:11px;
   color:var(--ae-gold);
-  font-size:26px;
+  font-size:24px;
   margin:0 0 20px;
 }
 
-.fare-label{
-  margin:18px 0 7px;
-  color:var(--ae-gold);
-  font-size:12px;
-  font-weight:900;
-  text-transform:uppercase;
-  letter-spacing:1.4px;
+.route-point{
+  position:relative;
+  padding-left:26px;
+  margin-bottom:19px;
 }
 
-.fare-box p{
-  color:#dce5ee;
-  line-height:1.7;
-  margin-top:0;
+.route-point::before{
+  content:"";
+  position:absolute;
+  left:2px;
+  top:7px;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--ae-gold);
+  box-shadow:0 0 0 5px rgba(212,175,55,.12);
+}
+
+.route-point.dropoff::before{
+  background:var(--ae-green);
+  box-shadow:0 0 0 5px rgba(56,212,111,.12);
+}
+
+.route-label{
+  margin:0 0 6px;
+  color:var(--ae-muted);
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1.35px;
+}
+
+.route-value{
+  margin:0;
+  color:#eef3f7;
+  line-height:1.6;
+}
+
+.detail-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.detail-item{
+  min-height:86px;
+  padding:16px;
+  border-radius:18px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+}
+
+.detail-item span{
+  display:block;
+  color:var(--ae-muted);
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1.1px;
+  margin-bottom:7px;
+}
+
+.detail-item strong{
+  color:white;
+  line-height:1.45;
 }
 
 .gps-note{
-  margin-top:20px!important;
+  margin:20px 0 0;
   padding:14px 16px;
   border-radius:16px;
   background:rgba(37,211,102,.1);
   border:1px solid rgba(37,211,102,.25);
-  color:#8ff5b6!important;
+  color:#8ff5b6;
   font-weight:800;
+  line-height:1.5;
 }
 
 .summary-row,
@@ -170,7 +304,7 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:18px;
-  padding:16px 0;
+  padding:15px 0;
   border-bottom:1px solid rgba(255,255,255,.08);
 }
 
@@ -185,18 +319,14 @@ body{
   text-align:right;
 }
 
-.discount-good{
-  color:#22c55e!important;
-}
-
-.discount-bad{
-  color:#FF6B6B!important;
-}
+.discount-good{color:#22c55e!important}
+.discount-bad{color:#ff7a7a!important}
+.muted-value{color:var(--ae-muted)!important}
 
 .fare-divider{
   border:none;
   border-top:1px solid rgba(212,175,55,.35);
-  margin:18px 0;
+  margin:18px 0 4px;
 }
 
 .final-row{
@@ -210,6 +340,18 @@ body{
   text-align:right;
 }
 
+.savings-pill{
+  display:none;
+  margin-top:12px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(56,212,111,.11);
+  border:1px solid rgba(56,212,111,.28);
+  color:#99f5ba;
+  font-weight:850;
+  text-align:center;
+}
+
 .estimate-disclaimer{
   margin:28px 0 0;
   color:var(--ae-muted);
@@ -220,21 +362,19 @@ body{
 .continue-btn{
   width:100%;
   min-height:64px;
-  margin-top:34px;
+  margin-top:28px;
   border:none;
   border-radius:999px;
   background:var(--ae-gold);
   color:#050b16;
-  font-size:19px;
+  font-size:18px;
   font-weight:950;
   cursor:pointer;
   box-shadow:0 20px 55px rgba(212,175,55,.28);
   transition:.25s ease;
 }
 
-.continue-btn:hover{
-  transform:translateY(-4px);
-}
+.continue-btn:hover{transform:translateY(-4px)}
 
 .continue-btn:disabled{
   opacity:.65;
@@ -244,52 +384,34 @@ body{
 
 .back-link{
   display:block;
-  margin-top:22px;
+  margin-top:20px;
   color:var(--ae-gold);
   text-align:center;
   font-weight:900;
   text-decoration:none;
 }
 
-@media(max-width:980px){
-  .fare-shell{
-    padding-top:112px;
-  }
+.hidden{display:none!important}
+
+@media(max-width:1050px){
+  .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .content-grid{grid-template-columns:1fr}
 }
 
-@media(max-width:640px){
-  .fare-shell{
-    padding:100px 4.5% 150px;
-  }
-
-  .fare-card{
-    border-radius:26px;
-  }
-
-  .fare-title{
-    font-size:42px;
-  }
-
-  .fare-subtitle{
-    font-size:16px;
-  }
-
-  .fare-box{
-    padding:22px;
-    border-radius:24px;
-  }
-
-  .summary-row,
-  .final-row{
+@media(max-width:700px){
+  .fare-shell{padding:100px 4.5% 150px}
+  .fare-card{border-radius:26px}
+  .fare-title{font-size:42px}
+  .fare-subtitle{font-size:16px}
+  .summary-grid{grid-template-columns:1fr}
+  .fare-box{padding:22px;border-radius:24px}
+  .detail-grid{grid-template-columns:1fr}
+  .summary-row,.final-row{
     align-items:flex-start;
     flex-direction:column;
     gap:7px;
   }
-
-  .summary-row strong,
-  .final-row strong{
-    text-align:left;
-  }
+  .summary-row strong,.final-row strong{text-align:left}
 }
 </style>
 </head>
@@ -297,12 +419,10 @@ body{
 <body>
 
 <div id="siteHeader"></div>
-
 <div class="fare-bg"></div>
 
 <main class="fare-shell">
   <div class="fare-wrap">
-
     <a href="book-ride.html" class="back-btn">
       <i class="fa-solid fa-arrow-left"></i>
       Back to Booking Form
@@ -317,122 +437,252 @@ body{
       <h1 class="fare-title">Fare <span>Estimate.</span></h1>
 
       <p class="fare-subtitle">
-        Review your estimated trip distance, rewards discounts, and ride details before confirming your Angel Express booking.
+        Review your passenger details, trip schedule, estimated distance, rewards, and fare breakdown before confirming your Angel Express booking.
       </p>
 
-      <div class="fare-box">
-        <h2>Trip Route</h2>
+      <div id="pageStatus" class="status-banner"></div>
 
-        <p class="fare-label">Pickup</p>
-        <p id="pickupText">Loading...</p>
+      <div class="summary-grid">
+        <article class="summary-card">
+          <div class="summary-icon"><i class="fa-solid fa-ticket"></i></div>
+          <span>Booking Number</span>
+          <strong id="bookingNumberTop">Generating...</strong>
+        </article>
 
-        <p class="fare-label">Drop-off</p>
-        <p id="dropoffText">Loading...</p>
+        <article class="summary-card">
+          <div class="summary-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+          <span>Invoice Number</span>
+          <strong id="invoiceNumberTop">Generating...</strong>
+        </article>
 
-        <p class="fare-label">Date & Time</p>
-        <p id="dateTimeText">Loading...</p>
+        <article class="summary-card">
+          <div class="summary-icon"><i class="fa-solid fa-user"></i></div>
+          <span>Passenger</span>
+          <strong id="passengerTop">Loading...</strong>
+        </article>
 
-        <p class="gps-note">
-          <i class="fa-solid fa-location-dot"></i>
-          GPS coordinates saved for chauffeur navigation
-        </p>
+        <article class="summary-card">
+          <div class="summary-icon"><i class="fa-solid fa-globe"></i></div>
+          <span>Booking Source</span>
+          <strong id="sourceTop">Website</strong>
+        </article>
       </div>
 
-      <div class="fare-box">
-        <h2>Estimate Summary</h2>
+      <div class="content-grid">
+        <div class="left-stack">
 
-        <div class="summary-row">
-          <span>Pricing Tier</span>
-          <strong id="pricingTier">Long Distance Trip</strong>
+          <div class="fare-box">
+            <h2><i class="fa-solid fa-route"></i> Trip Route</h2>
+
+            <div class="route-point">
+              <p class="route-label">Pickup</p>
+              <p class="route-value" id="pickupText">Loading...</p>
+            </div>
+
+            <div class="route-point dropoff">
+              <p class="route-label">Drop-off</p>
+              <p class="route-value" id="dropoffText">Loading...</p>
+            </div>
+
+            <p class="gps-note" id="gpsNote">
+              <i class="fa-solid fa-location-dot"></i>
+              GPS coordinates saved for chauffeur navigation.
+            </p>
+          </div>
+
+          <div class="fare-box">
+            <h2><i class="fa-solid fa-calendar-check"></i> Trip Details</h2>
+
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span>Pickup Date</span>
+                <strong id="pickupDateText">—</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Pickup Time</span>
+                <strong id="pickupTimeText">—</strong>
+              </div>
+
+              <div class="detail-item" id="returnDateItem">
+                <span>Return Date</span>
+                <strong id="returnDateText">—</strong>
+              </div>
+
+              <div class="detail-item" id="returnTimeItem">
+                <span>Return Time</span>
+                <strong id="returnTimeText">—</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Trip Type</span>
+                <strong id="tripTypeText">One Way</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Ride Category</span>
+                <strong id="rideCategoryText">Standard Ride</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Passengers</span>
+                <strong id="passengerCountText">1</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Luggage</span>
+                <strong id="luggageCountText">0</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="fare-box">
+            <h2><i class="fa-solid fa-address-card"></i> Passenger Details</h2>
+
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span>Full Name</span>
+                <strong id="fullNameText">Not provided</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Phone</span>
+                <strong id="phoneText">Not provided</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Email</span>
+                <strong id="emailText">Not provided</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Student Status</span>
+                <strong id="studentStatusText">Checking...</strong>
+              </div>
+
+              <div class="detail-item" id="studentCampusItem">
+                <span>Student Campus</span>
+                <strong id="studentCampusText">Not provided</strong>
+              </div>
+
+              <div class="detail-item">
+                <span>Rewards</span>
+                <strong id="rewardSummaryText">No rewards applied</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="fare-box hidden" id="airportBox">
+            <h2><i class="fa-solid fa-plane-arrival"></i> Airport Transfer</h2>
+
+            <div class="detail-grid">
+              <div class="detail-item"><span>Airport</span><strong id="airportText">—</strong></div>
+              <div class="detail-item"><span>Airline</span><strong id="airlineText">—</strong></div>
+              <div class="detail-item"><span>Flight Number</span><strong id="flightNumberText">—</strong></div>
+              <div class="detail-item"><span>Terminal</span><strong id="terminalText">—</strong></div>
+              <div class="detail-item"><span>Flight Type</span><strong id="flightTypeText">—</strong></div>
+              <div class="detail-item"><span>Arrival / Departure</span><strong id="flightDirectionText">—</strong></div>
+            </div>
+          </div>
+
+          <div class="fare-box">
+            <h2><i class="fa-solid fa-note-sticky"></i> Notes</h2>
+            <p id="notesText" style="margin:0;color:#dce5ee;line-height:1.75;">No additional notes.</p>
+          </div>
         </div>
 
-        <div class="summary-row">
-          <span>Distance</span>
-          <strong id="distanceText">Calculating...</strong>
-        </div>
+        <div class="right-stack">
+          <div class="fare-box">
+            <h2><i class="fa-solid fa-receipt"></i> Fare Breakdown</h2>
 
-        <div class="summary-row">
-          <span>Estimated Drive Time</span>
-          <strong id="driveTimeText">Calculating...</strong>
-        </div>
+            <div class="summary-row">
+              <span>Pricing Tier</span>
+              <strong id="pricingTier">Calculating...</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Fare Method</span>
-          <strong>$35.00 base + $1.10/mile</strong>
-        </div>
+            <div class="summary-row">
+              <span>Estimated Distance</span>
+              <strong id="distanceText">Calculating...</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Trip Type</span>
-          <strong id="tripTypeText">One Way</strong>
-        </div>
+            <div class="summary-row">
+              <span>Estimated Drive Time</span>
+              <strong id="driveTimeText">Calculating...</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Ride Category</span>
-          <strong id="rideCategoryText">Standard Ride</strong>
-        </div>
+            <div class="summary-row">
+              <span>Base Fare</span>
+              <strong id="baseFareText">$35.00</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Mileage Fare</span>
-          <strong id="mileageFareText">$0.00</strong>
-        </div>
+            <div class="summary-row">
+              <span>Mileage Charge</span>
+              <strong id="mileageFareText">$0.00</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Base + Mileage</span>
-          <strong id="baseMileageText">$0.00</strong>
-        </div>
+            <div class="summary-row">
+              <span>Round-trip Adjustment</span>
+              <strong id="roundTripText">$0.00</strong>
+            </div>
 
-        <div class="summary-row" id="sharedRideRow">
-          <span>Shared Ride Pricing</span>
-          <strong id="sharedRideText">Not selected</strong>
-        </div>
+            <div class="summary-row">
+              <span>Shared Ride Discount</span>
+              <strong id="sharedRideText">-$0.00</strong>
+            </div>
 
-        <div class="summary-row" id="roundTripRow">
-          <span>Round-trip Adjustment</span>
-          <strong id="roundTripText">$0.00</strong>
-        </div>
+            <div class="summary-row">
+              <span>Student Discount</span>
+              <strong id="studentDiscountText">-$0.00</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Student Verification</span>
-          <strong id="studentStatusText">Checking...</strong>
-        </div>
+            <div class="summary-row">
+              <span>Referral Discount</span>
+              <strong id="referralDiscountText">-$0.00</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Student Discount</span>
-          <strong id="studentDiscountText">-$0.00</strong>
-        </div>
+            <div class="summary-row">
+              <span>Promotional Discount</span>
+              <strong id="promoDiscountText">-$0.00</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Referral Discount</span>
-          <strong id="referralDiscountText">-$0.00</strong>
-        </div>
+            <div class="summary-row">
+              <span>Total Savings</span>
+              <strong id="totalSavingsText">-$0.00</strong>
+            </div>
 
-        <div class="summary-row">
-          <span>Total Savings</span>
-          <strong id="totalSavingsText">-$0.00</strong>
-        </div>
+            <hr class="fare-divider" />
 
-        <hr class="fare-divider" />
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <strong id="subtotalText">$0.00</strong>
+            </div>
 
-        <div class="final-row">
-          <span>Final Price</span>
-          <strong id="finalPriceText">$0.00</strong>
+            <div class="final-row">
+              <span>Balance Due</span>
+              <strong id="finalPriceText">$0.00</strong>
+            </div>
+
+            <div id="savingsPill" class="savings-pill"></div>
+          </div>
+
+          <div class="fare-box">
+            <h2><i class="fa-solid fa-circle-info"></i> Estimate Information</h2>
+            <p class="estimate-disclaimer" style="margin-top:0;">
+              This is an estimate. Angel Express may review and confirm the final fare based on route, wait time, airport pickup, event traffic, tolls, parking, and special requests.
+            </p>
+            <p class="estimate-disclaimer">
+              Referral credits are awarded only after the referred ride is completed and verified by Angel Express.
+            </p>
+
+            <button id="continueBtn" class="continue-btn" type="button" onclick="continueToConfirm()">
+              Continue to Confirm Booking
+            </button>
+
+            <a href="book-ride.html" class="back-link">← Back to Booking Form</a>
+          </div>
         </div>
       </div>
-
-      <p class="estimate-disclaimer">
-        This is an estimate. Angel Express may review and confirm the final fare based on route,
-        wait time, airport pickup, event traffic, and special requests. Referral credits are awarded only after the referred ride is completed.
-      </p>
-
-      <button id="continueBtn" class="continue-btn" type="button" onclick="continueToConfirm()">
-        Continue to Confirm Booking
-      </button>
-
-      <a href="book-ride.html" class="back-link">
-        ← Back to Booking Form
-      </a>
     </section>
-
   </div>
 </main>
 
@@ -444,18 +694,27 @@ body{
 const AE_FARE_SUPABASE_URL = "https://zlzastjpvbboniybyvjv.supabase.co";
 const AE_FARE_SUPABASE_ANON_KEY = "sb_publishable_Fn0wUeIUskON-kTpl8kDFw_B1Exp0EP";
 
-const aeFareSupabaseClient = supabase.createClient(
+const aeFareSupabaseClient = window.supabase.createClient(
   AE_FARE_SUPABASE_URL,
   AE_FARE_SUPABASE_ANON_KEY
 );
-
-let aeFareBooking = JSON.parse(localStorage.getItem("angelBooking") || "{}");
 
 const AE_FARE_BASE_FARE = 35;
 const AE_FARE_RATE_PER_MILE = 1.10;
 const AE_FARE_STUDENT_DISCOUNT_RATE = 0.20;
 const AE_FARE_REFERRAL_DISCOUNT_DEFAULT = 10;
 const AE_FARE_SHARED_RIDE_DISCOUNT_RATE = 0.15;
+const AE_FARE_PRICING_VERSION = "AE-WEB-V2-2026";
+
+let aeFareBooking = safeJsonParse(localStorage.getItem("angelBooking"), {});
+
+function safeJsonParse(value, fallback) {
+  try {
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function aeFareMoney(value) {
   return "$" + Number(value || 0).toFixed(2);
@@ -471,28 +730,104 @@ function aeFareNormalizeCode(code) {
 
 function aeFareBooleanValue(value) {
   if (value === true) return true;
-
   const normalized = String(value || "").trim().toLowerCase();
-
   return normalized === "true" || normalized === "yes" || normalized === "1";
 }
 
-function aeFareIsSharedRideSelected(data) {
-  const rideCategory = String(data.rideCategory || data.ride_category || "").toLowerCase();
-
-  return (
-    aeFareBooleanValue(data.sharedRide) ||
-    aeFareBooleanValue(data.shared_ride) ||
-    aeFareBooleanValue(data.studentSharedRide) ||
-    aeFareBooleanValue(data.student_shared_ride) ||
-    rideCategory.includes("shared") ||
-    rideCategory.includes("student group") ||
-    rideCategory.includes("student shared")
-  );
+function aeFareNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function aeFareEstimateMiles(pickup, dropoff) {
-  const text = `${pickup || ""} ${dropoff || ""}`.toLowerCase();
+function aeFareSetText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function aeFareSetStatus(message, type = "info") {
+  const box = document.getElementById("pageStatus");
+  if (!box) return;
+  box.className = "status-banner " + type;
+  box.textContent = message;
+}
+
+function aeFareFormatDate(value) {
+  if (!value) return "Not provided";
+  const date = new Date(value + "T12:00:00");
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", {
+    weekday:"short",
+    month:"short",
+    day:"numeric",
+    year:"numeric"
+  });
+}
+
+function aeFareFormatTime(value) {
+  if (!value) return "Not provided";
+  const [hours, minutes] = String(value).split(":").map(Number);
+  if (!Number.isFinite(hours)) return value;
+  const date = new Date();
+  date.setHours(hours, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  return date.toLocaleTimeString("en-US", {
+    hour:"numeric",
+    minute:"2-digit"
+  });
+}
+
+function aeFareGenerateBookingNumber() {
+  const now = new Date();
+  const datePart =
+    now.getFullYear().toString().slice(-2) +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0");
+  const randomPart = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `AE-${datePart}-${randomPart}`;
+}
+
+function aeFareGenerateInvoiceNumber() {
+  const now = new Date();
+  const datePart =
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, "0") +
+    String(now.getDate()).padStart(2, "0");
+  const randomPart = Math.floor(1000 + Math.random() * 9000);
+  return `INV-AE-${datePart}-${randomPart}`;
+}
+
+function aeFareHaversineMiles(lat1, lon1, lat2, lon2) {
+  const values = [lat1, lon1, lat2, lon2].map(Number);
+  if (values.some((v) => !Number.isFinite(v))) return null;
+
+  const [aLat, aLon, bLat, bLon] = values;
+  const toRad = (value) => (value * Math.PI) / 180;
+  const earthRadiusMiles = 3958.8;
+  const dLat = toRad(bLat - aLat);
+  const dLon = toRad(bLon - aLon);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) *
+      Math.cos(toRad(bLat)) *
+      Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusMiles * c;
+}
+
+function aeFareEstimateMiles(data) {
+  const lat1 = data.pickupLatitude ?? data.pickup_lat;
+  const lon1 = data.pickupLongitude ?? data.pickup_lng;
+  const lat2 = data.dropoffLatitude ?? data.dropoff_lat;
+  const lon2 = data.dropoffLongitude ?? data.dropoff_lng;
+
+  const straightLine = aeFareHaversineMiles(lat1, lon1, lat2, lon2);
+
+  if (straightLine !== null && straightLine > 0) {
+    return Math.max(straightLine * 1.18, 1);
+  }
+
+  const text = `${data.pickup || ""} ${data.dropoff || ""}`.toLowerCase();
 
   if (text.includes("austin")) return 221.5;
   if (text.includes("houston")) return 240;
@@ -506,13 +841,23 @@ function aeFareEstimateMiles(pickup, dropoff) {
 }
 
 function aeFareEstimateDriveTime(miles) {
-  const hours = miles / 55;
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
+  const totalMinutes = Math.max(Math.round((miles / 55) * 60), 10);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours <= 0) return `${minutes} min`;
+  return `${hours}h ${minutes}m`;
+}
 
-  if (h <= 0) return `${m} min`;
+function aeFareIsSharedRideSelected(data) {
+  const rideCategory = String(data.rideCategory || data.ride_category || "").toLowerCase();
 
-  return `${h}h ${m}m`;
+  return (
+    aeFareBooleanValue(data.sharedRide) ||
+    aeFareBooleanValue(data.shared_ride) ||
+    aeFareBooleanValue(data.studentSharedRide) ||
+    aeFareBooleanValue(data.student_shared_ride) ||
+    rideCategory.includes("shared")
+  );
 }
 
 async function aeFareCheckStudentVerified(email) {
@@ -520,79 +865,60 @@ async function aeFareCheckStudentVerified(email) {
 
   if (!cleanEmail) {
     return {
-      verified: false,
-      source: "none",
-      message: "Email required for student verification",
+      verified:false,
+      source:"none",
+      status:"Not Submitted",
+      campus:"",
+      message:"Email required for student verification"
     };
   }
 
   try {
-    const { data: passengerProfile } = await aeFareSupabaseClient
+    const { data, error } = await aeFareSupabaseClient
       .from("passenger_profiles")
-      .select("student_verified,student_status,student_discount_eligible,student_verification_status,email,student_email")
+      .select("student_verified,student_status,student_discount_eligible,student_verification_status,student_campus,student_university,email,student_email")
       .or(`email.ilike.${cleanEmail},student_email.ilike.${cleanEmail}`)
       .maybeSingle();
 
-    if (passengerProfile) {
+    if (error) throw error;
+
+    if (data) {
       const status = String(
-        passengerProfile.student_status ||
-        passengerProfile.student_verification_status ||
+        data.student_status ||
+        data.student_verification_status ||
         ""
-      ).toLowerCase();
+      ).trim();
+
+      const normalizedStatus = status.toLowerCase();
 
       const verified = Boolean(
-        passengerProfile.student_verified === true ||
-        passengerProfile.student_discount_eligible === true ||
-        status === "approved" ||
-        status === "verified" ||
-        status === "active"
+        data.student_verified === true ||
+        data.student_discount_eligible === true ||
+        normalizedStatus === "approved" ||
+        normalizedStatus === "verified" ||
+        normalizedStatus === "active"
       );
 
       return {
         verified,
-        source: "passenger_profiles",
-        message: verified
-          ? "Student discount approved"
-          : "Student account found but not approved yet",
+        source:"passenger_profiles",
+        status:status || (verified ? "Approved" : "Not Submitted"),
+        campus:data.student_campus || data.student_university || "",
+        message:verified
+          ? "Verified student — 20% discount approved"
+          : `Student status: ${status || "Not Submitted"}`
       };
     }
   } catch (error) {
-    console.warn("passenger_profiles student lookup skipped:", error.message);
-  }
-
-  try {
-    const { data: passenger } = await aeFareSupabaseClient
-      .from("passengers")
-      .select("student_verified,student_status,email")
-      .ilike("email", cleanEmail)
-      .maybeSingle();
-
-    if (passenger) {
-      const status = String(passenger.student_status || "").toLowerCase();
-
-      const verified = Boolean(
-        passenger.student_verified === true ||
-        status === "approved" ||
-        status === "verified" ||
-        status === "active"
-      );
-
-      return {
-        verified,
-        source: "passengers",
-        message: verified
-          ? "Student discount approved"
-          : "Student account found but not approved yet",
-      };
-    }
-  } catch (error) {
-    console.warn("passengers student lookup skipped:", error.message);
+    console.warn("Student lookup skipped:", error.message);
   }
 
   return {
-    verified: false,
-    source: "none",
-    message: "Student discount not approved for this email",
+    verified:false,
+    source:"none",
+    status:"Not Submitted",
+    campus:"",
+    message:"Student discount not approved for this email"
   };
 }
 
@@ -602,138 +928,57 @@ async function aeFareValidateReferralCode(code, passengerEmail) {
 
   if (!cleanCode) {
     return {
-      applied: false,
-      code: "",
-      referrerUserId: null,
-      discount: 0,
-      discountType: "fixed",
-      message: "No referral code entered",
+      applied:false,
+      code:"",
+      referrerUserId:null,
+      discount:0,
+      discountType:"fixed",
+      message:"No referral code entered"
     };
   }
 
   if (!cleanEmail) {
     return {
-      applied: false,
-      code: cleanCode,
-      referrerUserId: null,
-      discount: 0,
-      discountType: "fixed",
-      message: "Email required to use referral",
+      applied:false,
+      code:cleanCode,
+      referrerUserId:null,
+      discount:0,
+      discountType:"fixed",
+      message:"Email required to use referral"
     };
   }
 
   try {
-    const { data: referralCodeRecord } = await aeFareSupabaseClient
-      .from("referral_codes")
-      .select("*")
-      .ilike("code", cleanCode)
-      .maybeSingle();
-
-    if (referralCodeRecord) {
-      if (referralCodeRecord.is_active === false) {
-        return {
-          applied: false,
-          code: cleanCode,
-          referrerUserId: null,
-          discount: 0,
-          discountType: "fixed",
-          message: "Referral code is inactive",
-        };
-      }
-
-      const referrerEmail = aeFareNormalizeEmail(
-        referralCodeRecord.email ||
-        referralCodeRecord.referrer_email
-      );
-
-      if (referrerEmail && referrerEmail === cleanEmail) {
-        return {
-          applied: false,
-          code: cleanCode,
-          referrerUserId: null,
-          discount: 0,
-          discountType: "fixed",
-          message: "Cannot use your own referral code",
-        };
-      }
-
-      return {
-        applied: true,
-        code: cleanCode,
-        referrerUserId:
-          referralCodeRecord.referrer_user_id ||
-          referralCodeRecord.user_id ||
-          referralCodeRecord.passenger_id ||
-          referralCodeRecord.id ||
-          null,
-        discount: Number(
-          referralCodeRecord.discount_amount ||
-          referralCodeRecord.referral_discount ||
-          AE_FARE_REFERRAL_DISCOUNT_DEFAULT
-        ),
-        discountType:
-          referralCodeRecord.discount_percent ||
-          referralCodeRecord.discount_percentage
-            ? "percent"
-            : "fixed",
-        message: "Referral applied",
-      };
-    }
-  } catch (error) {
-    console.warn("referral_codes lookup skipped:", error.message);
-  }
-
-  let referrer = null;
-
-  try {
-    const { data } = await aeFareSupabaseClient
+    const { data: referrer, error } = await aeFareSupabaseClient
       .from("passenger_profiles")
-      .select("user_id,id,email,referral_code")
+      .select("user_id,id,email,referral_code,first_name,last_name")
       .ilike("referral_code", cleanCode)
       .maybeSingle();
 
-    if (data) referrer = data;
-  } catch (error) {
-    console.warn("passenger_profiles referral lookup skipped:", error.message);
-  }
+    if (error) throw error;
 
-  if (!referrer) {
-    try {
-      const { data } = await aeFareSupabaseClient
-        .from("passengers")
-        .select("user_id,id,email,referral_code")
-        .ilike("referral_code", cleanCode)
-        .maybeSingle();
-
-      if (data) referrer = data;
-    } catch (error) {
-      console.warn("passengers referral lookup skipped:", error.message);
+    if (!referrer) {
+      return {
+        applied:false,
+        code:cleanCode,
+        referrerUserId:null,
+        discount:0,
+        discountType:"fixed",
+        message:"Invalid referral code"
+      };
     }
-  }
 
-  if (!referrer) {
-    return {
-      applied: false,
-      code: cleanCode,
-      referrerUserId: null,
-      discount: 0,
-      discountType: "fixed",
-      message: "Invalid referral code",
-    };
-  }
+    if (aeFareNormalizeEmail(referrer.email) === cleanEmail) {
+      return {
+        applied:false,
+        code:cleanCode,
+        referrerUserId:null,
+        discount:0,
+        discountType:"fixed",
+        message:"Cannot use your own referral code"
+      };
+    }
 
-  if (aeFareNormalizeEmail(referrer.email) === cleanEmail) {
-    return {
-      applied: false,
-      code: cleanCode,
-      referrerUserId: null,
-      discount: 0,
-      discountType: "fixed",
-      message: "Cannot use your own referral code",
-    };
-  }
-
-  try {
     const { data: previousUse } = await aeFareSupabaseClient
       .from("bookings")
       .select("id")
@@ -743,48 +988,149 @@ async function aeFareValidateReferralCode(code, passengerEmail) {
 
     if (previousUse && previousUse.length > 0) {
       return {
-        applied: false,
-        code: cleanCode,
-        referrerUserId: null,
-        discount: 0,
-        discountType: "fixed",
-        message: "Referral already used by this email",
+        applied:false,
+        code:cleanCode,
+        referrerUserId:null,
+        discount:0,
+        discountType:"fixed",
+        message:"Referral already used by this email"
       };
     }
+
+    return {
+      applied:true,
+      code:cleanCode,
+      referrerUserId:referrer.user_id || referrer.id || null,
+      discount:AE_FARE_REFERRAL_DISCOUNT_DEFAULT,
+      discountType:"fixed",
+      message:"Referral applied"
+    };
   } catch (error) {
-    console.warn("Previous referral use check skipped:", error.message);
-  }
+    console.warn("Referral validation skipped:", error.message);
 
-  return {
-    applied: true,
-    code: cleanCode,
-    referrerUserId: referrer.user_id || referrer.id || null,
-    discount: AE_FARE_REFERRAL_DISCOUNT_DEFAULT,
-    discountType: "fixed",
-    message: "Referral applied",
-  };
+    if (aeFareBooleanValue(aeFareBooking.referral_applied)) {
+      return {
+        applied:true,
+        code:cleanCode,
+        referrerUserId:aeFareBooking.referrer_user_id || null,
+        discount:aeFareNumber(
+          aeFareBooking.referral_discount,
+          AE_FARE_REFERRAL_DISCOUNT_DEFAULT
+        ),
+        discountType:aeFareBooking.referral_discount_type || "fixed",
+        message:"Referral retained from booking form"
+      };
+    }
+
+    return {
+      applied:false,
+      code:cleanCode,
+      referrerUserId:null,
+      discount:0,
+      discountType:"fixed",
+      message:"Referral validation unavailable"
+    };
+  }
 }
 
-function aeFareCalculateReferralDiscount(referralResult, subtotalAfterSharedAndStudent) {
-  if (!referralResult.applied) return 0;
-
-  if (referralResult.discountType === "percent") {
-    return subtotalAfterSharedAndStudent * (Number(referralResult.discount || 0) / 100);
+function aeFareCalculateReferralDiscount(result, amount) {
+  if (!result.applied) return 0;
+  if (result.discountType === "percent") {
+    return amount * (aeFareNumber(result.discount) / 100);
   }
-
-  return Math.min(Number(referralResult.discount || 0), subtotalAfterSharedAndStudent);
+  return Math.min(aeFareNumber(result.discount), amount);
 }
 
-function aeFareSetText(id, value) {
-  const el = document.getElementById(id);
+function aeFarePopulateStaticSummary(data) {
+  const fullName =
+    data.full_name ||
+    data.fullName ||
+    [data.first_name, data.last_name].filter(Boolean).join(" ").trim() ||
+    "Passenger";
 
-  if (el) {
-    el.textContent = value;
+  const phone = data.phone || data.phone_number || data.passenger_phone || "Not provided";
+  const email = data.email || data.passenger_email || "Not provided";
+  const source = data.source || data.booking_source || data.channel || "website";
+
+  aeFareSetText("bookingNumberTop", data.booking_number);
+  aeFareSetText("invoiceNumberTop", data.invoice_number);
+  aeFareSetText("passengerTop", fullName);
+  aeFareSetText("sourceTop", String(source).replace(/\b\w/g, (c) => c.toUpperCase()));
+
+  aeFareSetText("pickupText", data.pickup || data.pickup_address || "Not provided");
+  aeFareSetText("dropoffText", data.dropoff || data.dropoff_address || "Not provided");
+
+  aeFareSetText("pickupDateText", aeFareFormatDate(data.date || data.ride_date));
+  aeFareSetText("pickupTimeText", aeFareFormatTime(data.time || data.ride_time));
+
+  const tripType = data.tripType || data.trip_type || "One Way";
+  const isRoundTrip = String(tripType).toLowerCase() === "round trip";
+
+  document.getElementById("returnDateItem")?.classList.toggle("hidden", !isRoundTrip);
+  document.getElementById("returnTimeItem")?.classList.toggle("hidden", !isRoundTrip);
+
+  aeFareSetText("returnDateText", aeFareFormatDate(data.return_date || data.returnDate));
+  aeFareSetText("returnTimeText", aeFareFormatTime(data.return_time || data.returnTime));
+  aeFareSetText("tripTypeText", tripType);
+  aeFareSetText("rideCategoryText", data.rideCategory || data.ride_category || "Standard Ride");
+
+  aeFareSetText("passengerCountText", String(data.passengers || data.passenger_count || 1));
+  aeFareSetText("luggageCountText", String(data.luggage || data.luggage_count || 0));
+
+  aeFareSetText("fullNameText", fullName);
+  aeFareSetText("phoneText", phone);
+  aeFareSetText("emailText", email);
+  aeFareSetText("studentCampusText", data.student_campus || data.studentCampus || "Not provided");
+
+  const referralCode =
+    data.referral_code_used ||
+    data.referral_code ||
+    data.referralCode ||
+    "";
+
+  aeFareSetText(
+    "rewardSummaryText",
+    referralCode ? `Referral code ${referralCode}` : "No rewards applied"
+  );
+
+  aeFareSetText("notesText", data.notes || "No additional notes.");
+
+  const rideCategory = String(data.rideCategory || data.ride_category || "").toLowerCase();
+  const airportSelected = rideCategory.includes("airport");
+
+  document.getElementById("airportBox")?.classList.toggle("hidden", !airportSelected);
+
+  if (airportSelected) {
+    aeFareSetText("airportText", data.airport || data.airport_name || "Not provided");
+    aeFareSetText("airlineText", data.airline || "Not provided");
+    aeFareSetText("flightNumberText", data.flight_number || data.flightNumber || "Not provided");
+    aeFareSetText("terminalText", data.terminal || "Not provided");
+    aeFareSetText("flightTypeText", data.flight_type || data.flightType || "Not provided");
+    aeFareSetText("flightDirectionText", data.flight_direction || data.flightDirection || "Not provided");
+  }
+
+  const hasGps = [
+    data.pickupLatitude ?? data.pickup_lat,
+    data.pickupLongitude ?? data.pickup_lng,
+    data.dropoffLatitude ?? data.dropoff_lat,
+    data.dropoffLongitude ?? data.dropoff_lng
+  ].every((value) => Number.isFinite(Number(value)));
+
+  const gpsNote = document.getElementById("gpsNote");
+  if (gpsNote && !hasGps) {
+    gpsNote.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> GPS coordinates are incomplete. The route estimate may be less precise.';
+    gpsNote.style.color = "#ffd18a";
+    gpsNote.style.borderColor = "rgba(255,193,7,.32)";
+    gpsNote.style.background = "rgba(255,193,7,.09)";
   }
 }
 
 async function aeFareCalculateFare() {
-  if (!aeFareBooking.pickup || !aeFareBooking.dropoff) {
+  if (
+    !(aeFareBooking.pickup || aeFareBooking.pickup_address) ||
+    !(aeFareBooking.dropoff || aeFareBooking.dropoff_address)
+  ) {
     window.location.href = "book-ride.html";
     return;
   }
@@ -793,28 +1139,53 @@ async function aeFareCalculateFare() {
 
   if (continueBtn) {
     continueBtn.disabled = true;
-    continueBtn.textContent = "Calculating Rewards...";
+    continueBtn.textContent = "Calculating Fare...";
   }
 
   try {
-    const miles = aeFareEstimateMiles(aeFareBooking.pickup, aeFareBooking.dropoff);
+    const bookingNumber =
+      aeFareBooking.booking_number ||
+      aeFareBooking.bookingNumber ||
+      aeFareGenerateBookingNumber();
+
+    const invoiceNumber =
+      aeFareBooking.invoice_number ||
+      aeFareBooking.invoiceNumber ||
+      aeFareGenerateInvoiceNumber();
+
+    aeFareBooking = {
+      ...aeFareBooking,
+      booking_number:bookingNumber,
+      bookingNumber:bookingNumber,
+      invoice_number:invoiceNumber,
+      invoiceNumber:invoiceNumber
+    };
+
+    aeFarePopulateStaticSummary(aeFareBooking);
+
+    const miles = aeFareEstimateMiles(aeFareBooking);
+    const driveTime = aeFareEstimateDriveTime(miles);
+
     const mileageFare = miles * AE_FARE_RATE_PER_MILE;
-    const baseMileage = AE_FARE_BASE_FARE + mileageFare;
+    const oneWaySubtotal = AE_FARE_BASE_FARE + mileageFare;
 
-    const isRoundTrip =
-      String(aeFareBooking.tripType || aeFareBooking.trip_type || "")
-        .toLowerCase() === "round trip";
+    const tripType = aeFareBooking.tripType || aeFareBooking.trip_type || "One Way";
+    const isRoundTrip = String(tripType).toLowerCase() === "round trip";
 
-    const beforeDiscount = isRoundTrip ? baseMileage * 2 : baseMileage;
+    const roundTripAdjustment = isRoundTrip ? oneWaySubtotal : 0;
+    const grossSubtotal = oneWaySubtotal + roundTripAdjustment;
 
     const sharedRideSelected = aeFareIsSharedRideSelected(aeFareBooking);
     const sharedRideDiscount = sharedRideSelected
-      ? beforeDiscount * AE_FARE_SHARED_RIDE_DISCOUNT_RATE
+      ? grossSubtotal * AE_FARE_SHARED_RIDE_DISCOUNT_RATE
       : 0;
 
-    const afterSharedRide = Math.max(beforeDiscount - sharedRideDiscount, 0);
+    const afterSharedRide = Math.max(grossSubtotal - sharedRideDiscount, 0);
 
-    const studentResult = await aeFareCheckStudentVerified(aeFareBooking.email || "");
+    const studentResult = await aeFareCheckStudentVerified(
+      aeFareBooking.email || aeFareBooking.passenger_email || ""
+    );
+
     const studentVerified = studentResult.verified;
     const studentDiscount = studentVerified
       ? afterSharedRide * AE_FARE_STUDENT_DISCOUNT_RATE
@@ -828,174 +1199,255 @@ async function aeFareCalculateFare() {
       aeFareBooking.referral_code ||
       aeFareBooking.referral_code_used ||
       "",
-      aeFareBooking.email || ""
+      aeFareBooking.email || aeFareBooking.passenger_email || ""
     );
 
-    const referralDiscount = aeFareCalculateReferralDiscount(referralResult, afterStudent);
-    const totalSavings = sharedRideDiscount + studentDiscount + referralDiscount;
-    const finalPrice = Math.max(beforeDiscount - totalSavings, 0);
+    const referralDiscount = aeFareCalculateReferralDiscount(
+      referralResult,
+      afterStudent
+    );
+
+    const promoDiscount = Math.min(
+      aeFareNumber(
+        aeFareBooking.promotional_discount ??
+        aeFareBooking.promo_discount ??
+        0
+      ),
+      Math.max(afterStudent - referralDiscount, 0)
+    );
+
+    const totalSavings =
+      sharedRideDiscount +
+      studentDiscount +
+      referralDiscount +
+      promoDiscount;
+
+    const finalPrice = Math.max(grossSubtotal - totalSavings, 0);
+
+    const pricingTier =
+      miles >= 50 ? "Long Distance Trip" : "Local Trip";
+
+    const passengerCount = Math.max(
+      1,
+      aeFareNumber(
+        aeFareBooking.passengers ??
+        aeFareBooking.passenger_count,
+        1
+      )
+    );
+
+    const rewardPoints = Math.max(
+      1,
+      Math.round(finalPrice)
+    );
+
+    const driverShare = finalPrice * 0.70;
+    const companyShare = finalPrice * 0.30;
 
     const updatedBooking = {
       ...aeFareBooking,
 
-      miles: miles.toFixed(1),
-      estimated_miles: miles.toFixed(1),
+      booking_number:bookingNumber,
+      bookingNumber:bookingNumber,
+      invoice_number:invoiceNumber,
+      invoiceNumber:invoiceNumber,
 
-      base: AE_FARE_BASE_FARE,
-      base_fare: AE_FARE_BASE_FARE.toFixed(2),
+      pricing_version:AE_FARE_PRICING_VERSION,
+      pricingVersion:AE_FARE_PRICING_VERSION,
 
-      mileageFare: mileageFare.toFixed(2),
-      mileage_fare: mileageFare.toFixed(2),
+      estimated_miles:miles.toFixed(1),
+      miles:miles.toFixed(1),
+      estimated_distance_miles:miles.toFixed(1),
+      estimated_distance:`${miles.toFixed(1)} miles`,
 
-      baseMileage: baseMileage.toFixed(2),
-      base_mileage: baseMileage.toFixed(2),
+      estimated_drive_time:driveTime,
+      estimatedDriveTime:driveTime,
+      estimated_duration:driveTime,
 
-      subtotal: beforeDiscount.toFixed(2),
-      baseTotal: beforeDiscount.toFixed(2),
-      base_total: beforeDiscount.toFixed(2),
+      base_fare:AE_FARE_BASE_FARE.toFixed(2),
+      base:AE_FARE_BASE_FARE,
 
-      total: finalPrice.toFixed(2),
-      total_fare: finalPrice.toFixed(2),
-      balance_due: finalPrice.toFixed(2),
+      rate_per_mile:AE_FARE_RATE_PER_MILE.toFixed(2),
+      mileage_fare:mileageFare.toFixed(2),
+      mileageFare:mileageFare.toFixed(2),
 
-      estimatedDriveTime: aeFareEstimateDriveTime(miles),
-      estimated_drive_time: aeFareEstimateDriveTime(miles),
+      one_way_subtotal:oneWaySubtotal.toFixed(2),
+      round_trip_adjustment:roundTripAdjustment.toFixed(2),
 
-      pricingTier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
-      pricing_tier: miles >= 50 ? "Long Distance Trip" : "Local Trip",
+      subtotal:grossSubtotal.toFixed(2),
+      base_total:grossSubtotal.toFixed(2),
+      baseTotal:grossSubtotal.toFixed(2),
 
-      fareMethod: "$35.00 base + $1.10/mile",
-      fare_method: "$35.00 base + $1.10/mile",
+      shared_ride:sharedRideSelected,
+      sharedRide:sharedRideSelected,
+      shared_ride_discount:sharedRideDiscount.toFixed(2),
+      sharedRideDiscount:sharedRideDiscount.toFixed(2),
+      shared_ride_rate:AE_FARE_SHARED_RIDE_DISCOUNT_RATE,
 
-      sharedRide: sharedRideSelected,
-      shared_ride: sharedRideSelected,
-      sharedRideDiscount: sharedRideDiscount.toFixed(2),
-      shared_ride_discount: sharedRideDiscount.toFixed(2),
-      sharedDiscount: sharedRideDiscount.toFixed(2),
-      shared_discount: sharedRideDiscount.toFixed(2),
-      shared_ride_rate: AE_FARE_SHARED_RIDE_DISCOUNT_RATE,
+      student_verified:studentVerified,
+      studentVerified:studentVerified,
+      student_verification_status:studentResult.status,
+      student_status_message:studentResult.message,
+      student_campus:
+        aeFareBooking.student_campus ||
+        aeFareBooking.studentCampus ||
+        studentResult.campus ||
+        "",
+      student_discount:studentDiscount.toFixed(2),
+      studentDiscount:studentDiscount.toFixed(2),
+      student_discount_rate:AE_FARE_STUDENT_DISCOUNT_RATE,
 
-      studentVerified,
-      student_verified: studentVerified,
-      student_status_message: studentResult.message,
-      studentDiscount: studentDiscount.toFixed(2),
-      student_discount: studentDiscount.toFixed(2),
-      student_discount_rate: AE_FARE_STUDENT_DISCOUNT_RATE,
+      referral_code:referralResult.applied ? referralResult.code : "",
+      referralCode:referralResult.applied ? referralResult.code : "",
+      referral_code_used:referralResult.code || "",
+      referral_applied:referralResult.applied,
+      referralApplied:referralResult.applied,
+      referral_status:referralResult.applied ? "validated" : "not_applied",
+      referrer_user_id:referralResult.referrerUserId,
+      referral_discount:referralDiscount.toFixed(2),
+      referralDiscount:referralDiscount.toFixed(2),
+      referral_discount_type:referralResult.discountType,
+      referral_message:referralResult.message,
+      referral_credit_awarded:false,
 
-      referralCode: referralResult.applied ? referralResult.code : "",
-      referral_code: referralResult.applied ? referralResult.code : "",
-      referral_code_used: referralResult.code || "",
-      referralApplied: referralResult.applied,
-      referral_applied: referralResult.applied,
-      referrerUserId: referralResult.referrerUserId,
-      referrer_user_id: referralResult.referrerUserId,
-      referralDiscount: referralDiscount.toFixed(2),
-      referral_discount: referralDiscount.toFixed(2),
-      referral_discount_type: referralResult.discountType,
-      referralMessage: referralResult.message,
-      referral_message: referralResult.message,
-      referral_credit_awarded: false,
+      promotional_discount:promoDiscount.toFixed(2),
+      promo_discount:promoDiscount.toFixed(2),
 
-      totalSavings: totalSavings.toFixed(2),
-      total_discount: totalSavings.toFixed(2),
+      total_savings:totalSavings.toFixed(2),
+      totalSavings:totalSavings.toFixed(2),
+      total_discount:totalSavings.toFixed(2),
 
-      reward_points_earned: Math.round(miles),
-      source: aeFareBooking.source || "website",
+      total_fare:finalPrice.toFixed(2),
+      total:finalPrice.toFixed(2),
+      balance_due:finalPrice.toFixed(2),
+
+      passenger_count:passengerCount,
+      passengers:passengerCount,
+
+      reward_points_earned:rewardPoints,
+
+      driver_share:driverShare.toFixed(2),
+      company_share:companyShare.toFixed(2),
+      driver_percentage:70,
+      company_percentage:30,
+
+      pricing_tier:pricingTier,
+      pricingTier:pricingTier,
+      fare_method:"$35.00 base + $1.10/mile",
+
+      payment_status:
+        aeFareBooking.payment_status ||
+        "unpaid",
+
+      booking_status:
+        aeFareBooking.booking_status ||
+        aeFareBooking.status ||
+        "draft",
+
+      source:aeFareBooking.source || "website",
+      booking_source:aeFareBooking.booking_source || "website",
+      channel:aeFareBooking.channel || "website",
+
+      draft_version:"Booking Draft V2",
+      fare_calculated_at:new Date().toISOString()
     };
 
     localStorage.setItem("angelBooking", JSON.stringify(updatedBooking));
+    localStorage.setItem("angelBookingDraftV2", JSON.stringify(updatedBooking));
     aeFareBooking = updatedBooking;
 
-    aeFareSetText("pickupText", aeFareBooking.pickup);
-    aeFareSetText("dropoffText", aeFareBooking.dropoff);
-    aeFareSetText(
-      "dateTimeText",
-      `${aeFareBooking.date || aeFareBooking.ride_date || "No date selected"} at ${aeFareBooking.time || aeFareBooking.ride_time || "No time selected"}`
-    );
+    aeFarePopulateStaticSummary(updatedBooking);
 
-    aeFareSetText("pricingTier", updatedBooking.pricingTier);
-    aeFareSetText("distanceText", `${updatedBooking.miles} miles`);
-    aeFareSetText("driveTimeText", updatedBooking.estimatedDriveTime);
-    aeFareSetText("tripTypeText", aeFareBooking.tripType || aeFareBooking.trip_type || "One Way");
-    aeFareSetText("rideCategoryText", aeFareBooking.rideCategory || aeFareBooking.ride_category || "Standard Ride");
+    aeFareSetText("pricingTier", pricingTier);
+    aeFareSetText("distanceText", `${miles.toFixed(1)} miles`);
+    aeFareSetText("driveTimeText", driveTime);
+    aeFareSetText("baseFareText", aeFareMoney(AE_FARE_BASE_FARE));
     aeFareSetText("mileageFareText", aeFareMoney(mileageFare));
-    aeFareSetText("baseMileageText", aeFareMoney(baseMileage));
+    aeFareSetText("roundTripText", isRoundTrip ? aeFareMoney(roundTripAdjustment) : "$0.00");
+    aeFareSetText("subtotalText", aeFareMoney(grossSubtotal));
+    aeFareSetText("finalPriceText", aeFareMoney(finalPrice));
 
-    const sharedRideText = document.getElementById("sharedRideText");
-
-    if (sharedRideText) {
-      if (sharedRideSelected) {
-        sharedRideText.textContent = "-$" + sharedRideDiscount.toFixed(2) + " (15% shared ride)";
-        sharedRideText.classList.add("discount-good");
-        sharedRideText.classList.remove("discount-bad");
-      } else {
-        sharedRideText.textContent = "Not selected";
-        sharedRideText.classList.remove("discount-good", "discount-bad");
-      }
+    const sharedText = document.getElementById("sharedRideText");
+    if (sharedText) {
+      sharedText.textContent = "-$" + sharedRideDiscount.toFixed(2);
+      sharedText.className = sharedRideDiscount > 0 ? "discount-good" : "muted-value";
     }
-
-    aeFareSetText(
-      "roundTripText",
-      isRoundTrip ? aeFareMoney(beforeDiscount) : aeFareMoney(baseMileage)
-    );
 
     const studentStatusText = document.getElementById("studentStatusText");
-
     if (studentStatusText) {
       studentStatusText.textContent = studentResult.message;
-      studentStatusText.classList.remove("discount-good", "discount-bad");
-      studentStatusText.classList.add(studentVerified ? "discount-good" : "discount-bad");
+      studentStatusText.className = studentVerified ? "discount-good" : "discount-bad";
     }
 
-    const studentDiscountText = document.getElementById("studentDiscountText");
+    aeFareSetText(
+      "studentCampusText",
+      updatedBooking.student_campus || "Not provided"
+    );
 
+    const studentDiscountText = document.getElementById("studentDiscountText");
     if (studentDiscountText) {
       studentDiscountText.textContent = "-$" + studentDiscount.toFixed(2);
-      studentDiscountText.classList.remove("discount-good", "discount-bad");
-
-      if (studentDiscount > 0) {
-        studentDiscountText.classList.add("discount-good");
-      }
-
-      if (!studentVerified) {
-        studentDiscountText.classList.add("discount-bad");
-      }
+      studentDiscountText.className =
+        studentDiscount > 0 ? "discount-good" : "muted-value";
     }
 
     const referralDiscountText = document.getElementById("referralDiscountText");
-
     if (referralDiscountText) {
-      if (referralResult.applied) {
-        referralDiscountText.textContent =
-          "-$" + referralDiscount.toFixed(2) + ` (${referralResult.code})`;
-        referralDiscountText.classList.remove("discount-bad");
-        referralDiscountText.classList.add("discount-good");
-      } else if (referralResult.code) {
-        referralDiscountText.textContent = referralResult.message;
-        referralDiscountText.classList.remove("discount-good");
-        referralDiscountText.classList.add("discount-bad");
-      } else {
-        referralDiscountText.textContent = "-$0.00";
-        referralDiscountText.classList.remove("discount-good", "discount-bad");
-      }
+      referralDiscountText.textContent =
+        referralResult.applied
+          ? `-$${referralDiscount.toFixed(2)} (${referralResult.code})`
+          : referralResult.code
+            ? referralResult.message
+            : "-$0.00";
+
+      referralDiscountText.className =
+        referralResult.applied
+          ? "discount-good"
+          : referralResult.code
+            ? "discount-bad"
+            : "muted-value";
+    }
+
+    const promoDiscountText = document.getElementById("promoDiscountText");
+    if (promoDiscountText) {
+      promoDiscountText.textContent = "-$" + promoDiscount.toFixed(2);
+      promoDiscountText.className =
+        promoDiscount > 0 ? "discount-good" : "muted-value";
     }
 
     const totalSavingsText = document.getElementById("totalSavingsText");
-
     if (totalSavingsText) {
       totalSavingsText.textContent = "-$" + totalSavings.toFixed(2);
-
-      if (totalSavings > 0) {
-        totalSavingsText.classList.add("discount-good");
-      } else {
-        totalSavingsText.classList.remove("discount-good");
-      }
+      totalSavingsText.className =
+        totalSavings > 0 ? "discount-good" : "muted-value";
     }
 
-    aeFareSetText("finalPriceText", aeFareMoney(finalPrice));
+    aeFareSetText(
+      "rewardSummaryText",
+      [
+        studentVerified ? "20% student discount" : "",
+        sharedRideSelected ? "15% shared ride discount" : "",
+        referralResult.applied ? `Referral ${referralResult.code}` : "",
+        promoDiscount > 0 ? "Promotional discount" : ""
+      ].filter(Boolean).join(" • ") || "No rewards applied"
+    );
+
+    const savingsPill = document.getElementById("savingsPill");
+    if (savingsPill && totalSavings > 0) {
+      savingsPill.style.display = "block";
+      savingsPill.textContent = `You are saving ${aeFareMoney(totalSavings)} on this trip.`;
+    }
+
+    aeFareSetStatus(
+      "Your fare estimate is ready. Review the details below before continuing.",
+      "info"
+    );
   } catch (error) {
     console.error(error);
-    alert("Fare estimate could not be calculated. " + (error.message || ""));
+    aeFareSetStatus(
+      "Fare estimate could not be calculated. Please return to the booking form and try again.",
+      "error"
+    );
   } finally {
     if (continueBtn) {
       continueBtn.disabled = false;
@@ -1005,13 +1457,17 @@ async function aeFareCalculateFare() {
 }
 
 function continueToConfirm() {
+  if (!aeFareBooking || !aeFareBooking.total_fare) {
+    alert("Please wait for the fare estimate to finish calculating.");
+    return;
+  }
+
+  localStorage.setItem("angelBooking", JSON.stringify(aeFareBooking));
   window.location.href = "confirm-booking.html";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    aeFareCalculateFare();
-  }, 150);
+  setTimeout(aeFareCalculateFare, 120);
 });
 </script>
 

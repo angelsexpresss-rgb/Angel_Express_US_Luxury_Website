@@ -1,5 +1,3 @@
-import * as FileSystem from "expo-file-system/legacy";
-import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -16,48 +14,93 @@ import {
 import {
   ArrowLeft,
   BadgeCheck,
+  CalendarDays,
+  Clock,
   CreditCard,
-  Gift,
+  GraduationCap,
   MapPinned,
+  ReceiptText,
   Route,
   ShieldCheck,
   Sparkles,
+  Tag,
   Users,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
 import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
 
-const GOOGLE_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzfjXYUphz8-nyETcdMYOpHCPoBY33V17OkAZMODpBRVT2V6m8H9DTG5iBM63QqbHtR/exec";
+type JsonRecord = Record<string, any>;
 
-const REFERRAL_DISCOUNT_AMOUNT = 10;
+function firstValue(...values: any[]) {
+  return values.find(
+    (value) => value !== undefined && value !== null && value !== ""
+  );
+}
 
-function calculateTieredFare(distanceMiles: number) {
-  if (distanceMiles <= 20) {
-    return {
-      pricingTier: "local",
-      pricingTierLabel: "Local Trip",
-      baseFareAmount: 15,
-      mileageRate: 1.5,
-    };
-  }
+function money(value: any) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) ? amount : 0;
+}
 
-  if (distanceMiles <= 100) {
-    return {
-      pricingTier: "medium",
-      pricingTierLabel: "Medium Trip",
-      baseFareAmount: 25,
-      mileageRate: 1.25,
-    };
-  }
+function formatMoney(value: any) {
+  return `$${money(value).toFixed(2)}`;
+}
 
-  return {
-    pricingTier: "long_distance",
-    pricingTierLabel: "Long Distance Trip",
-    baseFareAmount: 35,
-    mileageRate: 1.1,
+function formatDuration(value: any) {
+  const minutes = Math.max(0, Math.round(Number(value || 0)));
+
+  if (!minutes) return "N/A";
+
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+
+  return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`;
+}
+
+function formatDate(value?: string) {
+  if (!value) return "N/A";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(value?: string) {
+  if (!value) return "N/A";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function displayTripType(value?: string) {
+  return value === "round_trip" ? "Round Trip" : "One Way";
+}
+
+function displayRideCategory(value?: string, label?: string) {
+  if (label) return label;
+
+  const map: Record<string, string> = {
+    private: "Standard Ride",
+    airport: "Airport Transfer",
+    student_private: "Student Ride",
+    student_pool: "Student Shared Ride",
+    tourist_event: "Tourist/Event Ride",
+    corporate: "Corporate Ride",
   };
+
+  return map[value || ""] || value || "Standard Ride";
 }
 
 export default function ConfirmBookingScreen() {
@@ -66,83 +109,21 @@ export default function ConfirmBookingScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const pickupAddress = String(params.pickupAddress || "");
-  const dropoffAddress = String(params.dropoffAddress || "");
-
-  const rideDate = String(params.rideDate || "");
-  const rideTime = String(params.rideTime || "");
-  const tripType = String(params.tripType || "One Way");
-  const rideCategory = String(params.rideCategory || "Standard Ride");
-  const passengers = String(params.passengers || "1");
-  const luggageCount = String(params.luggageCount || "0");
-  const notes = String(params.notes || "");
-
-  const promoCode = String(params.promoCode || params.referralCode || "")
-    .trim()
-    .toUpperCase();
-
-  const distanceMiles = Number(params.distanceMiles || 0);
-  const durationText = String(params.durationText || "");
-
-  const incomingReferralApplied =
-    String(params.referralApplied || "false") === "true";
-  const incomingReferrerUserId = String(params.referrerUserId || "");
-  const incomingReferralDiscount = Number(params.referralDiscount || 0);
-
-  const incomingStudentVerified =
-    String(params.studentVerified || params.student_verified || "false") === "true";
-  const incomingStudentDiscount = Number(params.studentDiscount || 0);
-
-  const roundTripAdjustment = Number(params.roundTripAdjustment || 0);
-  const eventSurcharge = Number(params.eventSurcharge || 0);
-
-  const studentSharedRide =
-    String(params.studentSharedRide || params.student_shared_ride || "false") ===
-      "true" ||
-    rideCategory.toLowerCase().includes("shared") ||
-    rideCategory.toLowerCase().includes("pool");
-
-  const studentPoolId = String(params.studentPoolId || params.student_pool_id || "");
-  const studentCampus = String(params.studentCampus || params.student_campus || "");
-  const studentPoolRoute = String(
-    params.studentPoolRoute || params.student_pool_route || ""
+  const draftId = String(
+    firstValue(params.draftId, params.draft_id, "") || ""
   );
 
-  const [loading, setLoading] = useState(false);
-  const [checkingReferral, setCheckingReferral] = useState(true);
+  const accessToken = String(
+    firstValue(params.accessToken, params.access_token, "") || ""
+  );
 
-  const [referralValid, setReferralValid] = useState(false);
-  const [referrerUserId, setReferrerUserId] = useState("");
-  const [referralMessage, setReferralMessage] = useState("");
-
-  const [studentVerified, setStudentVerified] = useState(incomingStudentVerified);
+  const [draft, setDraft] = useState<JsonRecord | null>(null);
+  const [loadingDraft, setLoadingDraft] = useState(true);
+  const [confirming, setConfirming] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
-
-  const tier = calculateTieredFare(distanceMiles);
-  const mileageFare = distanceMiles * tier.mileageRate;
-  const subtotal =
-    tier.baseFareAmount + mileageFare + roundTripAdjustment + eventSurcharge;
-
-  const studentDiscount = studentVerified
-    ? incomingStudentDiscount > 0
-      ? incomingStudentDiscount
-      : subtotal * 0.2
-    : 0;
-
-  const referralDiscount = referralValid
-    ? incomingReferralDiscount > 0
-      ? incomingReferralDiscount
-      : Math.min(REFERRAL_DISCOUNT_AMOUNT, subtotal - studentDiscount)
-    : 0;
-
-  const totalDiscount = studentDiscount + referralDiscount;
-  const finalPrice = Math.max(subtotal - totalDiscount, 0);
-
-  const driverShare = finalPrice * 0.7;
-  const companyShare = finalPrice * 0.3;
-  const rewardPointsEarned = Math.round(distanceMiles);
 
   useEffect(() => {
     Animated.loop(
@@ -166,433 +147,124 @@ export default function ConfirmBookingScreen() {
       useNativeDriver: true,
     }).start();
 
-    loadVerificationAndReferral();
+    loadDraft();
   }, []);
 
-  async function loadVerificationAndReferral() {
+  async function loadDraft() {
     try {
-      setCheckingReferral(true);
+      setLoadingDraft(true);
+      setErrorMessage("");
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("passenger_profiles")
-        .select("student_verified,student_discount_eligible")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      const approvedStudent = Boolean(
-        profile?.student_verified || profile?.student_discount_eligible
-      );
-
-      setStudentVerified(approvedStudent || incomingStudentVerified);
-
-      if (!promoCode) {
-        setReferralValid(false);
-        setReferrerUserId("");
-        setReferralMessage("");
-        return;
+      if (!draftId) {
+        throw new Error(
+          "Booking draft ID is missing. Please return to the fare estimate."
+        );
       }
 
-      if (
-        incomingReferralApplied &&
-        incomingReferrerUserId &&
-        incomingReferrerUserId !== user.id
-      ) {
-        setReferralValid(true);
-        setReferrerUserId(incomingReferrerUserId);
-        setReferralMessage("Referral applied");
-        return;
-      }
-
-      const { data: referrer, error } = await supabase
-        .from("passenger_profiles")
-        .select("user_id,referral_code,email")
-        .ilike("referral_code", promoCode)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("get_booking_draft_v2", {
+        p_draft_id: draftId,
+        p_access_token: accessToken || null,
+      });
 
       if (error) throw error;
 
-      if (!referrer?.user_id) {
-        setReferralValid(false);
-        setReferrerUserId("");
-        setReferralMessage("Invalid referral code");
-        return;
+      const loadedDraft = data?.draft || data;
+
+      if (!loadedDraft?.id) {
+        throw new Error("The accepted booking draft could not be loaded.");
       }
 
-      if (referrer.user_id === user.id) {
-        setReferralValid(false);
-        setReferrerUserId("");
-        setReferralMessage("You cannot use your own referral code");
-        return;
+      if (loadedDraft.status === "expired") {
+        throw new Error(
+          "This booking draft has expired. Please start a new booking."
+        );
       }
 
-      const userEmail = user.email?.trim().toLowerCase() || "";
-
-      const { data: previousUse } = await supabase
-        .from("bookings")
-        .select("id")
-        .ilike("email", userEmail)
-        .eq("referral_applied", true)
-        .limit(1);
-
-      if (previousUse && previousUse.length > 0) {
-        setReferralValid(false);
-        setReferrerUserId("");
-        setReferralMessage("Referral already used by this account");
-        return;
+      if (loadedDraft.status === "cancelled") {
+        throw new Error("This booking draft has been cancelled.");
       }
 
-      setReferralValid(true);
-      setReferrerUserId(referrer.user_id);
-      setReferralMessage("Referral applied");
-    } catch {
-      setReferralValid(false);
-      setReferrerUserId("");
-      setReferralMessage("Referral could not be verified");
+      if (
+        !["quote_accepted", "confirmed", "completed"].includes(
+          String(loadedDraft.status)
+        )
+      ) {
+        throw new Error(
+          "The fare quote has not been accepted. Please return to the fare estimate."
+        );
+      }
+
+      setDraft(loadedDraft);
+    } catch (error: any) {
+      console.error("Confirm Booking V2 load error:", error);
+
+      const message =
+        error?.message || "Angel Express could not load this booking draft.";
+
+      setErrorMessage(message);
+      Alert.alert("Booking Draft Error", message);
     } finally {
-      setCheckingReferral(false);
+      setLoadingDraft(false);
     }
-  }
-
-  async function getCoordinates(address: string) {
-    const response = await fetch(
-      `https://photon.komoot.io/api/?q=${encodeURIComponent(address)}&limit=1`
-    );
-
-    const data = await response.json();
-
-    if (!data.features || data.features.length === 0) {
-      throw new Error(`Could not find GPS coordinates for: ${address}`);
-    }
-
-    const [longitude, latitude] = data.features[0].geometry.coordinates;
-
-    return {
-      latitude: Number(latitude),
-      longitude: Number(longitude),
-    };
-  }
-
-  async function resolveCoordinates() {
-    let pickupLat = Number(params.pickupLat || 0);
-    let pickupLng = Number(params.pickupLng || 0);
-    let dropoffLat = Number(params.dropoffLat || 0);
-    let dropoffLng = Number(params.dropoffLng || 0);
-
-    if (!pickupLat || !pickupLng) {
-      const pickupCoords = await getCoordinates(pickupAddress);
-      pickupLat = pickupCoords.latitude;
-      pickupLng = pickupCoords.longitude;
-    }
-
-    if (!dropoffLat || !dropoffLng) {
-      const dropoffCoords = await getCoordinates(dropoffAddress);
-      dropoffLat = dropoffCoords.latitude;
-      dropoffLng = dropoffCoords.longitude;
-    }
-
-    return {
-      pickupLat,
-      pickupLng,
-      dropoffLat,
-      dropoffLng,
-    };
-  }
-
-  function makeInvoiceNo() {
-    const random = Math.floor(100000 + Math.random() * 900000);
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    return `AE-${date}-${random}`;
-  }
-
-  async function createInvoicePdf(invoiceNo: string, bookingData: any) {
-    const html = `
-      <html>
-        <body style="font-family: Arial; padding: 30px; color: #222;">
-          <div style="background:#0B2A4A;color:white;padding:25px;text-align:center;border-radius:12px;">
-            <h1>ANGEL EXPRESS</h1>
-            <p>COMFORT. RELIABILITY. SECURITY. CLEANLINESS.</p>
-          </div>
-
-          <h2>Invoice: ${invoiceNo}</h2>
-
-          <p><b>Passenger:</b> ${bookingData.passenger_name}</p>
-          <p><b>Email:</b> ${bookingData.email}</p>
-          <p><b>Phone:</b> ${bookingData.phone}</p>
-
-          <hr />
-
-          <p><b>Pickup:</b> ${bookingData.pickup_address}</p>
-          <p><b>Drop-off:</b> ${bookingData.dropoff_address}</p>
-          <p><b>Date:</b> ${bookingData.ride_date}</p>
-          <p><b>Time:</b> ${bookingData.ride_time}</p>
-          <p><b>Trip Type:</b> ${bookingData.trip_type}</p>
-          <p><b>Ride Category:</b> ${bookingData.ride_category}</p>
-          <p><b>Student Shared Ride:</b> ${bookingData.student_shared_ride ? "Yes" : "No"}</p>
-
-          <hr />
-
-          <p><b>Pricing Tier:</b> ${bookingData.pricing_tier}</p>
-          <p><b>Distance:</b> ${bookingData.estimated_miles} miles</p>
-          <p><b>Base Fare:</b> $${Number(bookingData.base_fare_amount).toFixed(2)}</p>
-          <p><b>Mileage Fare:</b> $${Number(bookingData.mileage_fare).toFixed(2)}</p>
-          <p><b>Student Discount:</b> -$${Number(bookingData.student_discount).toFixed(2)}</p>
-          <p><b>Referral Discount:</b> -$${Number(bookingData.referral_discount).toFixed(2)}</p>
-          <h2>Total Fare: $${Number(bookingData.total_fare).toFixed(2)}</h2>
-
-          <p>Payment is collected after ride completion.</p>
-          <p>Please use invoice number <b>${invoiceNo}</b> as payment reference.</p>
-        </body>
-      </html>
-    `;
-
-    const file = await Print.printToFileAsync({ html });
-
-    const base64 = await FileSystem.readAsStringAsync(file.uri, {
-      encoding: "base64" as any,
-    });
-
-    return base64;
   }
 
   async function confirmBooking() {
-    if (loading) return;
+    if (confirming || !draftId || !draft) return;
 
     try {
-      setLoading(true);
+      setConfirming(true);
 
-      const coords = await resolveCoordinates();
-
-      if (
-        !coords.pickupLat ||
-        !coords.pickupLng ||
-        !coords.dropoffLat ||
-        !coords.dropoffLng
-      ) {
-        Alert.alert(
-          "GPS Coordinates Missing",
-          "Please go back and select pickup and drop-off addresses from the suggestions."
-        );
-        return;
-      }
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-
-      if (!user) {
-        Alert.alert("Not Logged In", "Please sign in again.");
-        router.replace("/login" as any);
-        return;
-      }
-
-      const { data: passenger, error: passengerError } = await supabase
-        .from("passengers")
-        .select("first_name,last_name,email,phone")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (passengerError) throw passengerError;
-
-      const passengerName = `${passenger?.first_name || ""} ${
-        passenger?.last_name || ""
-      }`.trim();
-
-      const invoiceNo = makeInvoiceNo();
-
-      const bookingData = {
-        user_id: user.id,
-
-        passenger_name: passengerName || user.email || "",
-        name: passengerName || user.email || "",
-
-        email: passenger?.email || user.email || "",
-        phone: passenger?.phone || "",
-
-        pickup_address: pickupAddress,
-        dropoff_address: dropoffAddress,
-        pickup: pickupAddress,
-        dropoff: dropoffAddress,
-        route: `${pickupAddress} → ${dropoffAddress}`,
-
-        pickup_lat: coords.pickupLat,
-        pickup_lng: coords.pickupLng,
-        dropoff_lat: coords.dropoffLat,
-        dropoff_lng: coords.dropoffLng,
-
-        ride_date: rideDate,
-        ride_time: rideTime,
-        date: rideDate,
-        time: rideTime,
-
-        trip_type: tripType,
-        tripType: tripType,
-        ride_category: studentSharedRide ? "Student Shared Ride" : rideCategory,
-
-        passengers: Number(passengers) || 1,
-        luggage_count: Number(luggageCount) || 0,
-        notes,
-
-        promo_code: promoCode || null,
-
-        referral_code: referralValid ? promoCode : null,
-        referral_code_used: referralValid ? promoCode : null,
-        referrer_user_id: referralValid ? referrerUserId : null,
-        referral_discount: referralValid ? referralDiscount : 0,
-        referral_applied: referralValid,
-        referral_credit_awarded: false,
-
-        student_verified: studentVerified,
-        student_discount: studentDiscount,
-        student_shared_ride: studentSharedRide,
-        student_pool_id: studentPoolId || null,
-
-        source: "app",
-        status: "pending",
-
-        pricing_model: "tiered",
-        pricing_tier: tier.pricingTier,
-        base_fare_amount: tier.baseFareAmount,
-        mileage_rate: tier.mileageRate,
-        mileage_fare: mileageFare,
-        event_surcharge: eventSurcharge,
-
-        estimated_miles: distanceMiles,
-        miles: distanceMiles,
-
-        base_fare: subtotal,
-        base: subtotal,
-
-        round_trip_adjustment: roundTripAdjustment,
-        total_discount: totalDiscount,
-
-        total_fare: finalPrice,
-        total: finalPrice,
-        balance_due: finalPrice,
-
-        reward_points_earned: rewardPointsEarned,
-
-        driver_share: driverShare,
-        company_share: companyShare,
-        driver_payout: driverShare,
-
-        invoice_no: invoiceNo,
-        invoice_status: "Pending",
-
-        payment_status: "unpaid",
-        payment_method: null,
-
-        duration_text: durationText,
-      };
-
-      const { data: insertedBooking, error } = await supabase
-        .from("bookings")
-        .insert(bookingData)
-        .select("*")
-        .single();
+      const { data, error } = await supabase.rpc(
+        "confirm_booking_draft_v2",
+        {
+          p_draft_id: draftId,
+          p_access_token: accessToken || null,
+        }
+      );
 
       if (error) throw error;
 
-      if (studentSharedRide) {
-        try {
-          await supabase.from("student_pool_members").insert({
-            booking_id: insertedBooking.id,
-            passenger_user_id: user.id,
-            passenger_email: user.email,
-            invoice_no: invoiceNo,
-            campus: studentCampus || null,
-            pool_route:
-              studentPoolRoute || `${pickupAddress} → ${dropoffAddress}`,
-            status: "pending",
-          });
-        } catch {
-          console.log("Student pool member record skipped.");
-        }
+      if (!data?.success || !data?.booking_id) {
+        throw new Error(
+          "The booking confirmation engine did not return a booking ID."
+        );
       }
 
-      if (referralValid && referrerUserId) {
-        try {
-          await supabase.from("referral_rewards").insert({
-            referrer_user_id: referrerUserId,
-            referred_booking_id: insertedBooking.id,
-            referred_passenger_email: passenger?.email || user.email || "",
-            referral_code: promoCode,
-            discount_given: referralDiscount,
-            credit_earned: 10,
-            status: "pending",
-          });
-        } catch {
-          console.log("Pending referral reward skipped.");
-        }
-      }
+      const bookingId = String(data.booking_id);
+      const bookingNumber = String(data.booking_number || "");
+      const invoiceNumber = String(data.invoice_number || "");
+      const finalFare = String(data.fare ?? draft.quoted_fare ?? "0");
 
-      const invoicePdf = await createInvoicePdf(invoiceNo, bookingData);
-
-      await fetch(GOOGLE_SCRIPT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
+      router.replace({
+        pathname: "/success" as any,
+        params: {
+          bookingId,
+          booking_id: bookingId,
+          bookingNumber,
+          booking_number: bookingNumber,
+          invoiceNumber,
+          invoice_number: invoiceNumber,
+          finalFare,
+          fare: finalFare,
+          alreadyConfirmed: data.already_confirmed ? "true" : "false",
         },
-        body: JSON.stringify({
-          invoice_no: invoiceNo,
-          name: bookingData.passenger_name,
-          email: bookingData.email,
-          phone: bookingData.phone,
-          pickup: pickupAddress,
-          dropoff: dropoffAddress,
-          pickup_lat: coords.pickupLat,
-          pickup_lng: coords.pickupLng,
-          dropoff_lat: coords.dropoffLat,
-          dropoff_lng: coords.dropoffLng,
-          date: rideDate,
-          time: rideTime,
-          trip_type: tripType,
-          ride_category: bookingData.ride_category,
-          passengers: Number(passengers) || 1,
-          luggage_count: Number(luggageCount) || 0,
-          notes,
-          promo_code: promoCode,
-          referral_code: referralValid ? promoCode : "",
-          referral_discount: referralDiscount,
-          referral_applied: referralValid,
-          student_verified: studentVerified,
-          student_discount: studentDiscount,
-          student_shared_ride: studentSharedRide,
-          miles: distanceMiles,
-          pricing_tier: tier.pricingTier,
-          base: subtotal,
-          discount: totalDiscount,
-          total: finalPrice,
-          amount_paid: 0,
-          balance_due: finalPrice,
-          invoice_pdf: invoicePdf,
-        }),
       });
-
-      Alert.alert(
-        "Booking Saved",
-        "Your ride request has been submitted. A confirmation email and invoice have been sent.",
-        [
-          {
-            text: "View My Trips",
-            onPress: () => router.replace("/my-trips" as any),
-          },
-        ]
-      );
     } catch (error: any) {
-      Alert.alert("Booking Error", error.message || "Could not confirm booking.");
+      console.error("Confirm Booking V2 error:", error);
+
+      const message =
+        error?.message || "Angel Express could not confirm this booking.";
+
+      Alert.alert("Booking Error", message);
+
+      if (
+        message.toLowerCase().includes("expired") ||
+        message.toLowerCase().includes("accepted")
+      ) {
+        router.back();
+      }
     } finally {
-      setLoading(false);
+      setConfirming(false);
     }
   }
 
@@ -601,9 +273,104 @@ export default function ConfirmBookingScreen() {
     outputRange: [24, 0],
   });
 
+  const finalFare = firstValue(
+    draft?.quoted_fare,
+    draft?.final_fare,
+    draft?.total_fare,
+    0
+  );
+
+  const subtotal = firstValue(
+    draft?.quoted_subtotal,
+    draft?.subtotal,
+    finalFare
+  );
+
+  const totalDiscount = firstValue(
+    draft?.quoted_discount,
+    draft?.total_discount,
+    Math.max(money(subtotal) - money(finalFare), 0)
+  );
+
+  const driverShare = firstValue(
+    draft?.quoted_driver_share,
+    draft?.driver_share,
+    0
+  );
+
+  const companyShare = firstValue(
+    draft?.quoted_company_share,
+    draft?.company_share,
+    0
+  );
+
+  const studentDiscount = firstValue(
+    draft?.student_discount,
+    draft?.fare_breakdown?.student_discount,
+    0
+  );
+
+  const referralDiscount = firstValue(
+    draft?.referral_discount,
+    draft?.fare_breakdown?.referral_discount,
+    0
+  );
+
+  const sharedRideDiscount = firstValue(
+    draft?.shared_ride_discount,
+    draft?.pool_discount,
+    draft?.fare_breakdown?.shared_ride_discount,
+    0
+  );
+
+  const isStudentPool =
+    Boolean(draft?.student_pool_requested) ||
+    draft?.ride_category === "student_pool";
+
+  const rewardPoints = Math.max(
+    0,
+    Math.round(Number(draft?.route_distance_miles || 0))
+  );
+
+  if (loadingDraft) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={colors.gold} size="large" />
+        <Text style={styles.loadingText}>
+          Loading your accepted fare quote...
+        </Text>
+      </View>
+    );
+  }
+
+  if (!draft || errorMessage) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>Booking review unavailable</Text>
+
+        <Text style={styles.errorText}>
+          {errorMessage || "The booking draft could not be loaded."}
+        </Text>
+
+        <TouchableOpacity style={styles.retryButton} onPress={loadDraft}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.errorBackButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.errorBackText}>Back to Fare Estimate</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
-      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+      <Animated.View
+        style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}
+      >
         <ImageBackground
           source={require("../assets/images/dashboard-bg.png")}
           style={styles.background}
@@ -618,7 +385,10 @@ export default function ConfirmBookingScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backTopButton} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={styles.backTopButton}
+              onPress={() => router.back()}
+            >
               <ArrowLeft size={19} color={colors.gold} />
               <Text style={styles.backTopText}>Back</Text>
             </TouchableOpacity>
@@ -640,7 +410,8 @@ export default function ConfirmBookingScreen() {
             <Text style={styles.title}>Confirm Booking</Text>
 
             <Text style={styles.subtitle}>
-              Review your ride, verified discounts, referral rewards, and final fare before submitting.
+              Review the accepted route and secure Fare Engine quote before
+              submitting your ride request.
             </Text>
 
             <View style={styles.heroCard}>
@@ -649,38 +420,38 @@ export default function ConfirmBookingScreen() {
               </View>
 
               <View style={styles.heroCopy}>
-                <Text style={styles.heroTitle}>Final Fare</Text>
-                <Text style={styles.heroPrice}>${finalPrice.toFixed(2)}</Text>
+                <Text style={styles.heroTitle}>Accepted Fare</Text>
+                <Text style={styles.heroPrice}>
+                  {formatMoney(finalFare)}
+                </Text>
                 <Text style={styles.heroText}>
-                  {distanceMiles} miles • {durationText || "Drive time unavailable"}
+                  {Number(draft.route_distance_miles || 0).toFixed(1)} miles •{" "}
+                  {formatDuration(draft.route_duration_minutes)}
                 </Text>
               </View>
             </View>
 
             <View style={styles.statusGrid}>
               <StatusPill
-                title="Student"
-                value={studentVerified ? "Verified" : "Not Verified"}
+                title="Quote"
+                value="Accepted"
                 styles={styles}
               />
 
               <StatusPill
-                title="Referral"
+                title="Student"
                 value={
-                  checkingReferral
-                    ? "Checking"
-                    : referralValid
-                    ? "Applied"
-                    : promoCode
-                    ? "Invalid"
-                    : "None"
+                  draft.student_verified ||
+                  draft.student_discount_eligible
+                    ? "Verified"
+                    : "Standard"
                 }
                 styles={styles}
               />
 
               <StatusPill
                 title="Shared Ride"
-                value={studentSharedRide ? "Yes" : "No"}
+                value={isStudentPool ? "Enabled" : "No"}
                 styles={styles}
               />
             </View>
@@ -691,86 +462,174 @@ export default function ConfirmBookingScreen() {
                 <Text style={styles.cardTitle}>Trip Details</Text>
               </View>
 
-              <Row label="Pickup" value={pickupAddress} styles={styles} />
-              <Row label="Drop-off" value={dropoffAddress} styles={styles} />
-              <Row label="Date" value={rideDate} styles={styles} />
-              <Row label="Time" value={rideTime} styles={styles} />
-              <Row label="Trip Type" value={tripType} styles={styles} />
               <Row
-                label="Ride Category"
-                value={studentSharedRide ? "Student Shared Ride" : rideCategory}
+                label="Pickup"
+                value={draft.pickup_address || "N/A"}
                 styles={styles}
               />
-              <Row label="Passengers" value={passengers} styles={styles} />
-              <Row label="Luggage" value={luggageCount} styles={styles} />
+
+              <Row
+                label="Drop-off"
+                value={draft.dropoff_address || "N/A"}
+                styles={styles}
+              />
+
+              <IconRow
+                icon={<CalendarDays size={17} color={colors.gold} />}
+                label="Date"
+                value={formatDate(draft.scheduled_at)}
+                styles={styles}
+              />
+
+              <IconRow
+                icon={<Clock size={17} color={colors.gold} />}
+                label="Time"
+                value={formatTime(draft.scheduled_at)}
+                styles={styles}
+              />
+
+              <Row
+                label="Trip Type"
+                value={displayTripType(draft.trip_type)}
+                styles={styles}
+              />
+
+              <Row
+                label="Ride Category"
+                value={displayRideCategory(
+                  draft.ride_category,
+                  draft.ride_category_label
+                )}
+                styles={styles}
+              />
+
+              <Row
+                label="Passengers"
+                value={String(draft.passenger_count || 1)}
+                styles={styles}
+              />
+
+              <Row
+                label="Luggage"
+                value={String(draft.luggage_count || 0)}
+                styles={styles}
+              />
+
+              {draft.notes ? (
+                <Row label="Notes" value={draft.notes} styles={styles} />
+              ) : null}
             </View>
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Route size={22} color={colors.gold} />
-                <Text style={styles.cardTitle}>Fare Summary</Text>
+                <Text style={styles.cardTitle}>Accepted Fare Summary</Text>
               </View>
 
-              <Row label="Pricing Tier" value={tier.pricingTierLabel} styles={styles} />
-              <Row label="Distance" value={`${distanceMiles} miles`} styles={styles} />
-              <Row label="Drive Time" value={durationText || "N/A"} styles={styles} />
-              <Row label="Base Fare" value={`$${tier.baseFareAmount.toFixed(2)}`} styles={styles} />
               <Row
-                label="Mileage Rate"
-                value={`$${tier.mileageRate.toFixed(2)} / mile`}
-                styles={styles}
-              />
-              <Row label="Mileage Fare" value={`$${mileageFare.toFixed(2)}`} styles={styles} />
-
-              {roundTripAdjustment > 0 ? (
-                <Row
-                  label="Round Trip Adjustment"
-                  value={`$${roundTripAdjustment.toFixed(2)}`}
-                  styles={styles}
-                />
-              ) : null}
-
-              {eventSurcharge > 0 ? (
-                <Row label="Event Surcharge" value={`$${eventSurcharge.toFixed(2)}`} styles={styles} />
-              ) : null}
-
-              <DiscountRow
-                icon={<BadgeCheck size={17} color="#22c55e" />}
-                label="Student Discount"
-                value={`-$${studentDiscount.toFixed(2)}`}
-                active={studentDiscount > 0}
+                label="Quote Number"
+                value={String(draft.quote_number || "Pending")}
                 styles={styles}
               />
 
-              {promoCode ? (
+              <Row
+                label="Pricing Version"
+                value={String(draft.pricing_version || "V2")}
+                styles={styles}
+              />
+
+              <Row
+                label="Distance"
+                value={`${Number(
+                  draft.route_distance_miles || 0
+                ).toFixed(1)} miles`}
+                styles={styles}
+              />
+
+              <Row
+                label="Drive Time"
+                value={formatDuration(draft.route_duration_minutes)}
+                styles={styles}
+              />
+
+              <Row
+                label="Subtotal"
+                value={formatMoney(subtotal)}
+                styles={styles}
+              />
+
+              {money(studentDiscount) > 0 ? (
                 <DiscountRow
-                  icon={<Gift size={17} color="#22c55e" />}
-                  label={referralValid ? `Referral Discount (${promoCode})` : "Referral Code"}
-                  value={
-                    checkingReferral
-                      ? "Checking..."
-                      : referralValid
-                      ? `-$${referralDiscount.toFixed(2)}`
-                      : referralMessage || "Invalid / Not applied"
-                  }
-                  active={referralValid}
+                  icon={<GraduationCap size={17} color="#22c55e" />}
+                  label="Student Discount"
+                  value={`-${formatMoney(studentDiscount)}`}
                   styles={styles}
                 />
               ) : null}
 
-              {studentSharedRide ? (
+              {money(referralDiscount) > 0 ? (
+                <DiscountRow
+                  icon={<Tag size={17} color="#22c55e" />}
+                  label="Referral Discount"
+                  value={`-${formatMoney(referralDiscount)}`}
+                  styles={styles}
+                />
+              ) : null}
+
+              {money(sharedRideDiscount) > 0 ? (
                 <DiscountRow
                   icon={<Users size={17} color="#22c55e" />}
-                  label="Student Shared Ride"
-                  value="Enabled"
-                  active
+                  label="Shared Ride Discount"
+                  value={`-${formatMoney(sharedRideDiscount)}`}
                   styles={styles}
                 />
               ) : null}
 
+              <Row
+                label="Total Savings"
+                value={`-${formatMoney(totalDiscount)}`}
+                styles={styles}
+              />
+
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Final Price</Text>
-                <Text style={styles.totalValue}>${finalPrice.toFixed(2)}</Text>
+                <Text style={styles.totalLabel}>Final Fare</Text>
+                <Text style={styles.totalValue}>
+                  {formatMoney(finalFare)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <ReceiptText size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>Booking Record</Text>
+              </View>
+
+              <Row
+                label="Driver Share"
+                value={formatMoney(driverShare)}
+                styles={styles}
+              />
+
+              <Row
+                label="Company Share"
+                value={formatMoney(companyShare)}
+                styles={styles}
+              />
+
+              <Row
+                label="Payment"
+                value="Collected after ride completion"
+                styles={styles}
+              />
+
+              <View style={styles.secureBox}>
+                <BadgeCheck size={18} color="#22c55e" />
+
+                <Text style={styles.secureText}>
+                  Your booking will be created from this accepted Fare Engine
+                  quote. The app will not recalculate or alter the amount.
+                </Text>
               </View>
             </View>
 
@@ -781,31 +640,52 @@ export default function ConfirmBookingScreen() {
               </View>
 
               <Text style={styles.notice}>
-                Payment is collected after your ride is completed. Referral credits are awarded after the referred ride is completed.
+                By confirming, you are submitting this ride request to Angel
+                Express. The booking will appear in your trips and in the Owner
+                and Driver operations systems.
               </Text>
 
               <View style={styles.rewardBox}>
                 <Sparkles size={18} color={colors.gold} />
+
                 <Text style={styles.rewardText}>
-                  This ride may earn {rewardPointsEarned} reward points after completion.
+                  This ride may earn {rewardPoints} reward points after
+                  completion.
                 </Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[
+                styles.button,
+                confirming && styles.buttonDisabled,
+              ]}
               onPress={confirmBooking}
-              disabled={loading}
+              disabled={confirming}
+              activeOpacity={0.88}
             >
-              {loading ? (
-                <ActivityIndicator color={colors.navy} />
+              {confirming ? (
+                <View style={styles.buttonLoadingRow}>
+                  <ActivityIndicator color={colors.navy} />
+                  <Text style={styles.buttonText}>
+                    Creating Booking
+                  </Text>
+                </View>
               ) : (
-                <Text style={styles.buttonText}>Confirm Booking</Text>
+                <Text style={styles.buttonText}>
+                  Confirm Booking
+                </Text>
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <Text style={styles.backButtonText}>Back to Fare Estimate</Text>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              disabled={confirming}
+            >
+              <Text style={styles.backButtonText}>
+                Back to Fare Estimate
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
@@ -826,7 +706,30 @@ function Row({
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowValue}>{value}</Text>
+      <Text style={styles.rowValue}>{value || "N/A"}</Text>
+    </View>
+  );
+}
+
+function IconRow({
+  icon,
+  label,
+  value,
+  styles,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  styles: any;
+}) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.iconLabelRow}>
+        {icon}
+        <Text style={styles.rowLabel}>{label}</Text>
+      </View>
+
+      <Text style={styles.rowValue}>{value || "N/A"}</Text>
     </View>
   );
 }
@@ -852,39 +755,103 @@ function DiscountRow({
   icon,
   label,
   value,
-  active,
   styles,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
-  active?: boolean;
   styles: any;
 }) {
   return (
     <View style={styles.discountRow}>
       <View style={styles.discountLeft}>
         {icon}
-        <Text style={[styles.discountLabel, !active && styles.discountInactive]}>
-          {label}
-        </Text>
+        <Text style={styles.discountLabel}>{label}</Text>
       </View>
 
-      <Text style={[styles.discountValue, !active && styles.discountInactive]}>
-        {value}
-      </Text>
+      <Text style={styles.discountValue}>{value}</Text>
     </View>
   );
 }
 
 function createStyles(c: any) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
-    bgWrap: { ...StyleSheet.absoluteFillObject },
-    background: { flex: 1 },
-    overlay: { flex: 1, backgroundColor: c.overlay },
-    container: { flex: 1 },
-    content: { padding: 22, paddingTop: 58, paddingBottom: 54 },
+    root: {
+      flex: 1,
+      backgroundColor: c.bg,
+      overflow: "hidden",
+    },
+    bgWrap: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    background: {
+      flex: 1,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+    },
+    container: {
+      flex: 1,
+    },
+    content: {
+      padding: 22,
+      paddingTop: 58,
+      paddingBottom: 54,
+    },
+
+    center: {
+      flex: 1,
+      backgroundColor: c.bg,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 28,
+    },
+    loadingText: {
+      color: c.text,
+      marginTop: 14,
+      fontWeight: "800",
+      textAlign: "center",
+      lineHeight: 21,
+    },
+    errorTitle: {
+      color: c.gold,
+      fontSize: 25,
+      fontWeight: "900",
+      textAlign: "center",
+      marginBottom: 12,
+    },
+    errorText: {
+      color: c.text2,
+      fontSize: 15,
+      fontWeight: "700",
+      textAlign: "center",
+      lineHeight: 23,
+      marginBottom: 22,
+    },
+    retryButton: {
+      backgroundColor: c.gold,
+      borderRadius: 16,
+      paddingVertical: 15,
+      paddingHorizontal: 26,
+      minWidth: 190,
+      alignItems: "center",
+    },
+    retryButtonText: {
+      color: c.navy,
+      fontSize: 15,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+    errorBackButton: {
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      marginTop: 10,
+    },
+    errorBackText: {
+      color: c.gold,
+      fontWeight: "900",
+    },
 
     topRow: {
       flexDirection: "row",
@@ -961,7 +928,9 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-    heroCopy: { flex: 1 },
+    heroCopy: {
+      flex: 1,
+    },
     heroTitle: {
       color: c.navy,
       fontSize: 18,
@@ -1041,12 +1010,17 @@ function createStyles(c: any) {
       borderBottomColor: c.borderSoft,
       paddingBottom: 11,
     },
+    iconLabelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      marginBottom: 4,
+    },
     rowLabel: {
       color: c.gold,
       fontSize: 12,
       fontWeight: "900",
       textTransform: "uppercase",
-      marginBottom: 4,
     },
     rowValue: {
       color: c.text,
@@ -1079,9 +1053,6 @@ function createStyles(c: any) {
       fontWeight: "900",
       textAlign: "right",
     },
-    discountInactive: {
-      color: c.text2,
-    },
 
     totalRow: {
       borderTopWidth: 1,
@@ -1101,6 +1072,25 @@ function createStyles(c: any) {
       color: c.gold,
       fontSize: 25,
       fontWeight: "900",
+    },
+
+    secureBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 9,
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderRadius: 16,
+      padding: 13,
+      marginTop: 4,
+    },
+    secureText: {
+      color: "#22c55e",
+      fontSize: 13,
+      fontWeight: "900",
+      flex: 1,
+      lineHeight: 20,
     },
 
     noticeCard: {
@@ -1151,6 +1141,12 @@ function createStyles(c: any) {
       fontSize: 16,
       fontWeight: "900",
       textTransform: "uppercase",
+    },
+    buttonLoadingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
     },
     buttonDisabled: {
       opacity: 0.65,
