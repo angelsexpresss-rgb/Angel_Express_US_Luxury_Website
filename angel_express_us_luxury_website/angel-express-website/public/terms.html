@@ -31,7 +31,8 @@
     .terms-bg{
       position:fixed;
       inset:0;
-      z-index:-3;
+      z-index:-1;
+      pointer-events:none;
       background:
         linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.74)),
         url("images/hero/10-dallas-night.jpg");
@@ -49,6 +50,8 @@
     }
 
     .terms-shell{
+      position:relative;
+      z-index:1;
       min-height:100vh;
       padding:125px 5.5% 90px;
     }
@@ -178,22 +181,87 @@
     }
 
     @media(max-width:640px){
+      .terms-bg{
+        position:absolute;
+        min-height:100%;
+        background-attachment:scroll;
+      }
+
       .terms-shell{
-        padding:100px 4.5% 150px;
+        display:block;
+        width:100%;
+        min-height:100vh;
+        padding:96px 16px 150px;
+      }
+
+      .terms-wrap,
+      .terms-hero,
+      .privacy-content-v4,
+      .cta-v4{
+        display:block;
+        width:100%;
+        max-width:100%;
+      }
+
+      .terms-hero{
+        margin-bottom:30px;
+      }
+
+      .terms-kicker{
+        max-width:100%;
+        white-space:normal;
+        line-height:1.45;
       }
 
       .terms-hero h1{
-        font-size:42px;
+        font-size:40px;
+        line-height:1.02;
+        letter-spacing:-1.2px;
+        overflow-wrap:anywhere;
       }
 
       .terms-hero p,
       .privacy-content-v4 p,
       .privacy-content-v4 li{
         font-size:15px;
+        line-height:1.75;
+        overflow-wrap:anywhere;
       }
 
       .privacy-content-v4{
-        border-radius:26px;
+        padding:24px 18px;
+        border-radius:24px;
+        overflow:visible;
+      }
+
+      .privacy-content-v4 h3{
+        font-size:21px;
+        line-height:1.3;
+      }
+
+      .privacy-content-v4 ul{
+        padding-left:20px;
+      }
+
+      .cta-v4{
+        margin-top:48px;
+        padding:42px 18px;
+        border-radius:24px;
+      }
+
+      .cta-v4 h2{
+        font-size:34px;
+        line-height:1.05;
+      }
+
+      /* Prevent mobile browsers from leaving the page invisible
+         when IntersectionObserver or blur animations fail. */
+      .reveal,
+      .reveal.active,
+      .reveal.visible{
+        opacity:1 !important;
+        transform:none !important;
+        filter:none !important;
       }
     }
   </style>

@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /owner-
+Disallow: /admin
+Disallow: /api/
+Disallow: /fare-estimate.html
+Disallow: /confirm-booking.html
+Disallow: /success.html
+
+Sitemap: https://angelexpressus.com/sitemap.xml

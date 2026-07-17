@@ -63,7 +63,7 @@ const AE_AI = {
   welcomeMessage: `
     Welcome to Angel Express. I can help with booking, fares, airport pickups,
     luggage, student travel, shared rides, live tracking, driver contact, delays,
-    payments, receipts, hotels, World Cup rides, chauffeur applications,
+    payments, receipts, hotels, event transportation, chauffeur applications,
     merchandise, safety, and support.
   `,
 
@@ -84,7 +84,7 @@ const AE_AI = {
     "What if my driver is late?",
     "How do I pay for my ride?",
     "Can I get a receipt?",
-    "Do you support World Cup rides?",
+    "Do you support event transportation?",
     "Can Angel Express help with hotel pickup?",
     "What if I need emergency help?",
     "I need support from Angel Express",
@@ -609,24 +609,24 @@ const AE_AI = {
     },
 
     {
-      intent: "world-cup",
+      intent: "event-transportation",
       keywords: [
-        "world cup",
-        "fifa",
-        "soccer",
-        "stadium",
-        "fan",
-        "tournament",
-        "2026",
+        "event transportation",
+        "major event",
+        "sports event",
+        "venue",
+        "event guest",
+        "conference",
+        "festival",
         "event transportation",
         "sports event",
       ],
       answer: `
-        Angel Express plans to support World Cup 2026 transportation for airport transfers,
-        hotel pickups, private groups, fans, tourists, students, and regional Texas travel.
+        Angel Express supports event transportation for airport transfers,
+        hotel pickups, private groups, event guests, tourists, students, and regional Texas travel.
         Early booking is recommended during high-demand event periods.
         <br><br>
-        <a class="chat-action-link" href="book-ride.html">Reserve World Cup Ride</a>
+        <a class="chat-action-link" href="book-ride.html">Book Event Transportation</a>
       `,
     },
 
@@ -725,7 +725,7 @@ const AE_AI = {
       ],
       answer: `
         Angel Express works with approved chauffeurs for private rides, airport transfers,
-        student travel, long-distance routes, event transportation, and World Cup travel demand.
+        student travel, long-distance routes, event transportation, and major event travel demand.
         The standard payout model is 70% driver share and 30% company share for eligible ride revenue.
         <br><br>
         <a class="chat-action-link" href="driver.html#apply">Apply to Drive</a>
@@ -779,7 +779,7 @@ const AE_AI = {
       answer: `
         Angel Express passenger services include private rides, airport transfers,
         student travel, long-distance Texas routes, hotel pickups, event transportation,
-        and World Cup ride support.
+        and private group travel.
         <br><br>
         <a class="chat-action-link" href="passenger.html">View Passenger Services</a>
       `,
@@ -1511,7 +1511,7 @@ function getFallbackAnswer(question) {
     <br><br>
     I can still help with booking, fares, route estimates, airport rides, luggage,
     student discounts, shared rides, referral codes, live tracking, driver contact,
-    delays, payments, receipts, hotel pickup, World Cup rides, chauffeur applications,
+    delays, payments, receipts, hotel pickup, event transportation, chauffeur applications,
     merchandise, safety, and support.
     <br><br>
     Try one of these:
@@ -1537,7 +1537,7 @@ function getSmartSuggestions() {
         <span class="chat-pill">Student rides</span>
         <span class="chat-pill">Live tracking</span>
         <span class="chat-pill">Driver support</span>
-        <span class="chat-pill">World Cup rides</span>
+        <span class="chat-pill">Event transportation</span>
         <span class="chat-pill">Merchandise</span>
       </div>
     </div>
