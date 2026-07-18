@@ -903,6 +903,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupHeroSlides();
   setupOptions();
   setupMobileMenu();
+  setupDesktopNavigation();
 
   initPage();
 });
@@ -1142,6 +1143,33 @@ function setupMobileMenu() {
       button.innerHTML = `<i class="fa-solid fa-bars"></i>`;
     });
   });
+}
+
+
+/* =========================
+   DESKTOP NAVIGATION SAFEGUARD
+   Ensures every desktop link, including Terms, opens reliably.
+========================= */
+
+function setupDesktopNavigation() {
+  document
+    .querySelectorAll(".desktop-nav a, .ae-desktop-nav a")
+    .forEach((link) => {
+      if (link.dataset.navigationBound === "true") return;
+
+      link.dataset.navigationBound = "true";
+
+      link.addEventListener("click", (event) => {
+        const href = link.getAttribute("href");
+
+        if (!href || href.startsWith("#")) return;
+
+        event.preventDefault();
+
+        const destination = new URL(href, window.location.href);
+        window.location.assign(destination.href);
+      });
+    });
 }
 
 /* =========================

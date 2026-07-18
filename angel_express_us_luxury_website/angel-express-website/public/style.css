@@ -392,6 +392,33 @@ main{
 }
 
 
+
+
+/* ---------- Desktop Navigation Click Safeguard ---------- */
+
+.navbar .desktop-nav,
+.navbar .ae-desktop-nav{
+  position:relative;
+  z-index:12;
+  pointer-events:auto;
+}
+
+.navbar .desktop-nav a,
+.navbar .ae-desktop-nav a{
+  position:relative;
+  z-index:13;
+  pointer-events:auto;
+}
+
+.navbar .desktop-actions,
+.navbar .ae-nav-actions,
+.navbar .logo,
+.navbar .ae-logo{
+  position:relative;
+  z-index:12;
+}
+
+
 /* ---------- General Layout ---------- */
 
 .section,
