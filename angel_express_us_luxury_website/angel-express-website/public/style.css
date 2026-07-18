@@ -2680,3 +2680,777 @@ html[data-theme="light"] .worldcup-banner p{
   color:#F8FAFC !important;
   text-shadow:0 2px 18px rgba(0,0,0,.28);
 }
+
+
+/* =========================================================
+   ANGEL EXPRESS WEBSITE V6.2 — COMPLETE LIGHT MODE SYSTEM
+   This final override replaces washed-out colors with a
+   premium warm-silver, navy, gold, and emerald light theme.
+   It is intentionally placed last so it overrides inline V5
+   page colors without changing individual HTML files.
+========================================================= */
+
+html[data-theme="light"]{
+  color-scheme:light;
+
+  --ae-bg:#E9EEF4;
+  --ae-bg-2:#DDE5EE;
+  --ae-page-bg:#E9EEF4;
+  --ae-page-bg-2:#DDE5EE;
+
+  --ae-card:#F7F9FC;
+  --ae-card-solid:#FFFFFF;
+  --ae-surface:#F7F9FC;
+  --ae-surface-solid:#FFFFFF;
+  --ae-surface-soft:#EEF3F8;
+
+  --ae-heading:#071225;
+  --ae-text:#111C30;
+  --ae-body:#2F3D52;
+  --ae-muted:#5E6D82;
+
+  --ae-gold:#B98508;
+  --ae-gold-soft:#E0B63C;
+  --ae-border:rgba(185,133,8,.30);
+  --ae-border-soft:rgba(7,18,37,.12);
+
+  --ae-success:#168A45;
+  --ae-danger:#C93B3B;
+  --ae-warning:#B86F00;
+
+  --ae-input-bg:#FFFFFF;
+  --ae-navbar-bg:rgba(245,247,250,.96);
+  --ae-mobile-menu-bg:#F5F7FA;
+  --ae-footer-bg:#DCE4ED;
+
+  --ae-shadow:
+    0 24px 64px rgba(7,18,37,.13),
+    0 3px 10px rgba(7,18,37,.06);
+}
+
+/* ---------- Light page canvas ---------- */
+
+html[data-theme="light"] body{
+  background:
+    radial-gradient(circle at 12% 4%,rgba(224,182,60,.13),transparent 25%),
+    radial-gradient(circle at 92% 12%,rgba(255,255,255,.95),transparent 32%),
+    linear-gradient(145deg,#F3F6F9 0%,#E9EEF4 52%,#DDE5EE 100%) !important;
+  color:#111C30 !important;
+}
+
+html[data-theme="light"] body::before{
+  background:
+    radial-gradient(circle at 14% 8%,rgba(224,182,60,.13),transparent 26%),
+    radial-gradient(circle at 86% 16%,rgba(255,255,255,.86),transparent 34%),
+    linear-gradient(145deg,#F3F6F9 0%,#E9EEF4 52%,#DDE5EE 100%) !important;
+}
+
+html[data-theme="light"] body::after{
+  opacity:.45;
+  background-image:
+    linear-gradient(rgba(7,18,37,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(7,18,37,.045) 1px,transparent 1px) !important;
+}
+
+/* ---------- Universal readable typography ---------- */
+
+html[data-theme="light"] main,
+html[data-theme="light"] main section,
+html[data-theme="light"] main article,
+html[data-theme="light"] main div{
+  border-color:rgba(185,133,8,.26);
+}
+
+html[data-theme="light"] main h1,
+html[data-theme="light"] main h2,
+html[data-theme="light"] main h3,
+html[data-theme="light"] main h4,
+html[data-theme="light"] main h5,
+html[data-theme="light"] main h6,
+html[data-theme="light"] main strong,
+html[data-theme="light"] main b{
+  color:#071225 !important;
+  text-shadow:none !important;
+}
+
+html[data-theme="light"] main p,
+html[data-theme="light"] main li,
+html[data-theme="light"] main dd,
+html[data-theme="light"] main td,
+html[data-theme="light"] main span:not(.logo-mark):not(.ae-theme-knob):not(.cart-count),
+html[data-theme="light"] main small{
+  color:#425269;
+  text-shadow:none;
+}
+
+html[data-theme="light"] main a:not(.btn):not(.hero-v4-btn):not(.nav-cta){
+  color:#8B6500;
+}
+
+/* ---------- Gold headings, badges, and kickers ---------- */
+
+html[data-theme="light"] .kicker,
+html[data-theme="light"] .hero-v4-kicker,
+html[data-theme="light"] .booking-kicker,
+html[data-theme="light"] .terms-kicker,
+html[data-theme="light"] .section-kicker,
+html[data-theme="light"] .badge,
+html[data-theme="light"] [class*="eyebrow"],
+html[data-theme="light"] [class*="kicker"]{
+  background:rgba(224,182,60,.14) !important;
+  color:#815D00 !important;
+  border-color:rgba(185,133,8,.34) !important;
+  text-shadow:none !important;
+}
+
+html[data-theme="light"] .text-gold,
+html[data-theme="light"] .section-title span,
+html[data-theme="light"] .booking-title span,
+html[data-theme="light"] .confirm-title span,
+html[data-theme="light"] .terms-hero h1 span,
+html[data-theme="light"] .price,
+html[data-theme="light"] [class*="gold"]{
+  color:#A87800 !important;
+}
+
+/* ---------- Keep only true cinematic hero areas dark ---------- */
+
+html[data-theme="light"] .hero-v4,
+html[data-theme="light"] .merch-hero,
+html[data-theme="light"] .worldcup-banner,
+html[data-theme="light"] .driver-hero,
+html[data-theme="light"] .passenger-hero,
+html[data-theme="light"] .blog-hero,
+html[data-theme="light"] .contact-hero,
+html[data-theme="light"] .home-hero,
+html[data-theme="light"] [class~="hero-section"],
+html[data-theme="light"] [class~="hero-banner"]{
+  background-color:#050B16 !important;
+  color:#F8FAFC !important;
+}
+
+html[data-theme="light"] .hero-v4-overlay,
+html[data-theme="light"] .hero-overlay,
+html[data-theme="light"] .driver-hero::before,
+html[data-theme="light"] .passenger-hero::before,
+html[data-theme="light"] .blog-hero::before{
+  background:
+    radial-gradient(circle at 78% 28%,rgba(212,175,55,.22),transparent 30%),
+    linear-gradient(90deg,rgba(5,11,22,.97),rgba(5,11,22,.82),rgba(5,11,22,.50)),
+    linear-gradient(180deg,rgba(5,11,22,.12),rgba(5,11,22,.95)) !important;
+}
+
+html[data-theme="light"] .hero-v4 h1,
+html[data-theme="light"] .hero-v4 h2,
+html[data-theme="light"] .hero-v4 h3,
+html[data-theme="light"] .hero-v4 p,
+html[data-theme="light"] .hero-v4 span,
+html[data-theme="light"] .merch-hero h1,
+html[data-theme="light"] .merch-hero h2,
+html[data-theme="light"] .merch-hero h3,
+html[data-theme="light"] .merch-hero p,
+html[data-theme="light"] .merch-hero span,
+html[data-theme="light"] .worldcup-banner h1,
+html[data-theme="light"] .worldcup-banner h2,
+html[data-theme="light"] .worldcup-banner h3,
+html[data-theme="light"] .worldcup-banner p,
+html[data-theme="light"] .driver-hero h1,
+html[data-theme="light"] .driver-hero h2,
+html[data-theme="light"] .driver-hero h3,
+html[data-theme="light"] .driver-hero p,
+html[data-theme="light"] .passenger-hero h1,
+html[data-theme="light"] .passenger-hero h2,
+html[data-theme="light"] .passenger-hero h3,
+html[data-theme="light"] .passenger-hero p,
+html[data-theme="light"] .blog-hero h1,
+html[data-theme="light"] .blog-hero h2,
+html[data-theme="light"] .blog-hero h3,
+html[data-theme="light"] .blog-hero p{
+  color:#F8FAFC !important;
+  text-shadow:0 3px 22px rgba(0,0,0,.34) !important;
+}
+
+html[data-theme="light"] .hero-v4 h1 span,
+html[data-theme="light"] .merch-hero h1 span,
+html[data-theme="light"] .driver-hero h1 span,
+html[data-theme="light"] .passenger-hero h1 span,
+html[data-theme="light"] .blog-hero h1 span{
+  color:#E0B63C !important;
+}
+
+/* ---------- V6 light content sections ---------- */
+
+html[data-theme="light"] main section:not(.hero-v4):not(.merch-hero):not(.worldcup-banner):not(.driver-hero):not(.passenger-hero):not(.blog-hero){
+  color:#111C30;
+}
+
+/* This removes accidental dark overlays from normal content sections. */
+html[data-theme="light"] main section:not(.hero-v4):not(.merch-hero):not(.worldcup-banner):not(.driver-hero):not(.passenger-hero):not(.blog-hero)::before,
+html[data-theme="light"] main section:not(.hero-v4):not(.merch-hero):not(.worldcup-banner):not(.driver-hero):not(.passenger-hero):not(.blog-hero)::after{
+  color:inherit;
+}
+
+/* ---------- Universal premium light cards ---------- */
+
+html[data-theme="light"] :where(
+  .booking-card,
+  .confirm-card,
+  .fare-card,
+  .fare-box,
+  .info-card,
+  .top-card,
+  .detail-item,
+  .student-card,
+  .reward-card,
+  .dynamic-panel,
+  .route-card,
+  .service-card,
+  .driver-card,
+  .blog-card,
+  .contact-card,
+  .collection-card,
+  .apparel-card,
+  .product,
+  .checkout-panel,
+  .policy-card,
+  .faq-card,
+  .privacy-content-v4,
+  .terms-nav,
+  .legal-notice,
+  .cta-v4,
+  .success-card,
+  .loader-card,
+  .ecosystem-grid article,
+  .promise-grid article,
+  .route-cards article,
+  .service-grid article,
+  .driver-grid article,
+  .blog-grid article,
+  .contact-grid article,
+  [class$="-card"],
+  [class$="-panel"]
+){
+  background:
+    linear-gradient(145deg,#FFFFFF 0%,#F5F8FB 100%) !important;
+  color:#111C30 !important;
+  border-color:rgba(185,133,8,.27) !important;
+  box-shadow:
+    0 20px 50px rgba(7,18,37,.11),
+    inset 0 1px 0 rgba(255,255,255,.98) !important;
+}
+
+/* Card text contrast. */
+html[data-theme="light"] :where(
+  .booking-card,
+  .confirm-card,
+  .fare-card,
+  .fare-box,
+  .info-card,
+  .top-card,
+  .detail-item,
+  .student-card,
+  .reward-card,
+  .dynamic-panel,
+  .route-card,
+  .service-card,
+  .driver-card,
+  .blog-card,
+  .contact-card,
+  .collection-card,
+  .apparel-card,
+  .product,
+  .checkout-panel,
+  .policy-card,
+  .faq-card,
+  .privacy-content-v4,
+  .terms-nav,
+  .legal-notice,
+  .cta-v4,
+  .ecosystem-grid article,
+  .promise-grid article,
+  [class$="-card"],
+  [class$="-panel"]
+) :where(h1,h2,h3,h4,h5,h6,strong,b){
+  color:#071225 !important;
+  text-shadow:none !important;
+}
+
+html[data-theme="light"] :where(
+  .booking-card,
+  .confirm-card,
+  .fare-card,
+  .fare-box,
+  .info-card,
+  .top-card,
+  .detail-item,
+  .student-card,
+  .reward-card,
+  .dynamic-panel,
+  .route-card,
+  .service-card,
+  .driver-card,
+  .blog-card,
+  .contact-card,
+  .collection-card,
+  .apparel-card,
+  .product,
+  .checkout-panel,
+  .policy-card,
+  .faq-card,
+  .privacy-content-v4,
+  .terms-nav,
+  .legal-notice,
+  .cta-v4,
+  .ecosystem-grid article,
+  .promise-grid article,
+  [class$="-card"],
+  [class$="-panel"]
+) :where(p,li,small,span:not(.price):not(.product-tag):not(.product-badge)){
+  color:#4A5A70 !important;
+  text-shadow:none !important;
+}
+
+/* ---------- Homepage route and chauffeur sections ---------- */
+
+html[data-theme="light"] .routes-showcase,
+html[data-theme="light"] .section,
+html[data-theme="light"] .page-section,
+html[data-theme="light"] .cta-section{
+  color:#111C30;
+}
+
+html[data-theme="light"] .routes-showcase > div:first-child h1,
+html[data-theme="light"] .routes-showcase > div:first-child h2,
+html[data-theme="light"] .routes-showcase > div:first-child h3,
+html[data-theme="light"] .section-top h1,
+html[data-theme="light"] .section-top h2,
+html[data-theme="light"] .section-top h3{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .routes-showcase > div:first-child p,
+html[data-theme="light"] .section-top p{
+  color:#506077 !important;
+}
+
+/* ---------- Passenger and Driver page fallback selectors ---------- */
+
+html[data-theme="light"] [class*="passenger-"]:not([class*="hero"]):not([class*="image"]):not([class*="media"]),
+html[data-theme="light"] [class*="driver-"]:not([class*="hero"]):not([class*="image"]):not([class*="media"]),
+html[data-theme="light"] [class*="chauffeur-"]:not([class*="hero"]):not([class*="image"]):not([class*="media"]){
+  --page-heading:#071225;
+  --page-text:#425269;
+}
+
+html[data-theme="light"] [class*="passenger-"] :where(h1,h2,h3,h4),
+html[data-theme="light"] [class*="driver-"] :where(h1,h2,h3,h4),
+html[data-theme="light"] [class*="chauffeur-"] :where(h1,h2,h3,h4){
+  color:#071225 !important;
+  text-shadow:none !important;
+}
+
+html[data-theme="light"] [class*="passenger-"] :where(p,li),
+html[data-theme="light"] [class*="driver-"] :where(p,li),
+html[data-theme="light"] [class*="chauffeur-"] :where(p,li){
+  color:#4A5A70 !important;
+}
+
+/* Restore hero readability after fallback rules. */
+html[data-theme="light"] :where(.driver-hero,.passenger-hero,.hero-v4,.merch-hero) :where(h1,h2,h3,h4,p,li){
+  color:#F8FAFC !important;
+}
+
+/* ---------- Blog page ---------- */
+
+html[data-theme="light"] .blog-grid,
+html[data-theme="light"] .blog-list,
+html[data-theme="light"] .blog-section{
+  color:#111C30;
+}
+
+html[data-theme="light"] .blog-card{
+  overflow:hidden;
+}
+
+html[data-theme="light"] .blog-card :where(h2,h3,h4){
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .blog-card p{
+  color:#4A5A70 !important;
+}
+
+html[data-theme="light"] .blog-card a{
+  color:#8B6500 !important;
+}
+
+/* ---------- Angel Merchandise ---------- */
+
+html[data-theme="light"] .collection-grid,
+html[data-theme="light"] .apparel-grid,
+html[data-theme="light"] .product-grid,
+html[data-theme="light"] .policy-grid,
+html[data-theme="light"] .faq-list{
+  color:#111C30;
+}
+
+html[data-theme="light"] .collection-media,
+html[data-theme="light"] .mockup-stage,
+html[data-theme="light"] .product > img,
+html[data-theme="light"] .product > video{
+  background:#E3E9F0 !important;
+}
+
+html[data-theme="light"] .product-tag{
+  background:#B98508 !important;
+  color:#FFFFFF !important;
+}
+
+html[data-theme="light"] .product-badge{
+  background:#071225 !important;
+  color:#FFFFFF !important;
+  border-color:rgba(185,133,8,.35) !important;
+}
+
+html[data-theme="light"] .price{
+  color:#966D00 !important;
+}
+
+html[data-theme="light"] .stock-status{
+  color:#147B3B !important;
+}
+
+/* ---------- Terms page ---------- */
+
+html[data-theme="light"] .terms-shell,
+html[data-theme="light"] .terms-wrap,
+html[data-theme="light"] .terms-layout{
+  color:#111C30 !important;
+}
+
+html[data-theme="light"] .terms-bg{
+  opacity:.16 !important;
+  filter:saturate(.55) brightness(1.22) !important;
+}
+
+html[data-theme="light"] .terms-bg::after{
+  background:
+    radial-gradient(circle at 78% 22%,rgba(224,182,60,.13),transparent 30%),
+    linear-gradient(180deg,rgba(233,238,244,.16),#E9EEF4 96%) !important;
+}
+
+html[data-theme="light"] .terms-hero h1{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .terms-hero > p{
+  color:#425269 !important;
+}
+
+html[data-theme="light"] .terms-nav{
+  background:#F7F9FC !important;
+}
+
+html[data-theme="light"] .terms-nav h2{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .terms-nav a{
+  color:#34445A !important;
+  opacity:1 !important;
+}
+
+html[data-theme="light"] .terms-nav a:hover,
+html[data-theme="light"] .terms-nav a:focus-visible{
+  background:rgba(224,182,60,.14) !important;
+  border-color:rgba(185,133,8,.30) !important;
+  color:#765500 !important;
+}
+
+html[data-theme="light"] .privacy-content-v4 h2{
+  color:#966D00 !important;
+}
+
+html[data-theme="light"] .privacy-content-v4 h3{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .privacy-content-v4 p,
+html[data-theme="light"] .privacy-content-v4 li{
+  color:#425269 !important;
+  opacity:1 !important;
+}
+
+/* ---------- Forms ---------- */
+
+html[data-theme="light"] label{
+  color:#27364B !important;
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea,
+html[data-theme="light"] .shop-control{
+  background:#FFFFFF !important;
+  color:#071225 !important;
+  border:1px solid rgba(123,139,159,.55) !important;
+  box-shadow:
+    inset 0 1px 2px rgba(7,18,37,.04),
+    0 1px 0 rgba(255,255,255,.9) !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder{
+  color:#7A8798 !important;
+  opacity:1;
+}
+
+html[data-theme="light"] input:focus,
+html[data-theme="light"] select:focus,
+html[data-theme="light"] textarea:focus,
+html[data-theme="light"] .shop-control:focus{
+  border-color:#B98508 !important;
+  box-shadow:0 0 0 4px rgba(185,133,8,.13) !important;
+}
+
+html[data-theme="light"] select option{
+  background:#FFFFFF !important;
+  color:#071225 !important;
+}
+
+/* ---------- Buttons ---------- */
+
+html[data-theme="light"] :where(
+  .btn-primary,
+  .hero-v4-primary,
+  .nav-cta,
+  .continue-btn,
+  .apply-referral-btn,
+  .check-student-btn,
+  .btn.gold,
+  .filter-btn.active,
+  #checkoutBtn,
+  #chatSendBtn
+){
+  background:linear-gradient(135deg,#E3BC4B,#B98508) !important;
+  color:#071225 !important;
+  border-color:rgba(123,86,0,.25) !important;
+  box-shadow:0 14px 34px rgba(185,133,8,.24) !important;
+}
+
+html[data-theme="light"] :where(
+  .btn-secondary,
+  .btn-glass,
+  .hero-v4-secondary,
+  .nav-cta-secondary,
+  .back-btn,
+  .btn-dark,
+  .btn.dark,
+  .option-btn,
+  .category-btn,
+  .filter-btn:not(.active)
+){
+  background:#10203A !important;
+  color:#FFFFFF !important;
+  border-color:rgba(16,32,58,.25) !important;
+  box-shadow:0 12px 28px rgba(7,18,37,.16) !important;
+}
+
+html[data-theme="light"] .option-btn.active,
+html[data-theme="light"] .category-btn.active{
+  background:linear-gradient(135deg,#E3BC4B,#B98508) !important;
+  color:#071225 !important;
+}
+
+/* ---------- Student, referral, and status colors ---------- */
+
+html[data-theme="light"] .student-card.success,
+html[data-theme="light"] .reward-card.success{
+  background:
+    linear-gradient(135deg,#E9F8EF,#FFFFFF) !important;
+  border-color:rgba(22,138,69,.36) !important;
+}
+
+html[data-theme="light"] .student-card.success :where(h1,h2,h3,h4,p,span),
+html[data-theme="light"] .reward-card.success :where(h1,h2,h3,h4,p,span){
+  color:#14492A !important;
+}
+
+html[data-theme="light"] .student-status.success,
+html[data-theme="light"] .reward-status.success,
+html[data-theme="light"] .profile-status.success{
+  background:#DDF7E6 !important;
+  color:#104426 !important;
+  border:1px solid rgba(22,138,69,.34) !important;
+}
+
+html[data-theme="light"] .student-status.info,
+html[data-theme="light"] .reward-status.info,
+html[data-theme="light"] .profile-status.info{
+  background:#FFF7D8 !important;
+  color:#654A00 !important;
+  border:1px solid rgba(185,133,8,.32) !important;
+}
+
+html[data-theme="light"] .student-status.error,
+html[data-theme="light"] .reward-status.error,
+html[data-theme="light"] .profile-status.error,
+html[data-theme="light"] .status-banner.show{
+  color:#7A2020 !important;
+}
+
+/* ---------- Navbar ---------- */
+
+html[data-theme="light"] .navbar{
+  background:rgba(245,247,250,.96) !important;
+  border-bottom:1px solid rgba(7,18,37,.12) !important;
+  box-shadow:0 10px 34px rgba(7,18,37,.10) !important;
+}
+
+html[data-theme="light"] .logo,
+html[data-theme="light"] .logo h1,
+html[data-theme="light"] .logo-text h1{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .logo span,
+html[data-theme="light"] .logo-text span{
+  color:#56657A !important;
+}
+
+html[data-theme="light"] .desktop-nav a,
+html[data-theme="light"] .nav-links a{
+  color:#334258 !important;
+}
+
+html[data-theme="light"] .desktop-nav a:hover,
+html[data-theme="light"] .desktop-nav a.active,
+html[data-theme="light"] .nav-links a:hover,
+html[data-theme="light"] .nav-links a.active{
+  color:#8B6500 !important;
+}
+
+html[data-theme="light"] .mobile-menu{
+  background:#F5F7FA !important;
+}
+
+html[data-theme="light"] .mobile-menu a{
+  background:#E8EDF3 !important;
+  color:#132139 !important;
+}
+
+html[data-theme="light"] .mobile-menu-btn{
+  background:#E8EDF3 !important;
+  color:#071225 !important;
+}
+
+/* ---------- Footer ---------- */
+
+html[data-theme="light"] .footer{
+  background:
+    linear-gradient(180deg,#E2E8EF 0%,#D6DEE8 100%) !important;
+  border-top-color:rgba(7,18,37,.12) !important;
+}
+
+html[data-theme="light"] .footer h3,
+html[data-theme="light"] .footer h4{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .footer p,
+html[data-theme="light"] .footer a,
+html[data-theme="light"] .footer-bottom{
+  color:#46566C !important;
+}
+
+html[data-theme="light"] .footer a:hover{
+  color:#765500 !important;
+}
+
+/* ---------- Theme switch ---------- */
+
+html[data-theme="light"] .ae-theme-toggle{
+  background:#E7ECF2 !important;
+  color:#071225 !important;
+  border-color:rgba(185,133,8,.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 8px 22px rgba(7,18,37,.09) !important;
+}
+
+/* ---------- AI Assistant ---------- */
+
+html[data-theme="light"] .chatbot-box{
+  background:#F8FAFC !important;
+  border-color:rgba(185,133,8,.30) !important;
+  box-shadow:0 28px 80px rgba(7,18,37,.20) !important;
+}
+
+html[data-theme="light"] .chatbot-header{
+  background:
+    linear-gradient(135deg,#E3BC4B,#B98508) !important;
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .chatbot-title,
+html[data-theme="light"] .chatbot-subtitle{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .chatbot-messages{
+  background:#EAF0F5 !important;
+}
+
+html[data-theme="light"] .chat-msg.bot{
+  background:#FFFFFF !important;
+  color:#071225 !important;
+  border-color:rgba(185,133,8,.18) !important;
+}
+
+html[data-theme="light"] .chat-msg.user{
+  background:#10203A !important;
+  color:#FFFFFF !important;
+}
+
+html[data-theme="light"] .chat-time{
+  color:#69788C !important;
+}
+
+html[data-theme="light"] .chatbot-input{
+  background:#FFFFFF !important;
+}
+
+html[data-theme="light"] .chatbot-input input{
+  color:#071225 !important;
+}
+
+html[data-theme="light"] .quick-prompts button,
+html[data-theme="light"] .chat-pill{
+  background:#FFFFFF !important;
+  color:#765500 !important;
+  border-color:rgba(185,133,8,.24) !important;
+}
+
+/* ---------- Reveal safeguard ---------- */
+
+html[data-theme="light"] .reveal.active,
+html[data-theme="light"] .reveal.visible{
+  opacity:1 !important;
+  filter:none !important;
+}
+
+/* ---------- Mobile readability ---------- */
+
+@media(max-width:720px){
+  html[data-theme="light"] main h1{
+    color:#071225 !important;
+  }
+
+  html[data-theme="light"] :where(.hero-v4,.merch-hero,.driver-hero,.passenger-hero,.blog-hero) h1{
+    color:#F8FAFC !important;
+  }
+
+  html[data-theme="light"] .mobile-menu{
+    box-shadow:0 18px 44px rgba(7,18,37,.16) !important;
+  }
+}
