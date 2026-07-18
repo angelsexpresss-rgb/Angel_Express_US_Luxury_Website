@@ -27,7 +27,7 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 /*
   Later we will create this Cloudflare Worker:

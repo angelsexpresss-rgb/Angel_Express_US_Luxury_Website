@@ -27,7 +27,7 @@ import {
   Utensils,
 } from "lucide-react-native";
 
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 function openUrl(url: string) {
   Linking.openURL(url);

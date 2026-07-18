@@ -20,7 +20,7 @@ import {
   ShieldCheck,
 } from "lucide-react-native";
 
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 const SUPPORT_EMAIL = "support@angelexpressus.com";
 const SUPPORT_PHONE = "+1 (972) 836-7910";

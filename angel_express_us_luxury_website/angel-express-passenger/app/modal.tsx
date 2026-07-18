@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react-native";
 
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 export default function ModalScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();

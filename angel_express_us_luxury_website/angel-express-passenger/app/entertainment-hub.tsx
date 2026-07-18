@@ -25,7 +25,7 @@ import {
   Tv,
 } from "lucide-react-native";
 
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 const movieApps = [
   { title: "YouTube", subtitle: "Videos, shows, music videos", url: "https://www.youtube.com", icon: Tv },

@@ -51,131 +51,18 @@ const AE = {
 
 
 /* =========================
-   CENTRAL LIGHT / DARK THEME
+   DARK MODE ONLY
+   Removes the retired light-mode preference.
 ========================= */
 
-const AE_THEME = {
-  storageKey: "angelExpressTheme",
-  light: "light",
-  dark: "dark",
-};
-
-function getStoredTheme() {
-  try {
-    const saved = localStorage.getItem(AE_THEME.storageKey);
-    return saved === AE_THEME.light || saved === AE_THEME.dark ? saved : null;
-  } catch {
-    return null;
-  }
+try {
+  localStorage.removeItem("angelExpressTheme");
+} catch {
+  /* Storage may be unavailable; the website still remains dark. */
 }
 
-function getPreferredTheme() {
-  const saved = getStoredTheme();
-
-  if (saved) return saved;
-
-  return window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: light)").matches
-    ? AE_THEME.light
-    : AE_THEME.dark;
-}
-
-function applyTheme(theme, options = {}) {
-  const resolvedTheme =
-    theme === AE_THEME.light ? AE_THEME.light : AE_THEME.dark;
-
-  document.documentElement.setAttribute("data-theme", resolvedTheme);
-  document.documentElement.style.colorScheme = resolvedTheme;
-
-  if (document.body) {
-    document.body.setAttribute("data-theme", resolvedTheme);
-  }
-
-  if (options.persist !== false) {
-    try {
-      localStorage.setItem(AE_THEME.storageKey, resolvedTheme);
-    } catch {
-      /* Theme still works when storage is unavailable. */
-    }
-  }
-
-  syncThemeControls(resolvedTheme);
-
-  window.dispatchEvent(
-    new CustomEvent("angelExpressThemeChanged", {
-      detail: { theme: resolvedTheme },
-    })
-  );
-}
-
-function toggleTheme() {
-  const currentTheme =
-    document.documentElement.getAttribute("data-theme") || getPreferredTheme();
-
-  applyTheme(
-    currentTheme === AE_THEME.dark ? AE_THEME.light : AE_THEME.dark
-  );
-}
-
-function syncThemeControls(theme) {
-  const isLight = theme === AE_THEME.light;
-
-  document.querySelectorAll("[data-ae-theme-toggle]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(isLight));
-    button.setAttribute(
-      "aria-label",
-      isLight
-        ? "Switch Angel Express to dark mode"
-        : "Switch Angel Express to light mode"
-    );
-    button.setAttribute(
-      "title",
-      isLight ? "Switch to dark mode" : "Switch to light mode"
-    );
-
-    const knob = button.querySelector(".ae-theme-knob");
-
-    if (knob) {
-      knob.setAttribute("aria-hidden", "true");
-    }
-  });
-}
-
-function setupThemeControls() {
-  syncThemeControls(
-    document.documentElement.getAttribute("data-theme") || getPreferredTheme()
-  );
-
-  document.querySelectorAll("[data-ae-theme-toggle]").forEach((button) => {
-    if (button.dataset.themeBound === "true") return;
-
-    button.dataset.themeBound = "true";
-    button.addEventListener("click", toggleTheme);
-  });
-}
-
-function watchSystemTheme() {
-  if (!window.matchMedia) return;
-
-  const media = window.matchMedia("(prefers-color-scheme: light)");
-
-  const handleSystemThemeChange = (event) => {
-    if (getStoredTheme()) return;
-    applyTheme(event.matches ? AE_THEME.light : AE_THEME.dark, {
-      persist: false,
-    });
-  };
-
-  if (typeof media.addEventListener === "function") {
-    media.addEventListener("change", handleSystemThemeChange);
-  } else if (typeof media.addListener === "function") {
-    media.addListener(handleSystemThemeChange);
-  }
-}
-
-/* Apply immediately when app.js loads to reduce theme flashing. */
-applyTheme(getPreferredTheme(), { persist: false });
-watchSystemTheme();
+document.documentElement.removeAttribute("data-theme");
+document.documentElement.style.colorScheme = "dark";
 
 let aeSupabase = null;
 
@@ -1008,7 +895,6 @@ document.addEventListener("DOMContentLoaded", () => {
   buildHeader();
   buildFooter();
   buildSupportWidgets();
-  setupThemeControls();
 
   replaceOldEmailsSafely();
 
@@ -1116,20 +1002,7 @@ function buildHeader() {
       </nav>
 
       <div class="desktop-actions ae-nav-actions">
-        <button
-          class="ae-theme-toggle ae-theme-toggle-desktop"
-          type="button"
-          data-ae-theme-toggle
-          aria-label="Switch Angel Express theme"
-          aria-pressed="false"
-        >
-          <span class="ae-theme-sun" aria-hidden="true">☀</span>
-          <span class="ae-theme-track" aria-hidden="true">
-            <span class="ae-theme-line"></span>
-            <span class="ae-theme-knob"></span>
-          </span>
-          <span class="ae-theme-moon" aria-hidden="true">🌙</span>
-        </button>
+
 
         <a href="book-ride.html" class="nav-cta ae-nav-cta">Book a Ride</a>
       </div>
@@ -1140,26 +1013,7 @@ function buildHeader() {
     </header>
 
     <nav class="mobile-menu ae-mobile-menu" id="mobileMenu" aria-label="Mobile navigation">
-      <div class="ae-mobile-theme-row">
-        <span>Appearance</span>
-
-        <button
-          class="ae-theme-toggle ae-theme-toggle-mobile"
-          type="button"
-          data-ae-theme-toggle
-          aria-label="Switch Angel Express theme"
-          aria-pressed="false"
-        >
-          <span class="ae-theme-sun" aria-hidden="true">☀</span>
-          <span class="ae-theme-track" aria-hidden="true">
-            <span class="ae-theme-line"></span>
-            <span class="ae-theme-knob"></span>
-          </span>
-          <span class="ae-theme-moon" aria-hidden="true">🌙</span>
-        </button>
-      </div>
-
-      ${navHTML()}
+${navHTML()}
     </nav>
   `;
 }
@@ -2177,66 +2031,6 @@ function injectAdaptiveAIStyles() {
       }
     }
 
-
-    /* =========================
-       LIGHT THEME — ADAPTIVE AI
-    ========================= */
-
-    html[data-theme="light"] .chatbot-box{
-      background:rgba(255,255,255,.98);
-      border-color:rgba(166,122,0,.28);
-      box-shadow:0 28px 90px rgba(15,23,42,.22);
-    }
-
-    html[data-theme="light"] .chatbot-header{
-      background:
-        radial-gradient(circle at top left,rgba(212,175,55,.20),transparent 38%),
-        rgba(248,250,252,.96);
-      border-bottom-color:rgba(166,122,0,.16);
-    }
-
-    html[data-theme="light"] .chatbot-title,
-    html[data-theme="light"] .chat-close,
-    html[data-theme="light"] .chat-msg{
-      color:#101828;
-    }
-
-    html[data-theme="light"] .chatbot-subtitle,
-    html[data-theme="light"] .chat-time{
-      color:rgba(16,24,40,.58);
-    }
-
-    html[data-theme="light"] .chatbot-messages{
-      background:rgba(241,245,249,.88);
-    }
-
-    html[data-theme="light"] .chat-msg.bot,
-    html[data-theme="light"] .chat-msg.user,
-    html[data-theme="light"] .chat-mini-card,
-    html[data-theme="light"] .chat-pill,
-    html[data-theme="light"] .quick-prompts button{
-      background:rgba(255,255,255,.92);
-      color:#101828;
-      border-color:rgba(166,122,0,.18);
-    }
-
-    html[data-theme="light"] .chatbot-input{
-      background:#ffffff;
-      border-top-color:rgba(15,23,42,.10);
-    }
-
-    html[data-theme="light"] .chatbot-input input{
-      color:#101828;
-    }
-
-    html[data-theme="light"] .chatbot-input input::placeholder{
-      color:rgba(16,24,40,.48);
-    }
-
-    html[data-theme="light"] .whatsapp-float{
-      background:rgba(255,255,255,.96);
-      color:#101828;
-    }
 
   `;
 

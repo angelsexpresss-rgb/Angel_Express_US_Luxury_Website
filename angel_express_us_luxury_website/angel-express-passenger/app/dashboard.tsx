@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Image,
   ImageBackground,
   RefreshControl,
@@ -11,7 +13,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  useColorScheme,
   View,
 } from "react-native";
 import {
@@ -44,23 +45,55 @@ import {
 
 import { registerForPushNotifications } from "../lib/notifications";
 import { supabase } from "../lib/supabase";
+import { AngelThemeColors, useAngelTheme } from "../lib/angelTheme";
 
-type ThemeMode = "dark" | "light";
+type BookingSummary = {
+  [key: string]: any;
+  id: number;
+  status: string | null;
+  booking_status: string | null;
+  payment_status: string | null;
+  ride_date: string | null;
+  ride_time: string | null;
+  date: string | null;
+  time: string | null;
+  pickup_address: string | null;
+  dropoff_address: string | null;
+  pickup: string | null;
+  dropoff: string | null;
+  assigned_driver_id: string | null;
+  driver_id: string | null;
+  total_fare: number | null;
+  total: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
 
 export default function DashboardScreen() {
-  const systemMode = useColorScheme();
+  const { colors, themeMode, toggleTheme } = useAngelTheme();
 
-  const [themeMode, setThemeMode] = useState<ThemeMode>(
-    systemMode === "light" ? "light" : "dark"
-  );
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const colors = themeMode === "dark" ? darkTheme : lightTheme;
-  const styles = useMemo(() => createStyles(colors), [themeMode]);
-
+  const [userId, setUserId] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("Passenger");
   const [rating, setRating] = useState(5);
   const [totalTrips, setTotalTrips] = useState(0);
   const [studentVerified, setStudentVerified] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [rewardCredit, setRewardCredit] = useState(0);
+  const [activeBooking, setActiveBooking] = useState<BookingSummary | null>(
+    null,
+  );
+  const [pendingBooking, setPendingBooking] = useState<BookingSummary | null>(
+    null,
+  );
+  const [upcomingBooking, setUpcomingBooking] = useState<BookingSummary | null>(
+    null,
+  );
+  const [lastCompletedBooking, setLastCompletedBooking] =
+    useState<BookingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -72,12 +105,22 @@ export default function DashboardScreen() {
   const toolFade = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
   const menuAnim = useRef(new Animated.Value(0)).current;
+  const requestIdRef = useRef(0);
+  const loadingRef = useRef(false);
+  const realtimeReloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
-    registerForPushNotifications();
-    loadPassengerInfo();
+    let mounted = true;
 
-    Animated.loop(
+    void registerForPushNotifications().catch((error) => {
+      console.log("Push registration error:", error);
+    });
+
+    void loadDashboardData();
+
+    const backgroundAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(bgScale, {
           toValue: 1.045,
@@ -89,10 +132,12 @@ export default function DashboardScreen() {
           duration: 8500,
           useNativeDriver: true,
         }),
-      ])
-    ).start();
+      ]),
+    );
 
-    Animated.sequence([
+    backgroundAnimation.start();
+
+    const entranceAnimation = Animated.sequence([
       Animated.parallel([
         Animated.timing(pageFade, {
           toValue: 1,
@@ -109,7 +154,28 @@ export default function DashboardScreen() {
       fadeIn(cardFade, 90),
       fadeIn(bodyFade, 90),
       fadeIn(toolFade, 90),
-    ]).start();
+    ]);
+
+    entranceAnimation.start();
+
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextState) => {
+        if (mounted && nextState === "active") {
+          void loadDashboardData();
+        }
+      },
+    );
+
+    return () => {
+      mounted = false;
+      backgroundAnimation.stop();
+      entranceAnimation.stop();
+      appStateSubscription.remove();
+      if (realtimeReloadTimerRef.current) {
+        clearTimeout(realtimeReloadTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -130,52 +196,535 @@ export default function DashboardScreen() {
     });
   }
 
-  async function loadPassengerInfo() {
+  useEffect(() => {
+    if (!userId) return;
+
+    const scheduleRealtimeReload = () => {
+      if (realtimeReloadTimerRef.current) {
+        clearTimeout(realtimeReloadTimerRef.current);
+      }
+
+      realtimeReloadTimerRef.current = setTimeout(() => {
+        void loadDashboardData({ silent: true });
+      }, 250);
+    };
+
+    const bookingChannel = supabase
+      .channel(`passenger-dashboard-bookings-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+        },
+        (payload) => {
+          const row = (payload.new || payload.old) as Record<string, unknown>;
+          if (row?.user_id === userId || row?.passenger_user_id === userId) {
+            scheduleRealtimeReload();
+          }
+        },
+      )
+      .subscribe();
+
+    const notificationChannel = supabase
+      .channel(`passenger-dashboard-notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "passenger_notifications",
+          filter: `passenger_id=eq.${userId}`,
+        },
+        scheduleRealtimeReload,
+      )
+      .subscribe();
+
+    const rewardChannel = supabase
+      .channel(`passenger-dashboard-rewards-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "referral_rewards",
+          filter: `referrer_user_id=eq.${userId}`,
+        },
+        scheduleRealtimeReload,
+      )
+      .subscribe();
+
+    const passengerChannel = supabase
+      .channel(`passenger-dashboard-profile-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "passengers",
+          filter: `id=eq.${userId}`,
+        },
+        scheduleRealtimeReload,
+      )
+      .subscribe();
+
+    const studentChannel = supabase
+      .channel(`passenger-dashboard-student-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "student_verifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        scheduleRealtimeReload,
+      )
+      .subscribe();
+
+    return () => {
+      if (realtimeReloadTimerRef.current) {
+        clearTimeout(realtimeReloadTimerRef.current);
+      }
+      void supabase.removeChannel(bookingChannel);
+      void supabase.removeChannel(notificationChannel);
+      void supabase.removeChannel(rewardChannel);
+      void supabase.removeChannel(passengerChannel);
+      void supabase.removeChannel(studentChannel);
+    };
+  }, [userId]);
+
+  function getOperationalStatus(booking: BookingSummary) {
+    return String(booking.status || booking.booking_status || "pending")
+      .trim()
+      .toLowerCase();
+  }
+
+  function formatBookingStatus(booking: BookingSummary) {
+    return getOperationalStatus(booking)
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  function getBookingDateTime(booking: BookingSummary) {
+    const date = booking.ride_date || booking.date;
+    const time = booking.ride_time || booking.time;
+
+    if (!date && !time) return "Schedule pending";
+    return [date, time].filter(Boolean).join(" • ");
+  }
+
+  function getBookingTimestamp(booking: BookingSummary) {
+    const dateValue = booking.ride_date || booking.date;
+    const timeValue = booking.ride_time || booking.time || "00:00:00";
+
+    if (!dateValue) {
+      return booking.created_at ? new Date(booking.created_at).getTime() : 0;
+    }
+
+    const normalizedTime =
+      String(timeValue).length === 5 ? `${timeValue}:00` : timeValue;
+    const timestamp = new Date(`${dateValue}T${normalizedTime}`).getTime();
+
+    if (Number.isNaN(timestamp)) {
+      return booking.created_at ? new Date(booking.created_at).getTime() : 0;
+    }
+
+    return timestamp;
+  }
+
+  function classifyBookings(bookings: BookingSummary[]) {
+    const now = Date.now();
+    const terminalStatuses = new Set([
+      "completed",
+      "cancelled",
+      "canceled",
+      "declined",
+      "rejected",
+      "no_show",
+      "no show",
+    ]);
+    const liveStatuses = new Set([
+      "in_progress",
+      "in progress",
+      "trip_started",
+      "trip started",
+      "driver_arrived",
+      "driver arrived",
+      "arrived",
+      "accepted",
+      "assigned",
+      "en_route",
+      "en route",
+      "picked_up",
+      "picked up",
+    ]);
+    const pendingStatuses = new Set([
+      "pending",
+      "requested",
+      "awaiting_driver",
+      "awaiting driver",
+      "awaiting_assignment",
+      "awaiting assignment",
+    ]);
+    const confirmedStatuses = new Set(["confirmed", "scheduled", "approved"]);
+
+    const completed = bookings
+      .filter((booking) => getOperationalStatus(booking) === "completed")
+      .sort((a, b) => getBookingTimestamp(b) - getBookingTimestamp(a));
+
+    const live = bookings
+      .filter((booking) => liveStatuses.has(getOperationalStatus(booking)))
+      .sort((a, b) => {
+        const priority = [
+          "in_progress",
+          "in progress",
+          "trip_started",
+          "trip started",
+          "picked_up",
+          "picked up",
+          "driver_arrived",
+          "driver arrived",
+          "arrived",
+          "en_route",
+          "en route",
+          "accepted",
+          "assigned",
+        ];
+        const aIndex = priority.indexOf(getOperationalStatus(a));
+        const bIndex = priority.indexOf(getOperationalStatus(b));
+        const safeA = aIndex === -1 ? priority.length : aIndex;
+        const safeB = bIndex === -1 ? priority.length : bIndex;
+        return safeA - safeB || getBookingTimestamp(a) - getBookingTimestamp(b);
+      });
+
+    const pending = bookings
+      .filter((booking) => pendingStatuses.has(getOperationalStatus(booking)))
+      .sort((a, b) => getBookingTimestamp(a) - getBookingTimestamp(b));
+
+    const upcoming = bookings
+      .filter((booking) => {
+        const status = getOperationalStatus(booking);
+        if (
+          terminalStatuses.has(status) ||
+          liveStatuses.has(status) ||
+          pendingStatuses.has(status)
+        ) {
+          return false;
+        }
+        return (
+          confirmedStatuses.has(status) || getBookingTimestamp(booking) >= now
+        );
+      })
+      .sort((a, b) => getBookingTimestamp(a) - getBookingTimestamp(b));
+
+    return {
+      active: live[0] ?? pending[0] ?? upcoming[0] ?? null,
+      pending: pending[0] ?? null,
+      upcoming: upcoming[0] ?? null,
+      completed: completed[0] ?? null,
+      completedCount: completed.length,
+    };
+  }
+
+  async function loadDashboardData(options?: {
+    silent?: boolean;
+    force?: boolean;
+  }) {
+    if (loadingRef.current && !options?.force) {
+      return;
+    }
+
+    loadingRef.current = true;
+    const requestId = ++requestIdRef.current;
+
+    if (!options?.silent) {
+      setLoading(true);
+    }
+
+    setLoadError(null);
+
     try {
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
 
-      if (!user) return;
+      if (authError) {
+        throw authError;
+      }
 
-      const { data: passenger } = await supabase
-        .from("passengers")
-        .select("first_name, rating, total_trips, student_verified")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (passenger) {
-        if (passenger.first_name) setFirstName(passenger.first_name);
-        if (passenger.rating) setRating(Number(passenger.rating));
-        if (passenger.total_trips) setTotalTrips(Number(passenger.total_trips));
-        if (passenger.student_verified) {
-          setStudentVerified(Boolean(passenger.student_verified));
-        }
+      if (!user) {
+        router.replace("/login" as any);
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("passenger_profiles")
-        .select("first_name")
-        .eq("user_id", user.id)
+      setUserId(user.id);
+
+      /*
+       * Load the passenger identity first. Optional dashboard
+       * queries must never prevent the passenger name from loading.
+       */
+      const passengerResult = await supabase
+        .from("passengers")
+        .select(
+          "id, first_name, last_name, email, rating, total_trips, student_verified",
+        )
+        .eq("id", user.id)
         .maybeSingle();
 
-      if (profile?.first_name) setFirstName(profile.first_name);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      if (passengerResult.error) {
+        console.log(
+          "Passenger dashboard profile error:",
+          passengerResult.error,
+        );
+        throw passengerResult.error;
+      }
+
+      const passenger = passengerResult.data;
+
+      const metadataFullName = String(
+  user.user_metadata?.full_name ||
+  user.user_metadata?.name ||
+  ""
+).trim();
+
+const resolvedFirstName = String(
+  passenger?.first_name ||
+    user.user_metadata?.first_name ||
+    metadataFullName.split(/\s+/)[0] ||
+    "Passenger"
+).trim();
+
+setFirstName(
+  resolvedFirstName || "Passenger"
+);
+      const safeRating = Number(passenger?.rating);
+      setRating(Number.isFinite(safeRating) ? safeRating : 5);
+
+      setStudentVerified(Boolean(passenger?.student_verified));
+
+      /*
+       * Optional data loads independently. A missing optional table,
+       * column, or row will not take down the entire dashboard.
+       */
+      const [
+        notificationResult,
+        rewardsResult,
+        studentVerificationResult,
+        userBookingsResult,
+        passengerBookingsResult,
+        emailBookingsResult,
+      ] = await Promise.all([
+        supabase
+          .from("passenger_notifications")
+          .select("id", { count: "exact", head: true })
+          .eq("passenger_id", user.id)
+          .eq("is_read", false),
+
+        supabase
+          .from("referral_rewards")
+          .select("*")
+          .eq("referrer_user_id", user.id),
+
+        supabase
+          .from("student_verifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+
+        supabase
+          .from("bookings")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
+
+        supabase
+          .from("bookings")
+          .select("*")
+          .eq("passenger_user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50),
+
+        user.email
+          ? supabase
+              .from("bookings")
+              .select("*")
+              .ilike("email", user.email.trim())
+              .order("created_at", { ascending: false })
+              .limit(50)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      if (notificationResult.error) {
+        console.log(
+          "Unread notification query error:",
+          notificationResult.error,
+        );
+        setUnreadCount(0);
+      } else {
+        setUnreadCount(notificationResult.count ?? 0);
+      }
+
+      if (rewardsResult.error) {
+        console.log("Referral reward query error:", rewardsResult.error);
+        setRewardCredit(0);
+      } else {
+        const rewardRows = rewardsResult.data ?? [];
+
+        const credit = rewardRows.reduce(
+          (sum: number, reward: Record<string, any>) => {
+            const status = String(reward.status || "")
+              .trim()
+              .toLowerCase();
+
+            if (
+              !["completed", "approved", "available", "earned"].includes(status)
+            ) {
+              return sum;
+            }
+
+            const amount = Number(
+              reward.credit_earned ??
+                reward.reward_amount ??
+                reward.credit ??
+                reward.amount ??
+                0,
+            );
+
+            return sum + (Number.isFinite(amount) ? amount : 0);
+          },
+          0,
+        );
+
+        setRewardCredit(credit);
+      }
+
+      if (studentVerificationResult.error) {
+        console.log(
+          "Student verification query error:",
+          studentVerificationResult.error,
+        );
+      } else {
+        const verification = studentVerificationResult.data as Record<
+          string,
+          any
+        > | null;
+
+        const verificationStatus = String(verification?.status || "")
+          .trim()
+          .toLowerCase();
+
+        setStudentVerified(
+          Boolean(passenger?.student_verified) ||
+            Boolean(verification?.verified) ||
+            ["verified", "approved", "active"].includes(verificationStatus),
+        );
+      }
+
+      if (userBookingsResult.error) {
+        console.log("Bookings user_id query error:", userBookingsResult.error);
+      }
+
+      if (passengerBookingsResult.error) {
+        console.log(
+          "Bookings passenger_user_id query error:",
+          passengerBookingsResult.error,
+        );
+      }
+
+      if (emailBookingsResult.error) {
+        console.log("Bookings email query error:", emailBookingsResult.error);
+      }
+
+      const userBookings = !userBookingsResult.error
+        ? ((userBookingsResult.data ?? []) as BookingSummary[])
+        : [];
+
+      const passengerBookings = !passengerBookingsResult.error
+        ? ((passengerBookingsResult.data ?? []) as BookingSummary[])
+        : [];
+
+      const emailBookings = !emailBookingsResult.error
+        ? ((emailBookingsResult.data ?? []) as BookingSummary[])
+        : [];
+
+      const combinedBookings: BookingSummary[] = [
+        ...userBookings,
+        ...passengerBookings,
+        ...emailBookings,
+      ];
+
+      const uniqueBookings = Array.from(
+        new Map(
+          combinedBookings.map((booking) => [booking.id, booking]),
+        ).values(),
+      );
+
+      const classified = classifyBookings(uniqueBookings);
+
+      setActiveBooking(classified.active);
+      setPendingBooking(classified.pending);
+      setUpcomingBooking(classified.upcoming);
+      setLastCompletedBooking(classified.completed);
+
+      const storedTrips = Number(passenger?.total_trips || 0);
+      setTotalTrips(
+        Math.max(
+          Number.isFinite(storedTrips) ? storedTrips : 0,
+          classified.completedCount,
+        ),
+      );
+
+      setLoadError(null);
     } catch (error) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       console.log("Passenger dashboard load error:", error);
+
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load your dashboard. Please try again.",
+      );
+    } finally {
+      if (requestId === requestIdRef.current) {
+        loadingRef.current = false;
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }
 
   async function onRefresh() {
+    if (refreshing) return;
     setRefreshing(true);
-    await loadPassengerInfo();
-    setRefreshing(false);
+    await loadDashboardData({ silent: true, force: true });
   }
 
   function goTo(route: string) {
     setMenuOpen(false);
     router.push(route as any);
   }
+
+  // These remain available for upcoming, pending, and completed dashboard summaries
+  // without altering the established layout or navigation.
+  void pendingBooking;
+  void upcomingBooking;
 
   async function handleLogout() {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -184,7 +733,16 @@ export default function DashboardScreen() {
         text: "Log Out",
         style: "destructive",
         onPress: async () => {
-          await supabase.auth.signOut();
+          const { error } = await supabase.auth.signOut();
+
+          if (error) {
+            Alert.alert(
+              "Unable to Log Out",
+              error.message || "Please try again.",
+            );
+            return;
+          }
+
           router.replace("/login" as any);
         },
       },
@@ -193,9 +751,13 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle={themeMode === "dark" ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={themeMode === "dark" ? "light-content" : "dark-content"}
+      />
 
-      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
+      <Animated.View
+        style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}
+      >
         <ImageBackground
           source={require("../assets/images/dashboard-bg.png")}
           style={styles.background}
@@ -250,9 +812,13 @@ export default function DashboardScreen() {
                   activeOpacity={0.85}
                 >
                   <Bell size={23} color={colors.text} strokeWidth={2.6} />
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>3</Text>
-                  </View>
+                  {unreadCount > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        {unreadCount > 99 ? "99+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -264,13 +830,11 @@ export default function DashboardScreen() {
 
                 <TouchableOpacity
                   style={styles.themePill}
-                  onPress={() =>
-                    setThemeMode(themeMode === "dark" ? "light" : "dark")
-                  }
+                  onPress={() => void toggleTheme()}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.themeText}>
-                    {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
+                    {themeMode === "dark" ? "Light Mode" : "Dark Mode"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -295,9 +859,17 @@ export default function DashboardScreen() {
                 </View>
 
                 <View style={styles.statsRow}>
-                  <StatBlock label="Trips" value={String(totalTrips)} styles={styles} />
+                  <StatBlock
+                    label="Trips"
+                    value={String(totalTrips)}
+                    styles={styles}
+                  />
                   <Divider styles={styles} />
-                  <StatBlock label="Rating" value={rating.toFixed(1)} styles={styles} />
+                  <StatBlock
+                    label="Rating"
+                    value={rating.toFixed(1)}
+                    styles={styles}
+                  />
                   <Divider styles={styles} />
                   <StatBlock
                     label="Student"
@@ -324,15 +896,24 @@ export default function DashboardScreen() {
                 <View style={styles.levelMiddle}>
                   <Text style={styles.levelTitle}>Rewards & Referrals</Text>
                   <Text style={styles.levelText}>
-                    Earn ride credits, referral bonuses, and student savings.
+                    {rewardCredit > 0
+                      ? `$${rewardCredit.toFixed(2)} in available referral credit`
+                      : "Earn ride credits, referral bonuses, and student savings."}
                   </Text>
 
                   <View style={styles.progressTrack}>
-                    <View style={styles.progressFill} />
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${Math.min(100, rewardCredit)}%` },
+                      ]}
+                    />
                   </View>
                 </View>
 
-                <Text style={styles.levelCount}>AE</Text>
+                <Text style={styles.levelCount}>
+                  ${rewardCredit.toFixed(0)}
+                </Text>
                 <Text style={styles.arrowDark}>›</Text>
               </TouchableOpacity>
             </Animated.View>
@@ -346,19 +927,71 @@ export default function DashboardScreen() {
                   </Text>
                 </View>
 
-                <Text style={styles.goOnlineTitle}>Ready for Your Next Trip?</Text>
+                <Text style={styles.goOnlineTitle}>
+                  {loadError
+                    ? "Unable to Load Dashboard"
+                    : loading
+                      ? "Loading Your Dashboard"
+                      : activeBooking
+                        ? "Your Current Trip"
+                        : "Ready for Your Next Trip?"}
+                </Text>
 
                 <Text style={styles.goOnlineText}>
-                  Book private rides, airport transfers, long-distance travel,
-                  student trips, and event transportation.
+                  {loadError
+                    ? "We could not refresh your passenger information. Check your connection and try again."
+                    : loading
+                      ? "Getting your latest ride, rewards, and account information."
+                      : activeBooking
+                        ? `${formatBookingStatus(activeBooking)} • ${getBookingDateTime(
+                            activeBooking,
+                          )}`
+                        : lastCompletedBooking
+                          ? `Last trip completed • ${getBookingDateTime(lastCompletedBooking)}`
+                          : "Book private rides, airport transfers, long-distance travel, student trips, and event transportation."}
                 </Text>
+
+                {loading && !loadError ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={colors.gold}
+                    style={styles.loadingIndicator}
+                  />
+                ) : null}
+
+                {!loadError && activeBooking && (
+                  <Text style={styles.activeRouteText} numberOfLines={2}>
+                    {(activeBooking.pickup_address ||
+                      activeBooking.pickup ||
+                      "Pickup pending") +
+                      " → " +
+                      (activeBooking.dropoff_address ||
+                        activeBooking.dropoff ||
+                        "Drop-off pending")}
+                  </Text>
+                )}
 
                 <TouchableOpacity
                   style={styles.primaryButton}
-                  onPress={() => goTo("/book-ride")}
+                  onPress={() => {
+                    if (loadError) {
+                      void loadDashboardData({ force: true });
+                      return;
+                    }
+
+                    activeBooking
+                      ? goTo(`/my-trips?bookingId=${activeBooking.id}`)
+                      : goTo("/book-ride");
+                  }}
                   activeOpacity={0.88}
                 >
-                  <Text style={styles.primaryButtonText}>Book a Ride</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {loadError
+                      ? "Retry"
+                      : activeBooking
+                        ? "View Trip"
+                        : "Book a Ride"}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
@@ -398,191 +1031,275 @@ export default function DashboardScreen() {
             <Animated.View style={{ opacity: toolFade }}>
               <Text style={styles.menuTitle}>Passenger Control Center</Text>
 
-<DropdownPanel title="Trips & Ride Management" styles={styles}>
-  <ListItem
-    title="My Trips"
-    icon={<CalendarDays size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/my-trips")}
-    styles={styles}
-  />
+              <DropdownPanel title="Trips & Ride Management" styles={styles}>
+                <ListItem
+                  title="My Trips"
+                  icon={
+                    <CalendarDays
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/my-trips")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Track Live Trip"
-    icon={<MapPinned size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/live-trip")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Track Live Trip"
+                  icon={
+                    <MapPinned
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() =>
+                    activeBooking
+                      ? goTo(`/live-trip?bookingId=${activeBooking.id}`)
+                      : goTo("/my-trips")
+                  }
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Manage Booking"
-    icon={<Ticket size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/my-trips")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Manage Booking"
+                  icon={
+                    <Ticket size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() =>
+                    activeBooking
+                      ? goTo(`/manage-booking?bookingId=${activeBooking.id}`)
+                      : goTo("/my-trips")
+                  }
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Pay Ride"
-    icon={<Ticket size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/my-trips")}
-    styles={styles}
-  />
-</DropdownPanel>
+                <ListItem
+                  title="Pay Ride"
+                  icon={
+                    <Ticket size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() =>
+                    activeBooking
+                      ? goTo(`/pay-ride?bookingId=${activeBooking.id}`)
+                      : goTo("/my-trips")
+                  }
+                  styles={styles}
+                />
+              </DropdownPanel>
 
-<DropdownPanel title="Travel Services" styles={styles}>
-  <ListItem
-    title="Luxury Ride Prep+"
-    icon={
-      <BriefcaseBusiness
-        size={21}
-        color={colors.gold}
-        strokeWidth={2.7}
-      />
-    }
-    onPress={() => goTo("/luxury-ride-prep")}
-    styles={styles}
-  />
+              <DropdownPanel title="Travel Services" styles={styles}>
+                <ListItem
+                  title="Luxury Ride Prep+"
+                  icon={
+                    <BriefcaseBusiness
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/luxury-ride-prep")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Angel Travel Concierge"
-    icon={<Plane size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/travel-concierge")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Angel Travel Concierge"
+                  icon={
+                    <Plane size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/travel-concierge")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Student Travel Mode+"
-    icon={
-      <GraduationCap
-        size={21}
-        color={colors.gold}
-        strokeWidth={2.7}
-      />
-    }
-    onPress={() => goTo("/student-travel")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Student Travel Mode+"
+                  icon={
+                    <GraduationCap
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/student-travel")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="AI Ride Assistant"
-    icon={<Sparkles size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/ai-assistant")}
-    styles={styles}
-  />
-</DropdownPanel>
+                <ListItem
+                  title="AI Ride Assistant"
+                  icon={
+                    <Sparkles size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/ai-assistant")}
+                  styles={styles}
+                />
+              </DropdownPanel>
 
-<DropdownPanel title="Passenger Account" styles={styles}>
-  <ListItem
-    title="Profile"
-    icon={<UserRound size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/profile")}
-    styles={styles}
-  />
+              <DropdownPanel title="Passenger Account" styles={styles}>
+                <ListItem
+                  title="Profile"
+                  icon={
+                    <UserRound
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/profile")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Passenger Card"
-    icon={<BadgeCheck size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/passenger-card")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Passenger Card"
+                  icon={
+                    <BadgeCheck
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/passenger-card")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Rewards"
-    icon={<Gift size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/rewards")}
-    styles={styles}
-  />
-</DropdownPanel>
+                <ListItem
+                  title="Rewards"
+                  icon={
+                    <Gift size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/rewards")}
+                  styles={styles}
+                />
+              </DropdownPanel>
 
-<DropdownPanel title="Entertainment & Events" styles={styles}>
-  <ListItem
-    title="Entertainment Hub+"
-    icon={<Gamepad2 size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/entertainment-hub")}
-    styles={styles}
-  />
+              <DropdownPanel title="Entertainment & Events" styles={styles}>
+                <ListItem
+                  title="Entertainment Hub+"
+                  icon={
+                    <Gamepad2 size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/entertainment-hub")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Multi-Language Assistant"
-    icon={<Languages size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/language-assistant")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Multi-Language Assistant"
+                  icon={
+                    <Languages
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/language-assistant")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="World Cup & Event Mode"
-    icon={<Trophy size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/travel-concierge")}
-    styles={styles}
-  />
-</DropdownPanel>
+                <ListItem
+                  title="World Cup & Event Mode"
+                  icon={
+                    <Trophy size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/travel-concierge")}
+                  styles={styles}
+                />
+              </DropdownPanel>
 
-<DropdownPanel title="Safety, Family & Support" styles={styles}>
-  <ListItem
-    title="Safety & Support"
-    icon={<ShieldCheck size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/safety-share")}
-    styles={styles}
-  />
+              <DropdownPanel title="Safety, Family & Support" styles={styles}>
+                <ListItem
+                  title="Safety & Support"
+                  icon={
+                    <ShieldCheck
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/safety-share")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Angel Safety Share"
-    icon={<ShieldCheck size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/safety-share")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Angel Safety Share"
+                  icon={
+                    <ShieldCheck
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/safety-share")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Family Check-In+"
-    icon={<Users size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/family-checkin")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Family Check-In+"
+                  icon={
+                    <Users size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/family-checkin")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Support Center"
-    icon={<Headphones size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/support")}
-    styles={styles}
-  />
-</DropdownPanel>
+                <ListItem
+                  title="Support Center"
+                  icon={
+                    <Headphones
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/support")}
+                  styles={styles}
+                />
+              </DropdownPanel>
 
-<DropdownPanel title="Settings & Information" styles={styles}>
-  <ListItem
-  title="Notifications"
-  icon={<Bell size={21} color={colors.gold} strokeWidth={2.7} />}
-  onPress={() => goTo("/passenger-notifications")}
-  styles={styles}
-/>
+              <DropdownPanel title="Settings & Information" styles={styles}>
+                <ListItem
+                  title="Notifications"
+                  icon={
+                    <Bell size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/passenger-notifications")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Privacy & Account"
-    icon={<Lock size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/privacy-account")}
-    styles={styles}
-  />
+                <ListItem
+                  title="Privacy & Account"
+                  icon={
+                    <Lock size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/privacy-account")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="About Angel Express"
-    icon={<Info size={21} color={colors.gold} strokeWidth={2.7} />}
-    onPress={() => goTo("/about")}
-    styles={styles}
-  />
+                <ListItem
+                  title="About Angel Express"
+                  icon={
+                    <Info size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/about")}
+                  styles={styles}
+                />
 
-  <ListItem
-    title="Log Out"
-    icon={<LogOut size={21} color={colors.danger} strokeWidth={2.7} />}
-    onPress={handleLogout}
-    styles={styles}
-    danger
-  />
-</DropdownPanel>
+                <ListItem
+                  title="Log Out"
+                  icon={
+                    <LogOut size={21} color={colors.danger} strokeWidth={2.7} />
+                  }
+                  onPress={handleLogout}
+                  styles={styles}
+                  danger
+                />
+              </DropdownPanel>
 
-<View style={styles.footerCard}>
-  <Text style={styles.footerTitle}>Angel Express Standard</Text>
-  <Text style={styles.footerText}>
-    Comfort • Operational Service • Reliability • Cleanliness
-  </Text>
-</View>
+              <View style={styles.footerCard}>
+                <Text style={styles.footerTitle}>Angel Express Standard</Text>
+                <Text style={styles.footerText}>
+                  Comfort • Operational Service • Reliability • Cleanliness
+                </Text>
+              </View>
             </Animated.View>
           </Animated.View>
         </ScrollView>
@@ -637,7 +1354,9 @@ export default function DashboardScreen() {
           />
 
           <MenuOption
-            icon={<CalendarDays size={27} color={colors.gold} strokeWidth={2.7} />}
+            icon={
+              <CalendarDays size={27} color={colors.gold} strokeWidth={2.7} />
+            }
             title="Trips"
             onPress={() => goTo("/my-trips")}
             styles={styles}
@@ -651,7 +1370,9 @@ export default function DashboardScreen() {
           />
 
           <MenuOption
-            icon={<Headphones size={27} color={colors.gold} strokeWidth={2.7} />}
+            icon={
+              <Headphones size={27} color={colors.gold} strokeWidth={2.7} />
+            }
             title="Support"
             onPress={() => goTo("/support")}
             styles={styles}
@@ -665,14 +1386,14 @@ export default function DashboardScreen() {
           />
         </View>
 
-      <TouchableOpacity
-  style={styles.logoutButton}
-  onPress={handleLogout}
-  activeOpacity={0.85}
->
-  <LogOut size={21} color={colors.danger} strokeWidth={2.7} />
-  <Text style={styles.logoutText}>Log Out</Text>
-</TouchableOpacity>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.85}
+        >
+          <LogOut size={21} color={colors.danger} strokeWidth={2.7} />
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
       </Animated.View>
 
       <View style={styles.bottomNav}>
@@ -711,7 +1432,9 @@ export default function DashboardScreen() {
         </TouchableOpacity>
 
         <BottomTab
-          icon={<CalendarDays size={23} color={colors.muted} strokeWidth={2.7} />}
+          icon={
+            <CalendarDays size={23} color={colors.muted} strokeWidth={2.7} />
+          }
           label="Trips"
           onPress={() => goTo("/my-trips")}
           styles={styles}
@@ -731,7 +1454,10 @@ export default function DashboardScreen() {
 function StatBlock({ label, value, styles, small }: any) {
   return (
     <View style={styles.statBlock}>
-      <Text style={[styles.statValue, small && styles.statValueSmall]} numberOfLines={1}>
+      <Text
+        style={[styles.statValue, small && styles.statValueSmall]}
+        numberOfLines={1}
+      >
         {value}
       </Text>
       <Text style={styles.statLabel}>{label}</Text>
@@ -745,7 +1471,11 @@ function Divider({ styles }: any) {
 
 function ToolCard({ icon, title, subtitle, onPress, styles }: any) {
   return (
-    <TouchableOpacity style={styles.toolCard} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity
+      style={styles.toolCard}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       <View style={styles.toolIconBox}>{icon}</View>
 
       <View style={{ flex: 1 }}>
@@ -760,7 +1490,11 @@ function ToolCard({ icon, title, subtitle, onPress, styles }: any) {
 
 function BottomTab({ icon, label, active, onPress, styles }: any) {
   return (
-    <TouchableOpacity style={styles.bottomTab} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity
+      style={styles.bottomTab}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       {icon}
       <Text style={[styles.bottomLabel, active && styles.bottomLabelActive]}>
         {label}
@@ -771,7 +1505,11 @@ function BottomTab({ icon, label, active, onPress, styles }: any) {
 
 function MenuOption({ icon, title, onPress, styles }: any) {
   return (
-    <TouchableOpacity style={styles.menuOption} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity
+      style={styles.menuOption}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
       {icon}
       <Text style={styles.menuOptionTitle}>{title}</Text>
     </TouchableOpacity>
@@ -780,9 +1518,17 @@ function MenuOption({ icon, title, onPress, styles }: any) {
 
 function ListItem({ title, onPress, icon, danger, styles }: any) {
   return (
-    <TouchableOpacity style={styles.listItem} onPress={onPress} activeOpacity={0.85}>
-      <View style={[styles.smallIcon, danger && styles.dangerIcon]}>{icon}</View>
-      <Text style={[styles.listText, danger && styles.dangerText]}>{title}</Text>
+    <TouchableOpacity
+      style={styles.listItem}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <View style={[styles.smallIcon, danger && styles.dangerIcon]}>
+        {icon}
+      </View>
+      <Text style={[styles.listText, danger && styles.dangerText]}>
+        {title}
+      </Text>
       <Text style={[styles.listArrow, danger && styles.dangerText]}>›</Text>
     </TouchableOpacity>
   );
@@ -807,45 +1553,7 @@ function DropdownPanel({ title, children, styles }: any) {
   );
 }
 
-const darkTheme = {
-  mode: "dark",
-  bg: "#050B16",
-  overlay: "rgba(5,11,22,0.91)",
-  card: "rgba(16,24,39,0.94)",
-  card2: "rgba(21,31,43,0.95)",
-  text: "#FFFFFF",
-  muted: "#B8C1CC",
-  soft: "rgba(255,255,255,0.07)",
-  border: "rgba(212,175,55,0.26)",
-  lightBorder: "rgba(255,255,255,0.10)",
-  gold: "#D4AF37",
-  gold2: "#B8860B",
-  navy: "#050B16",
-  green: "#20C461",
-  danger: "#EF4444",
-  nav: "rgba(8,14,24,0.98)",
-};
-
-const lightTheme = {
-  mode: "light",
-  bg: "#F7F7F5",
-  overlay: "rgba(247,247,245,0.88)",
-  card: "rgba(255,255,255,0.96)",
-  card2: "#FFF8E8",
-  text: "#07111F",
-  muted: "#5D6673",
-  soft: "rgba(7,17,31,0.05)",
-  border: "rgba(184,134,11,0.24)",
-  lightBorder: "rgba(7,17,31,0.10)",
-  gold: "#B8860B",
-  gold2: "#D4AF37",
-  navy: "#07111F",
-  green: "#16A34A",
-  danger: "#DC2626",
-  nav: "rgba(255,255,255,0.98)",
-};
-
-function createStyles(c: any) {
+function createStyles(c: AngelThemeColors) {
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -968,9 +1676,7 @@ function createStyles(c: any) {
       marginBottom: 18,
       borderWidth: 1,
       borderColor:
-        c.mode === "dark"
-          ? "rgba(255,255,255,0.12)"
-          : "rgba(184,134,11,0.28)",
+        c.mode === "dark" ? "rgba(255,255,255,0.12)" : "rgba(184,134,11,0.28)",
       shadowColor: c.gold,
       shadowOpacity: 0.28,
       shadowRadius: 18,
@@ -1138,6 +1844,18 @@ function createStyles(c: any) {
       lineHeight: 22,
       marginBottom: 20,
       maxWidth: "78%",
+    },
+    loadingIndicator: {
+      alignSelf: "flex-start",
+      marginBottom: 18,
+    },
+    activeRouteText: {
+      color: c.text,
+      fontSize: 13,
+      fontWeight: "800",
+      lineHeight: 19,
+      marginBottom: 18,
+      maxWidth: "88%",
     },
     primaryButton: {
       backgroundColor: c.gold,
@@ -1316,9 +2034,7 @@ function createStyles(c: any) {
     },
     dangerIcon: {
       borderColor:
-        c.mode === "dark"
-          ? "rgba(239,68,68,0.45)"
-          : "rgba(220,38,38,0.30)",
+        c.mode === "dark" ? "rgba(239,68,68,0.45)" : "rgba(220,38,38,0.30)",
     },
     listText: {
       color: c.text,

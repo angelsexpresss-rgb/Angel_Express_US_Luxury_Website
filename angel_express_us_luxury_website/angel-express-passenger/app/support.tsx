@@ -31,7 +31,7 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 const SUPPORT_PHONE = "19728367910";
 const SUPPORT_EMAIL = "support@angelexpressus.com";

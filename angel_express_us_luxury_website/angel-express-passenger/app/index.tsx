@@ -18,7 +18,7 @@ import {
   slowBackgroundZoom,
 } from "../components/angel";
 
-import { usePassengerTheme } from "../lib/passengerTheme";
+import { usePassengerTheme } from "../lib/angelTheme";
 
 export default function HomeScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();

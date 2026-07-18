@@ -24,7 +24,7 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 const PAYMENT_WORKER_URL =
   "https://angel-express-payments.angelsexpresss.workers.dev";

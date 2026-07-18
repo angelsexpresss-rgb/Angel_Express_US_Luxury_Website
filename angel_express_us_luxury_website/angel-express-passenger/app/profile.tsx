@@ -34,7 +34,7 @@ import {
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
-import { usePassengerTheme, v5Shadow } from "../lib/passengerTheme";
+import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
 function numberValue(...values: any[]) {
   for (const value of values) {
