@@ -30,6 +30,47 @@
   --ae-radius-lg:34px;
   --ae-shadow:0 28px 90px rgba(0,0,0,.42);
   --ae-max:1180px;
+
+  --ae-page-bg:#050A14;
+  --ae-page-bg-2:#081426;
+  --ae-surface:rgba(13,20,34,.78);
+  --ae-surface-solid:#101827;
+  --ae-surface-soft:rgba(255,255,255,.07);
+  --ae-heading:#FFFFFF;
+  --ae-body:#F8FAFC;
+  --ae-input-bg:rgba(5,10,20,.72);
+  --ae-navbar-bg:rgba(5,10,20,.88);
+  --ae-mobile-menu-bg:rgba(5,10,20,.98);
+  --ae-footer-bg:rgba(2,4,10,.78);
+  --ae-grid-line:rgba(255,255,255,.035);
+  --ae-shadow-color:rgba(0,0,0,.42);
+}
+
+html[data-theme="light"]{
+  --ae-bg:#F4F7FB;
+  --ae-bg-2:#E9EEF5;
+  --ae-card:rgba(255,255,255,.88);
+  --ae-card-solid:#FFFFFF;
+  --ae-white:#FFFFFF;
+  --ae-text:#101828;
+  --ae-muted:#5E6B7D;
+  --ae-border:rgba(166,122,0,.26);
+  --ae-border-soft:rgba(15,23,42,.10);
+  --ae-shadow:0 26px 75px rgba(15,23,42,.16);
+
+  --ae-page-bg:#F4F7FB;
+  --ae-page-bg-2:#E9EEF5;
+  --ae-surface:rgba(255,255,255,.88);
+  --ae-surface-solid:#FFFFFF;
+  --ae-surface-soft:rgba(15,23,42,.055);
+  --ae-heading:#101828;
+  --ae-body:#1E293B;
+  --ae-input-bg:rgba(255,255,255,.94);
+  --ae-navbar-bg:rgba(255,255,255,.88);
+  --ae-mobile-menu-bg:rgba(255,255,255,.98);
+  --ae-footer-bg:rgba(238,242,247,.94);
+  --ae-grid-line:rgba(15,23,42,.045);
+  --ae-shadow-color:rgba(15,23,42,.16);
 }
 
 /* ---------- Reset / Base ---------- */
@@ -46,7 +87,7 @@ html{
 body{
   margin:0;
   min-height:100vh;
-  background:var(--ae-bg);
+  background:var(--ae-page-bg);
   color:var(--ae-text);
   font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
   overflow-x:hidden;
@@ -76,6 +117,49 @@ body::after{
     linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
   background-size:44px 44px;
   mask-image:linear-gradient(to bottom,rgba(0,0,0,.55),transparent 76%);
+}
+
+
+html,
+body,
+.navbar,
+.mobile-menu,
+.footer,
+.booking-card,
+.confirm-card,
+.fare-card,
+.info-card,
+.ecosystem-grid article,
+.promise-grid article,
+.route-card,
+.blog-card,
+.contact-card,
+.driver-card,
+.service-card,
+input,
+select,
+textarea,
+.chatbot-box{
+  transition:
+    background-color .32s ease,
+    background .32s ease,
+    color .32s ease,
+    border-color .32s ease,
+    box-shadow .32s ease;
+}
+
+html[data-theme="light"] body::before{
+  background:
+    radial-gradient(circle at 18% 12%,rgba(212,175,55,.15),transparent 28%),
+    radial-gradient(circle at 82% 18%,rgba(245,215,110,.12),transparent 30%),
+    radial-gradient(circle at 50% 95%,rgba(15,23,42,.04),transparent 32%),
+    linear-gradient(135deg,#F8FAFC 0%,#EEF2F7 48%,#E8EDF4 100%);
+}
+
+html[data-theme="light"] body::after{
+  background-image:
+    linear-gradient(var(--ae-grid-line) 1px,transparent 1px),
+    linear-gradient(90deg,var(--ae-grid-line) 1px,transparent 1px);
 }
 
 a{
@@ -199,7 +283,7 @@ main{
   align-items:center;
   justify-content:space-between;
   gap:24px;
-  background:rgba(5,10,20,.88);
+  background:var(--ae-navbar-bg);
   backdrop-filter:blur(22px);
   -webkit-backdrop-filter:blur(22px);
   border-bottom:1px solid var(--ae-border-soft);
@@ -319,7 +403,7 @@ main{
   right:0;
   z-index:99989;
   padding:14px clamp(18px,5vw,72px) 18px;
-  background:rgba(5,10,20,.98);
+  background:var(--ae-mobile-menu-bg);
   backdrop-filter:blur(20px);
   -webkit-backdrop-filter:blur(20px);
   border-bottom:1px solid rgba(212,175,55,.22);
@@ -345,6 +429,97 @@ main{
   color:var(--ae-gold-soft);
   border:1px solid rgba(212,175,55,.28);
 }
+
+
+/* ---------- Central Light / Dark Theme Toggle ---------- */
+
+.ae-theme-toggle{
+  --ae-toggle-width:138px;
+  position:relative;
+  min-width:var(--ae-toggle-width);
+  height:42px;
+  display:grid;
+  grid-template-columns:24px 1fr 24px;
+  align-items:center;
+  gap:6px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid rgba(212,175,55,.42);
+  background:rgba(255,255,255,.06);
+  color:var(--ae-heading);
+  box-shadow:0 12px 30px rgba(0,0,0,.14);
+  cursor:pointer;
+  flex:0 0 auto;
+}
+
+.ae-theme-sun,
+.ae-theme-moon{
+  display:grid;
+  place-items:center;
+  font-size:16px;
+  line-height:1;
+}
+
+.ae-theme-track{
+  position:relative;
+  height:24px;
+  display:flex;
+  align-items:center;
+}
+
+.ae-theme-line{
+  width:100%;
+  height:2px;
+  border-radius:999px;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(212,175,55,.72) 0 5px,
+      transparent 5px 9px
+    );
+}
+
+.ae-theme-knob{
+  position:absolute;
+  left:calc(100% - 20px);
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--ae-gold-soft),var(--ae-gold));
+  border:2px solid rgba(5,10,20,.76);
+  box-shadow:0 5px 16px rgba(212,175,55,.32);
+  transition:left .28s ease,transform .28s ease;
+}
+
+html[data-theme="light"] .ae-theme-knob{
+  left:0;
+  border-color:rgba(255,255,255,.94);
+}
+
+html[data-theme="light"] .ae-theme-toggle{
+  background:rgba(15,23,42,.055);
+  color:#101828;
+  box-shadow:0 10px 24px rgba(15,23,42,.10);
+}
+
+.ae-mobile-theme-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:8px 4px 14px;
+  color:var(--ae-heading);
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:.7px;
+  text-transform:uppercase;
+}
+
+.ae-theme-toggle-mobile{
+  min-width:132px;
+  height:40px;
+}
+
 
 /* ---------- General Layout ---------- */
 
@@ -1019,7 +1194,7 @@ small{
   margin-top:80px;
   padding:60px clamp(20px,5vw,72px) 22px;
   border-top:1px solid var(--ae-border-soft);
-  background:rgba(2,4,10,.78);
+  background:var(--ae-footer-bg);
 }
 
 .footer-grid{
@@ -1495,7 +1670,288 @@ small{
   }
 }
 
+
+/* =========================================================
+   CENTRAL LIGHT THEME OVERRIDES
+   These selectors intentionally override page-level V5 dark
+   colors without requiring edits to individual HTML files.
+========================================================= */
+
+html[data-theme="light"] body,
+html[data-theme="light"] main{
+  color:var(--ae-text);
+}
+
+html[data-theme="light"] .navbar{
+  color:#101828;
+  border-bottom-color:rgba(15,23,42,.10);
+  box-shadow:0 10px 32px rgba(15,23,42,.08);
+}
+
+html[data-theme="light"] .logo,
+html[data-theme="light"] .logo h1,
+html[data-theme="light"] .logo-text h1,
+html[data-theme="light"] .footer h3,
+html[data-theme="light"] .footer h4{
+  color:#101828;
+}
+
+html[data-theme="light"] .logo span,
+html[data-theme="light"] .logo-text span{
+  color:rgba(16,24,40,.62);
+}
+
+html[data-theme="light"] .desktop-nav a,
+html[data-theme="light"] .nav-links a{
+  color:rgba(16,24,40,.74);
+}
+
+html[data-theme="light"] .desktop-nav a:hover,
+html[data-theme="light"] .desktop-nav a.active,
+html[data-theme="light"] .nav-links a:hover,
+html[data-theme="light"] .nav-links a.active{
+  color:#8A6700;
+}
+
+html[data-theme="light"] .mobile-menu{
+  color:#101828;
+  border-bottom-color:rgba(15,23,42,.10);
+  box-shadow:0 20px 45px rgba(15,23,42,.12);
+}
+
+html[data-theme="light"] .mobile-menu a{
+  background:rgba(15,23,42,.05);
+  color:#101828;
+}
+
+html[data-theme="light"] .mobile-menu-btn{
+  color:#101828;
+  background:rgba(15,23,42,.05);
+}
+
+html[data-theme="light"] .section h1,
+html[data-theme="light"] .section h2,
+html[data-theme="light"] .section h3,
+html[data-theme="light"] .section h4,
+html[data-theme="light"] .section-title,
+html[data-theme="light"] .page-title,
+html[data-theme="light"] .booking-title,
+html[data-theme="light"] .confirm-title,
+html[data-theme="light"] .hero-title,
+html[data-theme="light"] .collection-card h3,
+html[data-theme="light"] .product h3,
+html[data-theme="light"] .mockup-name h3,
+html[data-theme="light"] .fare-box h2,
+html[data-theme="light"] .top-card strong,
+html[data-theme="light"] .detail-item strong,
+html[data-theme="light"] .summary-row strong,
+html[data-theme="light"] .route-value{
+  color:#101828;
+}
+
+html[data-theme="light"] .section p,
+html[data-theme="light"] .section-sub,
+html[data-theme="light"] .section-top p,
+html[data-theme="light"] .page-subtitle,
+html[data-theme="light"] .booking-subtitle,
+html[data-theme="light"] .confirm-subtitle,
+html[data-theme="light"] .hero-text,
+html[data-theme="light"] .helper-note,
+html[data-theme="light"] .note,
+html[data-theme="light"] .collection-card p,
+html[data-theme="light"] .collection-card li,
+html[data-theme="light"] .policy-card p,
+html[data-theme="light"] .faq-answer,
+html[data-theme="light"] .estimate-disclaimer,
+html[data-theme="light"] .check-item,
+html[data-theme="light"] .terms-label,
+html[data-theme="light"] .privacy-content p,
+html[data-theme="light"] .privacy-content li,
+html[data-theme="light"] .footer p,
+html[data-theme="light"] .footer-bottom{
+  color:#5E6B7D;
+}
+
+html[data-theme="light"] .booking-card,
+html[data-theme="light"] .confirm-card,
+html[data-theme="light"] .fare-card,
+html[data-theme="light"] .info-card,
+html[data-theme="light"] .fare-box,
+html[data-theme="light"] .top-card,
+html[data-theme="light"] .detail-item,
+html[data-theme="light"] .privacy-content-v4,
+html[data-theme="light"] .terms-nav,
+html[data-theme="light"] .legal-notice,
+html[data-theme="light"] .cta-v4,
+html[data-theme="light"] .collection-card,
+html[data-theme="light"] .apparel-card,
+html[data-theme="light"] .product,
+html[data-theme="light"] .checkout-panel,
+html[data-theme="light"] .policy-card,
+html[data-theme="light"] .faq-card,
+html[data-theme="light"] .ecosystem-grid article,
+html[data-theme="light"] .promise-grid article,
+html[data-theme="light"] .route-card,
+html[data-theme="light"] .blog-card,
+html[data-theme="light"] .contact-card,
+html[data-theme="light"] .driver-card,
+html[data-theme="light"] .service-card,
+html[data-theme="light"] .success-card,
+html[data-theme="light"] .loader-card{
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.96),rgba(248,250,252,.88)),
+    rgba(255,255,255,.94) !important;
+  color:#101828 !important;
+  border-color:rgba(166,122,0,.22) !important;
+  box-shadow:0 22px 60px rgba(15,23,42,.12) !important;
+}
+
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea{
+  background:rgba(255,255,255,.94) !important;
+  color:#101828 !important;
+  border-color:rgba(166,122,0,.24) !important;
+}
+
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder{
+  color:rgba(16,24,40,.46) !important;
+}
+
+html[data-theme="light"] select option{
+  background:#ffffff;
+  color:#101828;
+}
+
+html[data-theme="light"] label,
+html[data-theme="light"] .terms-label,
+html[data-theme="light"] .summary-row span,
+html[data-theme="light"] .final-row span{
+  color:#334155;
+}
+
+html[data-theme="light"] .page-bg,
+html[data-theme="light"] .confirm-bg,
+html[data-theme="light"] .terms-bg{
+  filter:saturate(.78) brightness(1.06);
+}
+
+html[data-theme="light"] .page-bg::after,
+html[data-theme="light"] .confirm-bg::after,
+html[data-theme="light"] .terms-bg::after{
+  background:
+    radial-gradient(circle at 75% 20%,rgba(212,175,55,.15),transparent 30%),
+    linear-gradient(180deg,rgba(244,247,251,.22),rgba(244,247,251,.90) 95%);
+}
+
+html[data-theme="light"] .hero-v4-overlay,
+html[data-theme="light"] .hero-overlay{
+  background:
+    radial-gradient(circle at 78% 30%,rgba(212,175,55,.18),transparent 30%),
+    linear-gradient(90deg,rgba(244,247,251,.94),rgba(244,247,251,.78),rgba(244,247,251,.42)),
+    linear-gradient(180deg,rgba(244,247,251,.12),rgba(244,247,251,.90));
+}
+
+html[data-theme="light"] .hero-v4 h1,
+html[data-theme="light"] .hero-v4-stat strong,
+html[data-theme="light"] .hero-v4-caption,
+html[data-theme="light"] .hero-v4-caption b,
+html[data-theme="light"] .hero-v4-sub{
+  color:#101828;
+}
+
+html[data-theme="light"] .hero-v4-stat,
+html[data-theme="light"] .hero-v4-caption,
+html[data-theme="light"] .hero-stats div,
+html[data-theme="light"] .proof-row div{
+  background:rgba(255,255,255,.82);
+  border-color:rgba(166,122,0,.22);
+  box-shadow:0 20px 55px rgba(15,23,42,.12);
+}
+
+html[data-theme="light"] .faq-accordion details{
+  background:rgba(255,255,255,.92);
+  border-color:rgba(166,122,0,.20);
+}
+
+html[data-theme="light"] .faq-accordion summary{
+  color:#101828;
+}
+
+html[data-theme="light"] .footer{
+  border-top-color:rgba(15,23,42,.10);
+}
+
+html[data-theme="light"] .footer a{
+  color:#334155;
+}
+
+html[data-theme="light"] .footer a:hover{
+  color:#8A6700;
+}
+
+html[data-theme="light"] .btn-secondary,
+html[data-theme="light"] .btn-glass,
+html[data-theme="light"] .hero-v4-secondary,
+html[data-theme="light"] .nav-cta-secondary,
+html[data-theme="light"] .back-btn,
+html[data-theme="light"] .btn.dark{
+  background:rgba(255,255,255,.78) !important;
+  color:#101828 !important;
+  border-color:rgba(166,122,0,.24) !important;
+}
+
+html[data-theme="light"] .chatbot-box,
+html[data-theme="light"] .chatbot-messages,
+html[data-theme="light"] .chatbot-input{
+  color:#101828;
+}
+
+html[data-theme="light"] .chatbot-messages{
+  background:#F3F6FA;
+}
+
+html[data-theme="light"] .chat-msg.bot{
+  background:#FFFFFF;
+  color:#101828;
+}
+
+html[data-theme="light"] #chatInput,
+html[data-theme="light"] .chatbot-input input{
+  color:#101828;
+}
+
+html[data-theme="light"] .chatbot-input{
+  background:#FFFFFF;
+}
+
+html[data-theme="light"] .whatsapp-float{
+  color:#050A14;
+}
+
+html[data-theme="light"] .status-banner.show,
+html[data-theme="light"] .profile-status.info,
+html[data-theme="light"] .student-status.info,
+html[data-theme="light"] .reward-status.info{
+  color:#334155;
+}
+
+
 /* ---------- Responsive ---------- */
+
+
+@media(max-width:1380px){
+  .ae-theme-toggle-desktop{
+    --ae-toggle-width:118px;
+    min-width:118px;
+  }
+
+  .ae-theme-toggle-desktop .ae-theme-sun,
+  .ae-theme-toggle-desktop .ae-theme-moon{
+    font-size:14px;
+  }
+}
 
 @media(max-width:1280px){
   .navbar{
@@ -1854,5 +2310,12 @@ small{
   .logo-text span{
     font-size:7px;
     letter-spacing:1.5px;
+  }
+}
+
+@media(max-width:720px){
+  .ae-theme-toggle-mobile{
+    width:138px;
+    min-width:138px;
   }
 }

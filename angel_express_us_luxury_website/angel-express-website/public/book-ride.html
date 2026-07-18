@@ -410,7 +410,8 @@ textarea{
   background:linear-gradient(135deg,rgba(212,175,55,.12),rgba(255,255,255,.05));
 }
 
-.student-card.success{
+.student-card.success,
+.reward-card.success{
   border-color:rgba(56,212,111,.35);
   background:linear-gradient(135deg,rgba(56,212,111,.12),rgba(255,255,255,.05));
 }
@@ -437,7 +438,8 @@ textarea{
   flex:0 0 46px;
 }
 
-.student-card.success .student-icon{
+.student-card.success .student-icon,
+.reward-card.success .reward-icon{
   background:var(--ae-green);
 }
 
@@ -1287,11 +1289,16 @@ function showStatus(type, message, isError = false) {
 
 function showRewardStatus(message, statusType = "info") {
   const box = document.getElementById("rewardStatus");
+  const rewardCard = document.querySelector(".reward-card");
 
   if (!box) return;
 
   box.className = "reward-status " + statusType;
   box.innerHTML = message;
+
+  if (rewardCard) {
+    rewardCard.classList.toggle("success", statusType === "success");
+  }
 }
 
 function showStudentStatus(message, statusType = "info") {
@@ -1445,10 +1452,15 @@ document.getElementById("referral")?.addEventListener("input", () => {
   clearAppliedReferral();
 
   const box = document.getElementById("rewardStatus");
+  const rewardCard = document.querySelector(".reward-card");
 
   if (box) {
     box.className = "reward-status";
     box.style.display = "none";
+  }
+
+  if (rewardCard) {
+    rewardCard.classList.remove("success");
   }
 });
 
@@ -1578,13 +1590,15 @@ async function bookRideApplyReferralCode() {
   try {
     const { data: referrer, error } = await bookRideSupabaseClient
       .from("passenger_profiles")
-      .select("user_id, first_name, last_name, email, referral_code")
+      .select("id, user_id, first_name, last_name, email, referral_code")
       .ilike("referral_code", code)
       .maybeSingle();
 
     if (error) throw error;
 
-    if (!referrer?.user_id) {
+    const referrerUserId = referrer?.user_id || referrer?.id || null;
+
+    if (!referrerUserId) {
       showRewardStatus("Invalid referral code. Please check the code and try again.", "error");
       return;
     }
@@ -1613,7 +1627,7 @@ async function bookRideApplyReferralCode() {
       referral_code_used: code,
       referral_applied: true,
       referral_status: "validated",
-      referrer_user_id: referrer.user_id,
+      referrer_user_id: referrerUserId,
       referral_discount: REFERRAL_DISCOUNT,
       referral_discount_type: "fixed",
       referral_credit_awarded: false,
@@ -1621,7 +1635,8 @@ async function bookRideApplyReferralCode() {
     };
 
     showRewardStatus(
-      `✅ Referral code <strong>${code}</strong> applied successfully.<br>
+      `✅ Valid referral code confirmed.<br>
+       Code <strong>${code}</strong> has been applied successfully.<br>
        ${referrerName ? `Referrer: <strong>${referrerName}</strong><br>` : ""}
        Estimated referral discount: <strong>$${REFERRAL_DISCOUNT.toFixed(2)}</strong>`,
       "success"
