@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { router } from "expo-router";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   AppState,
@@ -41,6 +40,12 @@ import {
   UserRound,
   Users,
   X,
+  Settings,
+  SunMoon,
+  Accessibility,
+  Fingerprint,
+  ScanFace,
+  SlidersHorizontal,
 } from "lucide-react-native";
 
 import { registerForPushNotifications } from "../lib/notifications";
@@ -84,16 +89,8 @@ export default function DashboardScreen() {
   const [activeBooking, setActiveBooking] = useState<BookingSummary | null>(
     null,
   );
-  const [pendingBooking, setPendingBooking] = useState<BookingSummary | null>(
-    null,
-  );
-  const [upcomingBooking, setUpcomingBooking] = useState<BookingSummary | null>(
-    null,
-  );
-  const [lastCompletedBooking, setLastCompletedBooking] =
-    useState<BookingSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [, setLoading] = useState(true);
+  const [, setLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -101,7 +98,6 @@ export default function DashboardScreen() {
   const pageFade = useRef(new Animated.Value(0)).current;
   const headerFade = useRef(new Animated.Value(0)).current;
   const cardFade = useRef(new Animated.Value(0)).current;
-  const bodyFade = useRef(new Animated.Value(0)).current;
   const toolFade = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
   const menuAnim = useRef(new Animated.Value(0)).current;
@@ -152,7 +148,6 @@ export default function DashboardScreen() {
       ]),
       fadeIn(headerFade, 80),
       fadeIn(cardFade, 90),
-      fadeIn(bodyFade, 90),
       fadeIn(toolFade, 90),
     ]);
 
@@ -676,9 +671,6 @@ setFirstName(
       const classified = classifyBookings(uniqueBookings);
 
       setActiveBooking(classified.active);
-      setPendingBooking(classified.pending);
-      setUpcomingBooking(classified.upcoming);
-      setLastCompletedBooking(classified.completed);
 
       const storedTrips = Number(passenger?.total_trips || 0);
       setTotalTrips(
@@ -720,11 +712,6 @@ setFirstName(
     setMenuOpen(false);
     router.push(route as any);
   }
-
-  // These remain available for upcoming, pending, and completed dashboard summaries
-  // without altering the established layout or navigation.
-  void pendingBooking;
-  void upcomingBooking;
 
   async function handleLogout() {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -918,116 +905,6 @@ setFirstName(
               </TouchableOpacity>
             </Animated.View>
 
-            <Animated.View style={{ opacity: bodyFade }}>
-              <View style={styles.goOnlineCard}>
-                <View style={styles.cityArt}>
-                  <Text style={styles.cityEmoji}>🏙️</Text>
-                  <Text style={styles.carEmoji}>
-                    {themeMode === "dark" ? "🚘" : "🚕"}
-                  </Text>
-                </View>
-
-                <Text style={styles.goOnlineTitle}>
-                  {loadError
-                    ? "Unable to Load Dashboard"
-                    : loading
-                      ? "Loading Your Dashboard"
-                      : activeBooking
-                        ? "Your Current Trip"
-                        : "Ready for Your Next Trip?"}
-                </Text>
-
-                <Text style={styles.goOnlineText}>
-                  {loadError
-                    ? "We could not refresh your passenger information. Check your connection and try again."
-                    : loading
-                      ? "Getting your latest ride, rewards, and account information."
-                      : activeBooking
-                        ? `${formatBookingStatus(activeBooking)} • ${getBookingDateTime(
-                            activeBooking,
-                          )}`
-                        : lastCompletedBooking
-                          ? `Last trip completed • ${getBookingDateTime(lastCompletedBooking)}`
-                          : "Book private rides, airport transfers, long-distance travel, student trips, and event transportation."}
-                </Text>
-
-                {loading && !loadError ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={colors.gold}
-                    style={styles.loadingIndicator}
-                  />
-                ) : null}
-
-                {!loadError && activeBooking && (
-                  <Text style={styles.activeRouteText} numberOfLines={2}>
-                    {(activeBooking.pickup_address ||
-                      activeBooking.pickup ||
-                      "Pickup pending") +
-                      " → " +
-                      (activeBooking.dropoff_address ||
-                        activeBooking.dropoff ||
-                        "Drop-off pending")}
-                  </Text>
-                )}
-
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={() => {
-                    if (loadError) {
-                      void loadDashboardData({ force: true });
-                      return;
-                    }
-
-                    activeBooking
-                      ? goTo(`/my-trips?bookingId=${activeBooking.id}`)
-                      : goTo("/book-ride");
-                  }}
-                  activeOpacity={0.88}
-                >
-                  <Text style={styles.primaryButtonText}>
-                    {loadError
-                      ? "Retry"
-                      : activeBooking
-                        ? "View Trip"
-                        : "Book a Ride"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Upcoming Opportunities</Text>
-
-                <TouchableOpacity onPress={() => goTo("/travel-concierge")}>
-                  <Text style={styles.seeAll}>See all</Text>
-                </TouchableOpacity>
-              </View>
-
-              <TouchableOpacity
-                style={styles.opportunityCard}
-                onPress={() => goTo("/travel-concierge")}
-                activeOpacity={0.9}
-              >
-                <View style={styles.smartIcon}>
-                  <Plane size={31} color={colors.gold} strokeWidth={2.7} />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.opportunityTitle}>Travel Concierge</Text>
-                  <Text style={styles.opportunitySub}>
-                    Airport, hotel, event, and long-distance trip help
-                  </Text>
-                  <Text style={styles.opportunityGreen}>
-                    Smart planning • Private comfort
-                  </Text>
-                </View>
-
-                <View style={styles.pricePill}>
-                  <Text style={styles.priceText}>Plan</Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-
             <Animated.View style={{ opacity: toolFade }}>
               <Text style={styles.menuTitle}>Passenger Control Center</Text>
 
@@ -1183,20 +1060,7 @@ setFirstName(
                 />
 
                 <ListItem
-                  title="Multi-Language Assistant"
-                  icon={
-                    <Languages
-                      size={21}
-                      color={colors.gold}
-                      strokeWidth={2.7}
-                    />
-                  }
-                  onPress={() => goTo("/language-assistant")}
-                  styles={styles}
-                />
-
-                <ListItem
-                  title="World Cup & Event Mode"
+                  title="Event Mode"
                   icon={
                     <Trophy size={21} color={colors.gold} strokeWidth={2.7} />
                   }
@@ -1206,19 +1070,6 @@ setFirstName(
               </DropdownPanel>
 
               <DropdownPanel title="Safety, Family & Support" styles={styles}>
-                <ListItem
-                  title="Safety & Support"
-                  icon={
-                    <ShieldCheck
-                      size={21}
-                      color={colors.gold}
-                      strokeWidth={2.7}
-                    />
-                  }
-                  onPress={() => goTo("/safety-share")}
-                  styles={styles}
-                />
-
                 <ListItem
                   title="Angel Safety Share"
                   icon={
@@ -1257,6 +1108,24 @@ setFirstName(
 
               <DropdownPanel title="Settings & Information" styles={styles}>
                 <ListItem
+                  title="Settings"
+                  icon={
+                    <Settings size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => goTo("/settings")}
+                  styles={styles}
+                />
+
+                <ListItem
+                  title="Theme"
+                  icon={
+                    <SunMoon size={21} color={colors.gold} strokeWidth={2.7} />
+                  }
+                  onPress={() => void toggleTheme()}
+                  styles={styles}
+                />
+
+                <ListItem
                   title="Notifications"
                   icon={
                     <Bell size={21} color={colors.gold} strokeWidth={2.7} />
@@ -1266,11 +1135,76 @@ setFirstName(
                 />
 
                 <ListItem
-                  title="Privacy & Account"
+                  title="Language"
+                  icon={
+                    <Languages
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/language-assistant")}
+                  styles={styles}
+                />
+
+                <ListItem
+                  title="Privacy"
                   icon={
                     <Lock size={21} color={colors.gold} strokeWidth={2.7} />
                   }
                   onPress={() => goTo("/privacy-account")}
+                  styles={styles}
+                />
+
+                <ListItem
+                  title="Accessibility"
+                  icon={
+                    <Accessibility
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/settings?section=accessibility")}
+                  styles={styles}
+                />
+
+                <ListItem
+                  title="Biometrics"
+                  icon={
+                    <Fingerprint
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/settings?section=biometrics")}
+                  styles={styles}
+                />
+
+                <ListItem
+                  title="Face ID"
+                  icon={
+                    <ScanFace
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/settings?section=face-id")}
+                  styles={styles}
+                />
+
+                <ListItem
+                  title="Preferences"
+                  icon={
+                    <SlidersHorizontal
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/settings?section=preferences")}
                   styles={styles}
                 />
 
@@ -1805,137 +1739,6 @@ function createStyles(c: AngelThemeColors) {
       color: c.text,
       fontSize: 30,
       fontWeight: "700",
-    },
-    goOnlineCard: {
-      backgroundColor: c.card,
-      borderRadius: 25,
-      borderWidth: 1,
-      borderColor: c.border,
-      padding: 20,
-      marginBottom: 28,
-      overflow: "hidden",
-    },
-    cityArt: {
-      position: "absolute",
-      right: 16,
-      top: 22,
-      alignItems: "center",
-      opacity: c.mode === "dark" ? 0.72 : 0.9,
-    },
-    cityEmoji: {
-      fontSize: 64,
-      opacity: 0.35,
-    },
-    carEmoji: {
-      fontSize: 54,
-      marginTop: -34,
-    },
-    goOnlineTitle: {
-      color: c.text,
-      fontSize: 21,
-      fontWeight: "900",
-      marginBottom: 10,
-      maxWidth: "72%",
-    },
-    goOnlineText: {
-      color: c.muted,
-      fontSize: 15,
-      fontWeight: "700",
-      lineHeight: 22,
-      marginBottom: 20,
-      maxWidth: "78%",
-    },
-    loadingIndicator: {
-      alignSelf: "flex-start",
-      marginBottom: 18,
-    },
-    activeRouteText: {
-      color: c.text,
-      fontSize: 13,
-      fontWeight: "800",
-      lineHeight: 19,
-      marginBottom: 18,
-      maxWidth: "88%",
-    },
-    primaryButton: {
-      backgroundColor: c.gold,
-      paddingVertical: 16,
-      borderRadius: 16,
-      alignItems: "center",
-      shadowColor: c.gold,
-      shadowOpacity: 0.25,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 7 },
-    },
-    primaryButtonText: {
-      color: c.mode === "dark" ? "#07111F" : "#FFFFFF",
-      fontSize: 17,
-      fontWeight: "900",
-    },
-    sectionHeaderRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    sectionTitle: {
-      color: c.text,
-      fontSize: 22,
-      fontWeight: "900",
-      marginBottom: 14,
-      letterSpacing: -0.4,
-    },
-    seeAll: {
-      color: c.gold,
-      fontSize: 16,
-      fontWeight: "900",
-      marginBottom: 14,
-    },
-    opportunityCard: {
-      backgroundColor: c.card,
-      borderRadius: 23,
-      borderWidth: 1,
-      borderColor: c.lightBorder,
-      padding: 17,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 15,
-      marginBottom: 30,
-    },
-    smartIcon: {
-      width: 58,
-      height: 58,
-      borderRadius: 29,
-      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.20)" : "#FCE8B6",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    opportunityTitle: {
-      color: c.text,
-      fontSize: 17,
-      fontWeight: "900",
-      marginBottom: 4,
-    },
-    opportunitySub: {
-      color: c.muted,
-      fontSize: 13,
-      fontWeight: "700",
-      marginBottom: 4,
-    },
-    opportunityGreen: {
-      color: "#16A34A",
-      fontSize: 13,
-      fontWeight: "800",
-    },
-    pricePill: {
-      backgroundColor: c.mode === "dark" ? "rgba(212,175,55,0.16)" : "#FFF0CC",
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 10,
-    },
-    priceText: {
-      color: c.gold,
-      fontSize: 13,
-      fontWeight: "900",
     },
     menuTitle: {
       color: c.gold,

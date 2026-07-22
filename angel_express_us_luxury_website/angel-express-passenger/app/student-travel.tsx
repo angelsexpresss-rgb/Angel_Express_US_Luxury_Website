@@ -16,13 +16,21 @@ import {
   ArrowLeft,
   BadgeCheck,
   Bus,
+  CalendarDays,
+  CarFront,
+  CheckCircle2,
+  Clock3,
   Gift,
   GraduationCap,
   MapPinned,
   RefreshCw,
   Route,
   ShieldCheck,
+  Ticket,
+  UserRound,
   Users,
+  Wifi,
+  WifiOff,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
@@ -35,14 +43,34 @@ type VerificationState =
   | "expired"
   | "not_submitted";
 
-type PoolRoute = {
+type StudentPool = {
   id: string;
-  from: string;
-  to: string;
-  route: string;
-  seats: number;
-  fare: number;
-  time: string;
+  origin: string;
+  destination: string;
+  departure_date: string;
+  departure_time: string;
+  seats_total: number;
+  seats_available: number;
+  fare_per_seat: number;
+  status: string;
+  campus_hub?: string | null;
+  assigned_driver_id?: string | null;
+  driver_name?: string | null;
+  vehicle_description?: string | null;
+  license_plate?: string | null;
+  created_at?: string | null;
+};
+
+type PoolMembership = {
+  id: string;
+  pool_id: string;
+  passenger_user_id: string;
+  booking_id?: number | string | null;
+  seats_reserved: number;
+  fare_amount: number;
+  status: string;
+  created_at?: string | null;
+  student_pool_rides?: StudentPool | null;
 };
 
 const campusHubs = [
@@ -54,51 +82,17 @@ const campusHubs = [
   "UT Austin",
 ];
 
-const poolRoutes: PoolRoute[] = [
-  {
-    id: "utd-austin-friday-4pm",
-    from: "UTD",
-    to: "Austin",
-    route: "UTD → Austin",
-    seats: 3,
-    fare: 29,
-    time: "Friday • 4:00 PM",
-  },
-  {
-    id: "uta-houston-saturday-9am",
-    from: "UT Arlington",
-    to: "Houston",
-    route: "UT Arlington → Houston",
-    seats: 2,
-    fare: 35,
-    time: "Saturday • 9:00 AM",
-  },
-  {
-    id: "smu-tamu-sunday-noon",
-    from: "SMU",
-    to: "College Station",
-    route: "SMU → Texas A&M",
-    seats: 4,
-    fare: 32,
-    time: "Sunday • 12:00 PM",
-  },
-];
-
 function normalizeStatus(value: any): VerificationState {
   const status = String(value || "")
     .trim()
     .toLowerCase()
     .replace(/\s+/g, "_");
 
-  if (
-    ["verified", "approved", "active", "student_verified"].includes(status)
-  ) {
+  if (["verified", "approved", "active", "student_verified"].includes(status)) {
     return "verified";
   }
 
-  if (
-    ["pending", "pending_review", "submitted", "under_review"].includes(status)
-  ) {
+  if (["pending", "pending_review", "submitted", "under_review"].includes(status)) {
     return "pending";
   }
 
@@ -128,21 +122,47 @@ function verificationLabel(state: VerificationState) {
   }
 }
 
+function formatStatus(value: any) {
+  return String(value || "pending")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDate(dateValue: string, timeValue: string) {
+  const parsed = new Date(`${dateValue}T${timeValue || "00:00:00"}`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return `${dateValue || "Date pending"} • ${timeValue || "Time pending"}`;
+  }
+
+  return parsed.toLocaleString([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 export default function StudentTravelScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [joining, setJoining] = useState(false);
+  const [joiningPoolId, setJoiningPoolId] = useState<string | null>(null);
+  const [connectionState, setConnectionState] =
+    useState<"connecting" | "online" | "offline">("connecting");
 
+  const [userId, setUserId] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [studentVerified, setStudentVerified] = useState(false);
   const [verificationState, setVerificationState] =
     useState<VerificationState>("not_submitted");
 
   const [selectedCampus, setSelectedCampus] = useState("UTD");
-  const [selectedPool, setSelectedPool] = useState<PoolRoute>(poolRoutes[0]);
-  const [joinedPoolIds, setJoinedPoolIds] = useState<string[]>([]);
+  const [availablePools, setAvailablePools] = useState<StudentPool[]>([]);
+  const [memberships, setMemberships] = useState<PoolMembership[]>([]);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -176,17 +196,51 @@ export default function StudentTravelScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadStudentStatus();
+      loadStudentTravel();
     }, [])
   );
 
-  async function loadStudentStatus(isManualRefresh = false) {
+  useEffect(() => {
+    if (!userId) return;
+
+    setConnectionState("connecting");
+
+    const poolChannel = supabase
+      .channel(`student-pools-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "student_pool_rides",
+        },
+        () => loadStudentTravel(true)
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "student_pool_members",
+          filter: `passenger_user_id=eq.${userId}`,
+        },
+        () => loadStudentTravel(true)
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setConnectionState("online");
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setConnectionState("offline");
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(poolChannel);
+    };
+  }, [userId]);
+
+  async function loadStudentTravel(silent = false) {
     try {
-      if (isManualRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+      if (!silent) setLoading(true);
 
       const {
         data: { user },
@@ -196,52 +250,57 @@ export default function StudentTravelScreen() {
       if (userError) throw userError;
 
       if (!user) {
-        Alert.alert("Sign In Required", "Please sign in again.");
         router.replace("/login" as any);
         return;
       }
 
-      const { data: profile, error: profileError } = await supabase
-        .from("passenger_profiles")
-        .select("student_verified, student_verification_status")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      setUserId(user.id);
+      setUserEmail(user.email?.trim().toLowerCase() || "");
 
-      if (profileError) throw profileError;
+      const [profileResult, poolsResult, membershipResult] = await Promise.all([
+        supabase
+          .from("passenger_profiles")
+          .select("student_verified, student_verification_status")
+          .eq("user_id", user.id)
+          .maybeSingle(),
 
-      const profileVerified = Boolean(profile?.student_verified);
+        supabase
+          .from("student_pool_rides")
+          .select("*")
+          .in("status", ["open", "forming", "confirmed", "driver_assigned"])
+          .gt("seats_available", 0)
+          .order("departure_date", { ascending: true })
+          .order("departure_time", { ascending: true }),
+
+        supabase
+          .from("student_pool_members")
+          .select(`
+            *,
+            student_pool_rides (*)
+          `)
+          .eq("passenger_user_id", user.id)
+          .in("status", ["joined", "confirmed", "driver_assigned", "in_progress"])
+          .order("created_at", { ascending: false }),
+      ]);
+
+      if (profileResult.error) throw profileResult.error;
+      if (poolsResult.error) throw poolsResult.error;
+      if (membershipResult.error) throw membershipResult.error;
+
+      const profileVerified = Boolean(profileResult.data?.student_verified);
       const state = profileVerified
         ? "verified"
-        : normalizeStatus(profile?.student_verification_status);
+        : normalizeStatus(profileResult.data?.student_verification_status);
 
       setStudentVerified(profileVerified || state === "verified");
       setVerificationState(profileVerified ? "verified" : state);
-
-      const { data: joinedPools, error: joinedPoolsError } = await supabase
-        .from("student_ride_pools")
-        .select("route, origin, destination, ride_time, status")
-        .eq("user_id", user.id)
-        .in("status", ["joined", "pending", "confirmed"]);
-
-      if (joinedPoolsError) throw joinedPoolsError;
-
-      const joinedIds = (joinedPools || []).map((item: any) => {
-        const matched = poolRoutes.find(
-          (pool) =>
-            pool.route === item.route ||
-            (pool.from === item.origin &&
-              pool.to === item.destination &&
-              pool.time === item.ride_time)
-        );
-
-        return matched?.id || "";
-      });
-
-      setJoinedPoolIds(joinedIds.filter(Boolean));
+      setAvailablePools((poolsResult.data || []) as StudentPool[]);
+      setMemberships((membershipResult.data || []) as PoolMembership[]);
     } catch (error: any) {
       Alert.alert(
-        "Student Mode Error",
-        error.message || "Could not load student status."
+        "Student Travel Error",
+        error.message ||
+          "Could not load student pools. Run the Student Pool SQL migration first."
       );
     } finally {
       setLoading(false);
@@ -249,117 +308,123 @@ export default function StudentTravelScreen() {
     }
   }
 
-  async function joinPoolRide() {
+  function isJoined(poolId: string) {
+    return memberships.some(
+      (membership) =>
+        membership.pool_id === poolId &&
+        ["joined", "confirmed", "driver_assigned", "in_progress"].includes(
+          String(membership.status).toLowerCase()
+        )
+    );
+  }
+
+  async function joinPool(pool: StudentPool) {
+    if (!studentVerified) {
+      const message =
+        verificationState === "pending"
+          ? "Your student verification is still under review."
+          : verificationState === "rejected"
+          ? "Your verification was rejected. Update and resubmit your student details."
+          : verificationState === "expired"
+          ? "Your verification expired. Submit a new student verification."
+          : "Verify your student status before joining a Student Pool ride.";
+
+      Alert.alert("Student Verification Required", message);
+      return;
+    }
+
+    if (isJoined(pool.id)) {
+      Alert.alert("Already Joined", "You already have a seat in this pool.");
+      return;
+    }
+
+    if (pool.seats_available < 1) {
+      Alert.alert("Pool Full", "This Student Pool has no seats remaining.");
+      return;
+    }
+
     try {
-      if (joining) return;
+      setJoiningPoolId(pool.id);
 
-      if (!studentVerified) {
-        const message =
-          verificationState === "pending"
-            ? "Your student verification is still under review."
-            : verificationState === "rejected"
-            ? "Your verification was rejected. Please update and resubmit your student details."
-            : verificationState === "expired"
-            ? "Your verification has expired. Please submit a new student verification."
-            : "Please verify your student status before joining a student pool ride.";
+      const { data, error } = await supabase.rpc("join_student_pool", {
+        p_pool_id: pool.id,
+        p_passenger_user_id: userId,
+        p_passenger_email: userEmail,
+        p_seats_requested: 1,
+      });
 
-        Alert.alert("Student Verification Required", message);
-        return;
-      }
+      if (error) throw error;
 
-      if (selectedPool.seats <= 0) {
-        Alert.alert(
-          "Pool Ride Full",
-          "This student pool ride currently has no remaining seats."
-        );
-        return;
-      }
-
-      if (joinedPoolIds.includes(selectedPool.id)) {
-        Alert.alert(
-          "Already Joined",
-          "You have already joined this student pool ride."
-        );
-        return;
-      }
-
-      setJoining(true);
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-      if (!user) throw new Error("Please sign in again.");
-
-      const { data: existingPool, error: existingPoolError } = await supabase
-        .from("student_ride_pools")
-        .select("id, status")
-        .eq("user_id", user.id)
-        .eq("route", selectedPool.route)
-        .eq("ride_time", selectedPool.time)
-        .in("status", ["joined", "pending", "confirmed"])
-        .limit(1)
-        .maybeSingle();
-
-      if (existingPoolError) throw existingPoolError;
-
-      if (existingPool) {
-        setJoinedPoolIds((current) => [
-          ...new Set([...current, selectedPool.id]),
-        ]);
-
-        throw new Error("You have already joined this student pool ride.");
-      }
-
-      const { error: insertError } = await supabase
-        .from("student_ride_pools")
-        .insert({
-          user_id: user.id,
-          campus: selectedCampus,
-          route: selectedPool.route,
-          origin: selectedPool.from,
-          destination: selectedPool.to,
-          ride_time: selectedPool.time,
-          student_fare: selectedPool.fare,
-          seats_requested: 1,
-          status: "joined",
-        });
-
-      if (insertError) throw insertError;
-
-      setJoinedPoolIds((current) => [
-        ...new Set([...current, selectedPool.id]),
-      ]);
+      const result = Array.isArray(data) ? data[0] : data;
 
       Alert.alert(
-        "Pool Ride Joined",
-        `You joined the ${selectedPool.route} student pool ride. Angel Express will notify you when the ride is confirmed.`
+        "Student Pool Joined",
+        result?.booking_id
+          ? `Your seat is reserved. Booking #${result.booking_id} now appears in My Trips and in Angel Express Operations.`
+          : "Your seat is reserved and Angel Express Operations has been notified."
       );
+
+      await loadStudentTravel(true);
     } catch (error: any) {
       Alert.alert(
-        "Pool Ride",
-        error.message || "Could not join this pool ride."
+        "Unable to Join Pool",
+        error.message || "The Student Pool could not be joined."
       );
     } finally {
-      setJoining(false);
+      setJoiningPoolId(null);
     }
   }
 
-  function openVerification() {
-    router.push("/student-verification" as any);
+  function createNewPool() {
+    if (!studentVerified) {
+      Alert.alert(
+        "Verification Required",
+        "Only verified students can create a Student Pool request."
+      );
+      return;
+    }
+
+    router.push({
+      pathname: "/book-ride" as any,
+      params: {
+        ride_category: "student_pool",
+        student_mode: "true",
+        shared_ride: "true",
+        create_student_pool: "true",
+        pickup: selectedCampus,
+        seats_requested: "1",
+        passenger_type: "verified_student",
+      },
+    });
   }
 
-  function openStudentBooking() {
+  function bookPrivateStudentRide() {
     router.push({
       pathname: "/book-ride" as any,
       params: {
         ride_category: "student",
         student_mode: "true",
+        shared_ride: "false",
         pickup: selectedCampus,
+        passenger_type: studentVerified
+          ? "verified_student"
+          : "student_unverified",
       },
     });
+  }
+
+  function openMembership(membership: PoolMembership) {
+    if (membership.booking_id) {
+      router.push({
+        pathname: "/manage-booking" as any,
+        params: {
+          booking_id: membership.booking_id,
+        },
+      });
+      return;
+    }
+
+    router.push("/my-trips" as any);
   }
 
   const pageTranslate = pageFade.interpolate({
@@ -367,24 +432,26 @@ export default function StudentTravelScreen() {
     outputRange: [24, 0],
   });
 
-  const selectedAlreadyJoined = joinedPoolIds.includes(selectedPool.id);
+  const campusPools = availablePools.filter((pool) => {
+    if (!selectedCampus) return true;
+    return (
+      pool.campus_hub === selectedCampus ||
+      pool.origin.toLowerCase().includes(selectedCampus.toLowerCase())
+    );
+  });
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={colors.gold} size="large" />
-        <Text style={styles.loadingText}>
-          Loading Student Travel Mode...
-        </Text>
+        <Text style={styles.loadingText}>Loading Student Travel Mode...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.root}>
-      <Animated.View
-        style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}
-      >
+      <Animated.View style={[styles.bgWrap, { transform: [{ scale: bgScale }] }]}>
         <ImageBackground
           source={require("../assets/images/dashboard-bg.png")}
           style={styles.background}
@@ -400,16 +467,16 @@ export default function StudentTravelScreen() {
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => loadStudentStatus(true)}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadStudentTravel(true);
+              }}
               tintColor={colors.gold}
             />
           }
         >
           <View style={styles.topRow}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <ArrowLeft size={19} color={colors.gold} />
               <Text style={styles.backText}>Back</Text>
             </TouchableOpacity>
@@ -417,20 +484,12 @@ export default function StudentTravelScreen() {
             <View style={styles.topActions}>
               <TouchableOpacity
                 style={styles.iconButton}
-                onPress={() => loadStudentStatus(true)}
-                disabled={refreshing}
+                onPress={() => loadStudentTravel(true)}
               >
-                {refreshing ? (
-                  <ActivityIndicator size="small" color={colors.gold} />
-                ) : (
-                  <RefreshCw size={18} color={colors.gold} />
-                )}
+                <RefreshCw size={18} color={colors.gold} />
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.themePill}
-                onPress={toggleTheme}
-              >
+              <TouchableOpacity style={styles.themePill} onPress={toggleTheme}>
                 <Text style={styles.themeText}>
                   {themeMode === "dark" ? "☀️ Light" : "🌙 Dark"}
                 </Text>
@@ -445,17 +504,18 @@ export default function StudentTravelScreen() {
             }}
           >
             <Text style={styles.kicker}>STUDENT MOBILITY NETWORK</Text>
-
             <Text style={styles.title}>Student Travel Mode+</Text>
-
             <Text style={styles.subtitle}>
-              Split rides, join campus pools, unlock student pricing,
-              and travel between Texas campuses with Angel Express.
+              Book a private student ride, join an existing Student Pool, or create
+              a new shared route through the same Angel Express booking system.
             </Text>
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <GraduationCap size={30} color={colors.navy} />
+                <GraduationCap
+                  size={30}
+                  color={colors.onGold || colors.navy}
+                />
               </View>
 
               <View style={styles.heroCopy}>
@@ -464,25 +524,29 @@ export default function StudentTravelScreen() {
                     ? "Student Benefits Active"
                     : verificationState === "pending"
                     ? "Verification Under Review"
-                    : verificationState === "rejected"
-                    ? "Verification Needs Attention"
-                    : verificationState === "expired"
-                    ? "Verification Expired"
-                    : "Verify to Unlock Pools"}
+                    : "Verify to Unlock Student Pools"}
                 </Text>
-
                 <Text style={styles.heroText}>
                   {studentVerified
-                    ? "You can join student pools, access discounts, and request shared campus rides."
-                    : verificationState === "pending"
-                    ? "Angel Express is reviewing your student verification submission."
-                    : verificationState === "rejected"
-                    ? "Update your student information and submit it again for approval."
-                    : verificationState === "expired"
-                    ? "Submit a new verification to restore your student benefits."
-                    : "Student verification unlocks pool rides, campus pickup priority, and discounts."}
+                    ? "Your verified student profile is connected to Book a Ride, My Trips, Driver Dispatch, and Owner Operations."
+                    : "Student verification is required before joining or creating a shared Student Pool."}
                 </Text>
               </View>
+            </View>
+
+            <View style={styles.connectionBanner}>
+              {connectionState === "online" ? (
+                <Wifi size={18} color={colors.success || "#22C55E"} />
+              ) : (
+                <WifiOff size={18} color={colors.warning || "#F59E0B"} />
+              )}
+              <Text style={styles.connectionText}>
+                {connectionState === "online"
+                  ? "Student Pool network is live."
+                  : connectionState === "connecting"
+                  ? "Connecting to Student Pool network..."
+                  : "Realtime pool updates are unavailable. Pull down to refresh."}
+              </Text>
             </View>
 
             <View style={styles.statusRow}>
@@ -491,49 +555,40 @@ export default function StudentTravelScreen() {
                 active={studentVerified}
                 styles={styles}
               />
-
               <StatusPill
-                title="Pool Ride Eligible"
+                title="Pool Eligible"
                 active={studentVerified}
                 styles={styles}
               />
-
               <StatusPill
-                title="20% Student Discount"
+                title="Student Pricing"
                 active={studentVerified}
                 styles={styles}
               />
             </View>
 
-            {!studentVerified && (
+            {!studentVerified ? (
               <View style={styles.verificationNotice}>
                 <ShieldCheck size={22} color={colors.gold} />
-                <View style={styles.verificationNoticeCopy}>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.verificationNoticeTitle}>
                     {verificationLabel(verificationState)}
                   </Text>
                   <Text style={styles.verificationNoticeText}>
-                    {verificationState === "pending"
-                      ? "No additional submission is needed while your current request is under review."
-                      : "Student pool rides remain locked until your verification is approved."}
+                    Student Pool seats remain locked until verification is approved.
                   </Text>
                 </View>
 
-                {verificationState !== "pending" && (
+                {verificationState !== "pending" ? (
                   <TouchableOpacity
                     style={styles.noticeAction}
-                    onPress={openVerification}
+                    onPress={() => router.push("/student-verification" as any)}
                   >
-                    <Text style={styles.noticeActionText}>
-                      {verificationState === "rejected" ||
-                      verificationState === "expired"
-                        ? "Resubmit"
-                        : "Verify"}
-                    </Text>
+                    <Text style={styles.noticeActionText}>Verify</Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </View>
-            )}
+            ) : null}
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -551,11 +606,9 @@ export default function StudentTravelScreen() {
                     key={campus}
                     style={[
                       styles.campusPill,
-                      selectedCampus === campus &&
-                        styles.campusPillActive,
+                      selectedCampus === campus && styles.campusPillActive,
                     ]}
                     onPress={() => setSelectedCampus(campus)}
-                    activeOpacity={0.85}
                   >
                     <Text
                       style={[
@@ -571,183 +624,250 @@ export default function StudentTravelScreen() {
               </ScrollView>
             </View>
 
+            {memberships.length > 0 ? (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ticket size={23} color={colors.gold} />
+                  <Text style={styles.cardTitle}>My Student Pools</Text>
+                </View>
+
+                {memberships.map((membership) => {
+                  const pool = membership.student_pool_rides;
+
+                  return (
+                    <TouchableOpacity
+                      key={membership.id}
+                      style={styles.membershipCard}
+                      onPress={() => openMembership(membership)}
+                    >
+                      <View style={styles.membershipIcon}>
+                        <CheckCircle2 size={22} color={colors.gold} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.membershipRoute}>
+                          {pool
+                            ? `${pool.origin} → ${pool.destination}`
+                            : "Student Pool Ride"}
+                        </Text>
+                        <Text style={styles.membershipMeta}>
+                          {pool
+                            ? formatDate(
+                                pool.departure_date,
+                                pool.departure_time
+                              )
+                            : "Schedule pending"}
+                        </Text>
+                        <Text style={styles.membershipStatus}>
+                          {formatStatus(membership.status)}
+                        </Text>
+                      </View>
+                      <Text style={styles.membershipFare}>
+                        ${Number(membership.fare_amount || 0).toFixed(0)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null}
+
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Users size={23} color={colors.gold} />
-                <Text style={styles.cardTitle}>
-                  Student Pool Rides
-                </Text>
+                <Text style={styles.cardTitle}>Available Student Pools</Text>
               </View>
 
               <Text style={styles.sectionText}>
-                Join a shared ride with other verified students
-                traveling from campus hubs.
+                These are live pool routes created through Book a Ride and approved
+                by Angel Express Operations.
               </Text>
 
-              {poolRoutes.map((pool) => {
-                const joined = joinedPoolIds.includes(pool.id);
-
-                return (
-                  <TouchableOpacity
-                    key={pool.id}
-                    style={[
-                      styles.poolCard,
-                      selectedPool.id === pool.id &&
-                        styles.poolCardActive,
-                      joined && styles.poolCardJoined,
-                    ]}
-                    onPress={() => setSelectedPool(pool)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={styles.poolIcon}>
-                      <Bus size={24} color={colors.gold} />
-                    </View>
-
-                    <View style={styles.poolCopy}>
-                      <Text style={styles.poolRoute}>{pool.route}</Text>
-                      <Text style={styles.poolMeta}>{pool.time}</Text>
-                      <Text style={styles.poolMeta}>
-                        {pool.seats} seats remaining
-                      </Text>
-
-                      {joined && (
-                        <Text style={styles.joinedText}>
-                          Already joined
-                        </Text>
-                      )}
-                    </View>
-
-                    <View style={styles.poolFareBox}>
-                      <Text style={styles.poolFare}>${pool.fare}</Text>
-                      <Text style={styles.poolFareSub}>each</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-
-              <TouchableOpacity
-                style={[
-                  styles.goldButton,
-                  (joining ||
-                    selectedAlreadyJoined ||
-                    !studentVerified) &&
-                    styles.buttonDisabled,
-                ]}
-                onPress={joinPoolRide}
-                disabled={
-                  joining ||
-                  selectedAlreadyJoined ||
-                  !studentVerified
-                }
-                activeOpacity={0.88}
-              >
-                {joining ? (
-                  <ActivityIndicator color={colors.navy} />
-                ) : (
-                  <Text style={styles.goldButtonText}>
-                    {selectedAlreadyJoined
-                      ? "Already Joined"
-                      : !studentVerified
-                      ? "Verification Required"
-                      : "Join Selected Pool"}
+              {campusPools.length === 0 ? (
+                <View style={styles.emptyPoolBox}>
+                  <Bus size={28} color={colors.gold} />
+                  <Text style={styles.emptyPoolTitle}>
+                    No open pool from {selectedCampus}
                   </Text>
-                )}
-              </TouchableOpacity>
+                  <Text style={styles.emptyPoolText}>
+                    Create a new Student Pool request and other verified students
+                    can join after Operations publishes it.
+                  </Text>
+                </View>
+              ) : (
+                campusPools.map((pool) => {
+                  const joined = isJoined(pool.id);
+                  const joining = joiningPoolId === pool.id;
+
+                  return (
+                    <View key={pool.id} style={styles.poolCard}>
+                      <View style={styles.poolHeader}>
+                        <View style={styles.poolIcon}>
+                          <Bus size={24} color={colors.gold} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.poolRoute}>
+                            {pool.origin} → {pool.destination}
+                          </Text>
+                          <Text style={styles.poolMeta}>
+                            {formatDate(pool.departure_date, pool.departure_time)}
+                          </Text>
+                        </View>
+                        <View style={styles.poolFareBox}>
+                          <Text style={styles.poolFare}>
+                            ${Number(pool.fare_per_seat).toFixed(0)}
+                          </Text>
+                          <Text style={styles.poolFareSub}>per seat</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.poolStats}>
+                        <PoolStat
+                          icon={<Users size={16} color={colors.gold} />}
+                          text={`${pool.seats_available} seats left`}
+                          styles={styles}
+                        />
+                        <PoolStat
+                          icon={<BadgeCheck size={16} color={colors.gold} />}
+                          text={formatStatus(pool.status)}
+                          styles={styles}
+                        />
+                        <PoolStat
+                          icon={<GraduationCap size={16} color={colors.gold} />}
+                          text="Verified students"
+                          styles={styles}
+                        />
+                      </View>
+
+                      {pool.assigned_driver_id ? (
+                        <View style={styles.driverStrip}>
+                          <CarFront size={17} color={colors.gold} />
+                          <Text style={styles.driverStripText}>
+                            {pool.driver_name || "Driver assigned"}
+                            {pool.vehicle_description
+                              ? ` • ${pool.vehicle_description}`
+                              : ""}
+                            {pool.license_plate ? ` • ${pool.license_plate}` : ""}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.goldButton,
+                          (joined || joining || !studentVerified) &&
+                            styles.buttonDisabled,
+                        ]}
+                        onPress={() => joinPool(pool)}
+                        disabled={joined || joining || !studentVerified}
+                      >
+                        {joining ? (
+                          <ActivityIndicator
+                            color={colors.onGold || colors.navy}
+                          />
+                        ) : (
+                          <Text style={styles.goldButtonText}>
+                            {joined
+                              ? "Already Joined"
+                              : !studentVerified
+                              ? "Verification Required"
+                              : "Reserve One Seat"}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })
+              )}
             </View>
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <Route size={23} color={colors.gold} />
-                <Text style={styles.cardTitle}>
-                  Create a New Student Pool
-                </Text>
+                <Text style={styles.cardTitle}>Create a New Student Pool</Text>
               </View>
 
               <Text style={styles.sectionText}>
-                Need a different campus route? Start a student ride
-                request and Angel Express can match other students
-                going the same direction.
+                Complete the normal Book a Ride form. Choose Student Pool, enter
+                pickup, destination, travel date, time, and seat request. Your ride
+                becomes a pool only after Angel Express Operations reviews and
+                publishes it.
               </Text>
 
               <TouchableOpacity
+                style={styles.goldButton}
+                onPress={createNewPool}
+              >
+                <Text style={styles.goldButtonText}>Create Student Pool</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={styles.outlineButton}
-                onPress={openStudentBooking}
-                activeOpacity={0.88}
+                onPress={bookPrivateStudentRide}
               >
                 <Text style={styles.outlineButtonText}>
-                  Request Student Pool
+                  Book Private Student Ride
                 </Text>
               </TouchableOpacity>
+            </View>
+
+            <View style={styles.processCard}>
+              <View style={styles.cardHeader}>
+                <Bus size={23} color={colors.gold} />
+                <Text style={styles.cardTitle}>How Student Pool Works</Text>
+              </View>
+
+              <ProcessStep
+                number="1"
+                title="Passenger creates or joins"
+                text="A verified student books through Book a Ride or reserves a seat in an open pool."
+                styles={styles}
+              />
+              <ProcessStep
+                number="2"
+                title="Owner reviews and publishes"
+                text="Operations checks the route, timing, pricing, seats, and passenger eligibility."
+                styles={styles}
+              />
+              <ProcessStep
+                number="3"
+                title="Driver receives one grouped trip"
+                text="The assigned driver sees the shared route, total passenger count, pickup sequence, and payout."
+                styles={styles}
+              />
+              <ProcessStep
+                number="4"
+                title="Each passenger keeps a booking"
+                text="Every member sees the ride in My Trips and receives individual notifications, payment status, and safety tools."
+                styles={styles}
+              />
             </View>
 
             <View style={styles.badgeCard}>
               <View style={styles.cardHeader}>
                 <BadgeCheck size={23} color={colors.gold} />
-                <Text style={styles.cardTitle}>
-                  Student Verification Badge
-                </Text>
-              </View>
-
-              <View style={styles.badgeStatusBox}>
-                {studentVerified ? (
-                  <Text style={styles.badge}>Verified Student</Text>
-                ) : (
-                  <Text style={styles.pendingBadge}>
-                    {verificationLabel(verificationState)}
-                  </Text>
-                )}
+                <Text style={styles.cardTitle}>Student Benefits</Text>
               </View>
 
               <BenefitItem
                 icon={<Gift size={18} color={colors.gold} />}
-                text="20% student discount on eligible rides"
+                text="Student pricing on eligible private and pooled rides"
                 styles={styles}
               />
-
-              <BenefitItem
-                icon={<MapPinned size={18} color={colors.gold} />}
-                text="Priority campus pickup coordination"
-                styles={styles}
-              />
-
               <BenefitItem
                 icon={<Users size={18} color={colors.gold} />}
-                text="Shared rides with verified students"
+                text="Shared rides only with verified student passengers"
                 styles={styles}
               />
-
               <BenefitItem
                 icon={<ShieldCheck size={18} color={colors.gold} />}
-                text="Verified passenger safety badge"
+                text="Passenger identity, emergency contact, and safety tools remain individual"
                 styles={styles}
               />
-
-              {!studentVerified &&
-                verificationState !== "pending" && (
-                  <TouchableOpacity
-                    style={styles.goldButton}
-                    onPress={openVerification}
-                    activeOpacity={0.88}
-                  >
-                    <Text style={styles.goldButtonText}>
-                      {verificationState === "rejected" ||
-                      verificationState === "expired"
-                        ? "Resubmit Verification"
-                        : "Verify Student Status"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+              <BenefitItem
+                icon={<CalendarDays size={18} color={colors.gold} />}
+                text="One shared departure schedule managed by Operations"
+                styles={styles}
+              />
             </View>
-
-            <TouchableOpacity
-              style={styles.bookButton}
-              onPress={openStudentBooking}
-              activeOpacity={0.88}
-            >
-              <Text style={styles.bookButtonText}>
-                Book Student Ride
-              </Text>
-            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </View>
@@ -765,12 +885,7 @@ function StatusPill({
   styles: any;
 }) {
   return (
-    <View
-      style={[
-        styles.statusPill,
-        active && styles.statusPillActive,
-      ]}
-    >
+    <View style={[styles.statusPill, active && styles.statusPillActive]}>
       <Text
         style={[
           styles.statusPillText,
@@ -779,6 +894,47 @@ function StatusPill({
       >
         {title}
       </Text>
+    </View>
+  );
+}
+
+function PoolStat({
+  icon,
+  text,
+  styles,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  styles: any;
+}) {
+  return (
+    <View style={styles.poolStat}>
+      {icon}
+      <Text style={styles.poolStatText}>{text}</Text>
+    </View>
+  );
+}
+
+function ProcessStep({
+  number,
+  title,
+  text,
+  styles,
+}: {
+  number: string;
+  title: string;
+  text: string;
+  styles: any;
+}) {
+  return (
+    <View style={styles.processStep}>
+      <View style={styles.processNumber}>
+        <Text style={styles.processNumberText}>{number}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.processTitle}>{title}</Text>
+        <Text style={styles.processText}>{text}</Text>
+      </View>
     </View>
   );
 }
@@ -802,30 +958,12 @@ function BenefitItem({
 
 function createStyles(c: any) {
   return StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: c.bg,
-      overflow: "hidden",
-    },
-    bgWrap: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    background: {
-      flex: 1,
-    },
-    overlay: {
-      flex: 1,
-      backgroundColor: c.overlay,
-    },
-    container: {
-      flex: 1,
-    },
-    content: {
-      padding: 22,
-      paddingTop: 58,
-      paddingBottom: 54,
-    },
-
+    root: { flex: 1, backgroundColor: c.bg, overflow: "hidden" },
+    bgWrap: { ...StyleSheet.absoluteFillObject },
+    background: { flex: 1 },
+    overlay: { flex: 1, backgroundColor: c.overlay },
+    container: { flex: 1 },
+    content: { padding: 22, paddingTop: 58, paddingBottom: 54 },
     center: {
       flex: 1,
       backgroundColor: c.bg,
@@ -833,27 +971,19 @@ function createStyles(c: any) {
       justifyContent: "center",
       padding: 24,
     },
-
     loadingText: {
       color: c.text,
       marginTop: 12,
       fontSize: 16,
       fontWeight: "800",
     },
-
     topRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: 20,
     },
-
-    topActions: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
-
+    topActions: { flexDirection: "row", alignItems: "center", gap: 10 },
     backButton: {
       flexDirection: "row",
       alignItems: "center",
@@ -865,13 +995,7 @@ function createStyles(c: any) {
       paddingVertical: 10,
       paddingHorizontal: 14,
     },
-
-    backText: {
-      color: c.gold,
-      fontSize: 15,
-      fontWeight: "900",
-    },
-
+    backText: { color: c.gold, fontSize: 15, fontWeight: "900" },
     iconButton: {
       width: 42,
       height: 42,
@@ -882,7 +1006,6 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-
     themePill: {
       borderWidth: 1,
       borderColor: c.border,
@@ -891,13 +1014,7 @@ function createStyles(c: any) {
       paddingVertical: 10,
       paddingHorizontal: 14,
     },
-
-    themeText: {
-      color: c.gold,
-      fontSize: 12,
-      fontWeight: "900",
-    },
-
+    themeText: { color: c.gold, fontSize: 12, fontWeight: "900" },
     kicker: {
       color: c.gold,
       fontSize: 12,
@@ -905,7 +1022,6 @@ function createStyles(c: any) {
       letterSpacing: 1.6,
       marginBottom: 10,
     },
-
     title: {
       color: c.text,
       fontSize: 36,
@@ -913,15 +1029,13 @@ function createStyles(c: any) {
       marginBottom: 10,
       letterSpacing: -0.7,
     },
-
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
       fontWeight: "700",
     },
-
     heroCard: {
       minHeight: 124,
       flexDirection: "row",
@@ -933,7 +1047,6 @@ function createStyles(c: any) {
       gap: 14,
       ...v5Shadow(c),
     },
-
     heroIcon: {
       width: 56,
       height: 56,
@@ -942,33 +1055,44 @@ function createStyles(c: any) {
       alignItems: "center",
       justifyContent: "center",
     },
-
-    heroCopy: {
-      flex: 1,
-    },
-
+    heroCopy: { flex: 1 },
     heroTitle: {
-      color: c.navy,
-      fontSize: 24,
+      color: c.onGold || c.navy,
+      fontSize: 23,
       fontWeight: "900",
       marginBottom: 6,
     },
-
     heroText: {
-      color: c.navy,
-      fontSize: 15,
+      color: c.onGold || c.navy,
+      fontSize: 14.5,
       lineHeight: 21,
       fontWeight: "800",
-      opacity: 0.82,
+      opacity: 0.84,
     },
-
+    connectionBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 9,
+      padding: 13,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      backgroundColor: c.card,
+      marginBottom: 16,
+    },
+    connectionText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 12.5,
+      lineHeight: 18,
+      fontWeight: "800",
+      flex: 1,
+    },
     statusRow: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: 10,
       marginBottom: 18,
     },
-
     statusPill: {
       borderRadius: 999,
       borderWidth: 1,
@@ -977,22 +1101,9 @@ function createStyles(c: any) {
       paddingVertical: 9,
       backgroundColor: c.card,
     },
-
-    statusPillActive: {
-      backgroundColor: c.gold,
-      borderColor: c.gold,
-    },
-
-    statusPillText: {
-      color: c.text,
-      fontSize: 13,
-      fontWeight: "900",
-    },
-
-    statusPillTextActive: {
-      color: c.navy,
-    },
-
+    statusPillActive: { backgroundColor: c.gold, borderColor: c.gold },
+    statusPillText: { color: c.text, fontSize: 13, fontWeight: "900" },
+    statusPillTextActive: { color: c.onGold || c.navy },
     verificationNotice: {
       flexDirection: "row",
       alignItems: "center",
@@ -1005,48 +1116,38 @@ function createStyles(c: any) {
       marginBottom: 18,
       ...v5Shadow(c),
     },
-
-    verificationNoticeCopy: {
-      flex: 1,
-    },
-
     verificationNoticeTitle: {
       color: c.gold,
       fontSize: 16,
       fontWeight: "900",
       marginBottom: 3,
     },
-
     verificationNoticeText: {
-      color: c.text2,
-      fontSize: 13.5,
+      color: c.text2 || c.textSecondary,
+      fontSize: 13,
       lineHeight: 19,
       fontWeight: "700",
     },
-
     noticeAction: {
       backgroundColor: c.gold,
       borderRadius: 999,
       paddingVertical: 9,
       paddingHorizontal: 14,
     },
-
     noticeActionText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontWeight: "900",
       fontSize: 12,
     },
-
     card: {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
     },
-
     badgeCard: {
       backgroundColor: c.card,
       borderRadius: 22,
@@ -1056,34 +1157,35 @@ function createStyles(c: any) {
       marginBottom: 18,
       ...v5Shadow(c),
     },
-
+    processCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
     cardHeader: {
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
       marginBottom: 16,
     },
-
     cardTitle: {
       color: c.gold,
       fontSize: 22,
       fontWeight: "900",
       flex: 1,
     },
-
     sectionText: {
-      color: c.text2,
-      fontSize: 15.5,
-      lineHeight: 23,
+      color: c.text2 || c.textSecondary,
+      fontSize: 15,
+      lineHeight: 22,
       marginBottom: 16,
       fontWeight: "700",
     },
-
-    campusRow: {
-      gap: 10,
-      paddingRight: 12,
-    },
-
+    campusRow: { gap: 10, paddingRight: 12 },
     campusPill: {
       borderRadius: 999,
       borderWidth: 1,
@@ -1092,41 +1194,88 @@ function createStyles(c: any) {
       paddingVertical: 10,
       backgroundColor: c.card2,
     },
-
-    campusPillActive: {
-      backgroundColor: c.gold,
-      borderColor: c.gold,
+    campusPillActive: { backgroundColor: c.gold, borderColor: c.gold },
+    campusPillText: { color: c.text, fontWeight: "900" },
+    campusPillTextActive: { color: c.onGold || c.navy },
+    membershipCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      borderRadius: 17,
+      padding: 14,
+      marginBottom: 10,
     },
-
-    campusPillText: {
+    membershipIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    membershipRoute: {
       color: c.text,
+      fontSize: 15,
       fontWeight: "900",
     },
-
-    campusPillTextActive: {
-      color: c.navy,
+    membershipMeta: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 12,
+      marginTop: 3,
+      fontWeight: "700",
     },
-
-    poolCard: {
-      flexDirection: "row",
+    membershipStatus: {
+      color: c.gold,
+      fontSize: 11,
+      marginTop: 4,
+      fontWeight: "900",
+    },
+    membershipFare: {
+      color: c.gold,
+      fontSize: 18,
+      fontWeight: "900",
+    },
+    emptyPoolBox: {
       alignItems: "center",
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: c.borderSoft,
-      backgroundColor: c.card2,
-      padding: 14,
-      marginBottom: 12,
-    },
-
-    poolCardActive: {
-      borderColor: c.gold,
+      borderColor: c.border,
       backgroundColor: c.soft,
+      padding: 20,
     },
-
-    poolCardJoined: {
-      borderColor: c.gold,
+    emptyPoolTitle: {
+      color: c.text,
+      fontSize: 17,
+      fontWeight: "900",
+      marginTop: 10,
+      marginBottom: 6,
+      textAlign: "center",
     },
-
+    emptyPoolText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+      fontWeight: "700",
+      textAlign: "center",
+    },
+    poolCard: {
+      borderRadius: 19,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      backgroundColor: c.card2,
+      padding: 15,
+      marginBottom: 13,
+    },
+    poolHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
     poolIcon: {
       width: 48,
       height: 48,
@@ -1136,67 +1285,79 @@ function createStyles(c: any) {
       backgroundColor: c.soft,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 14,
     },
-
-    poolCopy: {
-      flex: 1,
-    },
-
     poolRoute: {
       color: c.text,
-      fontSize: 17,
+      fontSize: 16.5,
       fontWeight: "900",
-      marginBottom: 5,
+      marginBottom: 4,
     },
-
     poolMeta: {
-      color: c.text2,
-      fontSize: 13.5,
-      marginBottom: 2,
-      fontWeight: "700",
-    },
-
-    joinedText: {
-      color: c.gold,
+      color: c.text2 || c.textSecondary,
       fontSize: 12.5,
-      fontWeight: "900",
-      marginTop: 5,
-    },
-
-    poolFareBox: {
-      alignItems: "flex-end",
-    },
-
-    poolFare: {
-      color: c.gold,
-      fontSize: 22,
-      fontWeight: "900",
-    },
-
-    poolFareSub: {
-      color: c.text2,
-      fontSize: 12,
       fontWeight: "700",
     },
-
+    poolFareBox: { alignItems: "flex-end" },
+    poolFare: { color: c.gold, fontSize: 21, fontWeight: "900" },
+    poolFareSub: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 10.5,
+      fontWeight: "700",
+    },
+    poolStats: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: 13,
+    },
+    poolStat: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      paddingHorizontal: 9,
+      paddingVertical: 7,
+    },
+    poolStatText: {
+      color: c.text,
+      fontSize: 10.5,
+      fontWeight: "800",
+    },
+    driverStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+      padding: 11,
+      borderRadius: 13,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginTop: 11,
+    },
+    driverStripText: {
+      color: c.text,
+      fontSize: 11.5,
+      fontWeight: "800",
+      flex: 1,
+    },
     goldButton: {
       minHeight: 54,
       borderRadius: 16,
       backgroundColor: c.gold,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 12,
+      marginTop: 13,
       ...v5Shadow(c),
     },
-
     goldButtonText: {
-      color: c.navy,
-      fontSize: 15,
+      color: c.onGold || c.navy,
+      fontSize: 14,
       fontWeight: "900",
       textTransform: "uppercase",
     },
-
     outlineButton: {
       minHeight: 54,
       borderRadius: 16,
@@ -1205,84 +1366,60 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       alignItems: "center",
       justifyContent: "center",
-      marginTop: 4,
+      marginTop: 10,
     },
-
     outlineButtonText: {
       color: c.gold,
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "900",
       textTransform: "uppercase",
     },
-
-    buttonDisabled: {
-      opacity: 0.58,
+    buttonDisabled: { opacity: 0.58 },
+    processStep: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+      paddingVertical: 12,
+      borderTopWidth: 1,
+      borderTopColor: c.borderSoft || c.lightBorder,
     },
-
-    badgeStatusBox: {
-      marginBottom: 14,
-    },
-
-    badge: {
-      alignSelf: "flex-start",
+    processNumber: {
+      width: 34,
+      height: 34,
+      borderRadius: 11,
       backgroundColor: c.gold,
-      color: c.navy,
-      fontSize: 13,
-      fontWeight: "900",
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 999,
-      overflow: "hidden",
+      alignItems: "center",
+      justifyContent: "center",
     },
-
-    pendingBadge: {
-      alignSelf: "flex-start",
-      backgroundColor: c.card2,
+    processNumberText: {
+      color: c.onGold || c.navy,
+      fontSize: 14,
+      fontWeight: "900",
+    },
+    processTitle: {
       color: c.text,
-      fontSize: 13,
+      fontSize: 14.5,
       fontWeight: "900",
-      paddingHorizontal: 12,
-      paddingVertical: 7,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: c.border,
-      overflow: "hidden",
+      marginBottom: 4,
     },
-
+    processText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 12.5,
+      lineHeight: 18,
+      fontWeight: "700",
+    },
     benefitRow: {
       flexDirection: "row",
       alignItems: "flex-start",
       marginBottom: 12,
     },
-
-    benefitIcon: {
-      width: 30,
-      marginTop: 2,
-    },
-
+    benefitIcon: { width: 30, marginTop: 2 },
     benefitText: {
       color: c.text,
-      fontSize: 16,
-      lineHeight: 23,
+      fontSize: 15,
+      lineHeight: 22,
       flex: 1,
       fontWeight: "700",
-    },
-
-    bookButton: {
-      minHeight: 54,
-      borderRadius: 16,
-      backgroundColor: c.gold,
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: 4,
-      ...v5Shadow(c),
-    },
-
-    bookButtonText: {
-      color: c.navy,
-      fontSize: 16,
-      fontWeight: "900",
-      textTransform: "uppercase",
     },
   });
 }

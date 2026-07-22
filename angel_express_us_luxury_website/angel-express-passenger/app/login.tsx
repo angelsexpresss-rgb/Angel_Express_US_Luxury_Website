@@ -25,8 +25,14 @@ import {
 import {
   Eye,
   EyeOff,
+  Fingerprint,
   LockKeyhole,
+  ScanFace,
+  ShieldCheck,
 } from "lucide-react-native";
+
+import * as LocalAuthentication from "expo-local-authentication";
+import * as SecureStore from "expo-secure-store";
 
 import { supabase } from "../lib/supabase";
 
@@ -49,6 +55,16 @@ type LoginFieldErrors = {
   email?: string;
   password?: string;
 };
+
+type StoredBiometricCredentials = {
+  email: string;
+  password: string;
+};
+
+const BIOMETRIC_CREDENTIALS_KEY =
+  "angel-express.passenger.biometric-credentials";
+const BIOMETRIC_ENABLED_KEY =
+  "angel-express.passenger.biometric-enabled";
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
@@ -211,6 +227,21 @@ export default function LoginScreen() {
   const [fieldErrors, setFieldErrors] =
     useState<LoginFieldErrors>({});
 
+  const [biometricAvailable, setBiometricAvailable] =
+    useState(false);
+
+  const [biometricEnabled, setBiometricEnabled] =
+    useState(false);
+
+  const [biometricLabel, setBiometricLabel] =
+    useState("Biometrics");
+
+  const [biometricChecking, setBiometricChecking] =
+    useState(true);
+
+  const [biometricLoading, setBiometricLoading] =
+    useState(false);
+
   const logoFade =
     useRef(new Animated.Value(0)).current;
 
@@ -241,6 +272,8 @@ export default function LoginScreen() {
     backgroundAnimation.start();
     entranceAnimation.start();
 
+    void initializeBiometrics();
+
     return () => {
       backgroundAnimation.stop();
       entranceAnimation.stop();
@@ -252,6 +285,252 @@ export default function LoginScreen() {
     logoFade,
     titleFade,
   ]);
+
+  async function initializeBiometrics() {
+    try {
+      setBiometricChecking(true);
+
+      const secureStoreAvailable =
+        await SecureStore.isAvailableAsync();
+
+      const hasHardware =
+        await LocalAuthentication.hasHardwareAsync();
+
+      const enrolled =
+        await LocalAuthentication.isEnrolledAsync();
+
+      const types =
+        await LocalAuthentication.supportedAuthenticationTypesAsync();
+
+      const hasFace =
+        types.includes(
+          LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION
+        );
+
+      const hasFingerprint =
+        types.includes(
+          LocalAuthentication.AuthenticationType.FINGERPRINT
+        );
+
+      setBiometricLabel(
+        hasFace
+          ? "Face ID"
+          : hasFingerprint
+            ? Platform.OS === "ios"
+              ? "Touch ID"
+              : "Fingerprint"
+            : "Biometrics"
+      );
+
+      const enabledValue =
+        await SecureStore.getItemAsync(
+          BIOMETRIC_ENABLED_KEY
+        );
+
+      const storedCredentials =
+        await SecureStore.getItemAsync(
+          BIOMETRIC_CREDENTIALS_KEY
+        );
+
+      const ready =
+        secureStoreAvailable &&
+        hasHardware &&
+        enrolled &&
+        enabledValue === "true" &&
+        Boolean(storedCredentials);
+
+      setBiometricAvailable(
+        secureStoreAvailable &&
+          hasHardware &&
+          enrolled
+      );
+
+      setBiometricEnabled(ready);
+    } catch (error) {
+      console.warn(
+        "Biometric initialization failed:",
+        error
+      );
+
+      setBiometricAvailable(false);
+      setBiometricEnabled(false);
+    } finally {
+      setBiometricChecking(false);
+    }
+  }
+
+  async function saveBiometricCredentials(
+    userEmail: string,
+    userPassword: string
+  ) {
+    const credentials: StoredBiometricCredentials = {
+      email: normalizeEmail(userEmail),
+      password: userPassword,
+    };
+
+    await SecureStore.setItemAsync(
+      BIOMETRIC_CREDENTIALS_KEY,
+      JSON.stringify(credentials),
+      {
+        keychainAccessible:
+          SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }
+    );
+
+    await SecureStore.setItemAsync(
+      BIOMETRIC_ENABLED_KEY,
+      "true",
+      {
+        keychainAccessible:
+          SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }
+    );
+
+    setBiometricEnabled(true);
+  }
+
+  async function clearBiometricCredentials() {
+    try {
+      await Promise.all([
+        SecureStore.deleteItemAsync(
+          BIOMETRIC_CREDENTIALS_KEY
+        ),
+        SecureStore.deleteItemAsync(
+          BIOMETRIC_ENABLED_KEY
+        ),
+      ]);
+    } catch (error) {
+      console.warn(
+        "Biometric credential cleanup failed:",
+        error
+      );
+    } finally {
+      setBiometricEnabled(false);
+    }
+  }
+
+  function biometricPreferenceFromUser(
+    user: any
+  ) {
+    const settings =
+      user?.user_metadata?.passenger_settings || {};
+
+    return Boolean(
+      settings.biometricsEnabled ||
+        settings.faceIdEnabled
+    );
+  }
+
+  async function synchronizeBiometricPreference(
+    user: any,
+    loginEmail: string,
+    loginPassword: string,
+    usedBiometrics: boolean
+  ) {
+    const shouldUseBiometrics =
+      biometricPreferenceFromUser(user);
+
+    if (!shouldUseBiometrics) {
+      await clearBiometricCredentials();
+      return;
+    }
+
+    if (
+      biometricAvailable &&
+      !usedBiometrics
+    ) {
+      await saveBiometricCredentials(
+        loginEmail,
+        loginPassword
+      );
+    }
+  }
+
+  async function handleBiometricLogin() {
+    if (
+      loading ||
+      biometricLoading ||
+      !biometricEnabled
+    ) {
+      return;
+    }
+
+    try {
+      setBiometricLoading(true);
+
+      const result =
+        await LocalAuthentication.authenticateAsync({
+          promptMessage: `Sign in to Angel Express with ${biometricLabel}`,
+          cancelLabel: "Cancel",
+          fallbackLabel: "Use device passcode",
+          disableDeviceFallback: false,
+          requireConfirmation: true,
+        });
+
+      if (!result.success) {
+        if (
+          result.error !== "user_cancel" &&
+          result.error !== "system_cancel" &&
+          result.error !== "app_cancel"
+        ) {
+          Alert.alert(
+            `${biometricLabel} Unavailable`,
+            "Biometric authentication was not completed. Use your email and password instead."
+          );
+        }
+
+        return;
+      }
+
+      const storedValue =
+        await SecureStore.getItemAsync(
+          BIOMETRIC_CREDENTIALS_KEY
+        );
+
+      if (!storedValue) {
+        await clearBiometricCredentials();
+
+        Alert.alert(
+          "Biometric Login Reset",
+          "Your saved secure login is no longer available. Sign in with your email and password to enable biometrics again."
+        );
+
+        return;
+      }
+
+      const credentials =
+        JSON.parse(
+          storedValue
+        ) as StoredBiometricCredentials;
+
+      if (
+        !credentials.email ||
+        !credentials.password
+      ) {
+        await clearBiometricCredentials();
+        throw new Error(
+          "Saved biometric credentials are incomplete."
+        );
+      }
+
+      setEmail(credentials.email);
+
+      await performLogin(
+        credentials.email,
+        credentials.password,
+        true
+      );
+    } catch (error) {
+      await securelySignOut();
+
+      Alert.alert(
+        "Biometric Login Failed",
+        getReadableLoginError(error)
+      );
+    } finally {
+      setBiometricLoading(false);
+    }
+  }
 
   function clearFieldError(
     field: keyof LoginFieldErrors
@@ -485,29 +764,20 @@ export default function LoginScreen() {
     }
   }
 
-  async function handleLogin() {
+  async function performLogin(
+    loginEmail: string,
+    loginPassword: string,
+    usedBiometrics = false
+  ) {
     if (loading) {
-      return;
-    }
-
-    const validated = validateLogin();
-
-    if (!validated) {
-      Alert.alert(
-        "Check Your Information",
-        "Enter a valid email address and password."
-      );
-
       return;
     }
 
     setLoading(true);
 
     try {
-      const {
-        cleanEmail,
-        cleanPassword,
-      } = validated;
+      const cleanEmail =
+        normalizeEmail(loginEmail);
 
       const {
         data,
@@ -515,7 +785,7 @@ export default function LoginScreen() {
       } =
         await supabase.auth.signInWithPassword({
           email: cleanEmail,
-          password: cleanPassword,
+          password: loginPassword,
         });
 
       if (error) {
@@ -535,22 +805,12 @@ export default function LoginScreen() {
         );
       }
 
-      /*
-       * Even though Supabase normally blocks an unverified
-       * email, this additional check prevents a partially
-       * verified session from entering protected screens.
-       */
       if (!user.email_confirmed_at) {
         await securelySignOut();
 
         Alert.alert(
           "Email Verification Required",
-          "Verify your email address before signing in.",
-          [
-            {
-              text: "OK",
-            },
-          ]
+          "Verify your email address before signing in."
         );
 
         return;
@@ -559,13 +819,6 @@ export default function LoginScreen() {
       const passenger =
         await getPassengerRecord(user.id);
 
-      /*
-       * A valid authentication user without a passenger row is
-       * treated as a missing/deleted passenger account.
-       *
-       * It is not recreated automatically because deletion may
-       * have been intentional or administrative.
-       */
       if (!passenger) {
         await securelySignOut();
 
@@ -579,6 +832,7 @@ export default function LoginScreen() {
 
       if (isPassengerDeleted(passenger)) {
         await securelySignOut();
+        await clearBiometricCredentials();
 
         Alert.alert(
           "Account Unavailable",
@@ -590,6 +844,7 @@ export default function LoginScreen() {
 
       if (isPassengerSuspended(passenger)) {
         await securelySignOut();
+        await clearBiometricCredentials();
 
         Alert.alert(
           "Account Suspended",
@@ -609,22 +864,20 @@ export default function LoginScreen() {
             user.id
           );
       } catch (profileError) {
-        /*
-         * Authentication succeeded, but profile verification
-         * failed. End the session rather than granting
-         * unverified access to protected screens.
-         */
         await securelySignOut();
         throw profileError;
       }
 
-      /*
-       * Website bookings are synchronized only after confirming
-       * the account is active.
-       */
       await syncWebsiteBookings(
         user.id,
         user.email
+      );
+
+      await synchronizeBiometricPreference(
+        user,
+        cleanEmail,
+        loginPassword,
+        usedBiometrics
       );
 
       if (
@@ -645,13 +898,42 @@ export default function LoginScreen() {
     } catch (error) {
       await securelySignOut();
 
+      if (usedBiometrics) {
+        await clearBiometricCredentials();
+      }
+
       Alert.alert(
-        "Secure Login Failed",
+        usedBiometrics
+          ? "Biometric Login Failed"
+          : "Secure Login Failed",
         getReadableLoginError(error)
       );
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleLogin() {
+    if (loading) {
+      return;
+    }
+
+    const validated = validateLogin();
+
+    if (!validated) {
+      Alert.alert(
+        "Check Your Information",
+        "Enter a valid email address and password."
+      );
+
+      return;
+    }
+
+    await performLogin(
+      validated.cleanEmail,
+      validated.cleanPassword,
+      false
+    );
   }
 
   function handleForgotPassword() {
@@ -1051,6 +1333,105 @@ export default function LoginScreen() {
                     </Text>
                   </TouchableOpacity>
 
+                  {!biometricChecking &&
+                  biometricEnabled ? (
+                    <>
+                      <TouchableOpacity
+                        style={[
+                          styles.biometricButton,
+                          (biometricLoading ||
+                            loading) &&
+                            styles.buttonDisabled,
+                        ]}
+                        onPress={() => {
+                          void handleBiometricLogin();
+                        }}
+                        disabled={
+                          biometricLoading ||
+                          loading
+                        }
+                        activeOpacity={0.86}
+                      >
+                        {biometricLabel === "Face ID" ? (
+                          <ScanFace
+                            size={22}
+                            color={
+                              colors.gold ||
+                              AE_COLORS.gold
+                            }
+                          />
+                        ) : (
+                          <Fingerprint
+                            size={22}
+                            color={
+                              colors.gold ||
+                              AE_COLORS.gold
+                            }
+                          />
+                        )}
+
+                        <Text
+                          style={
+                            styles.biometricButtonText
+                          }
+                        >
+                          {biometricLoading
+                            ? `Checking ${biometricLabel}...`
+                            : `Continue with ${biometricLabel}`}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View
+                        style={
+                          styles.orRow
+                        }
+                      >
+                        <View
+                          style={
+                            styles.orLine
+                          }
+                        />
+                        <Text
+                          style={
+                            styles.orText
+                          }
+                        >
+                          OR
+                        </Text>
+                        <View
+                          style={
+                            styles.orLine
+                          }
+                        />
+                      </View>
+                    </>
+                  ) : null}
+
+                  {!biometricChecking &&
+                  biometricAvailable &&
+                  !biometricEnabled ? (
+                    <View
+                      style={
+                        styles.biometricHint
+                      }
+                    >
+                      <ShieldCheck
+                        size={18}
+                        color={
+                          colors.gold ||
+                          AE_COLORS.gold
+                        }
+                      />
+                      <Text
+                        style={
+                          styles.biometricHintText
+                        }
+                      >
+                        Enable Biometrics or Face ID in Settings, then sign in once with your password to activate secure login.
+                      </Text>
+                    </View>
+                  ) : null}
+
                   <AngelHeroButton
                     title={
                       loading
@@ -1062,7 +1443,7 @@ export default function LoginScreen() {
                     }}
                     variant="gold"
                     style={
-                      loading
+                      loading || biometricLoading
                         ? styles.buttonDisabled
                         : undefined
                     }
@@ -1391,6 +1772,72 @@ function createStyles(
       fontWeight: "900",
       textDecorationLine:
         "underline",
+    },
+
+    biometricButton: {
+      minHeight: 56,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor:
+        c.gold || AE_COLORS.gold,
+      backgroundColor:
+        c.mode === "dark"
+          ? "rgba(212,175,55,0.10)"
+          : "rgba(212,175,55,0.12)",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9,
+      marginBottom: 16,
+    },
+
+    biometricButtonText: {
+      color:
+        c.gold || AE_COLORS.gold,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+
+    orRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+
+    orLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor:
+        c.lightBorder,
+    },
+
+    orText: {
+      color: c.muted,
+      fontSize: 11,
+      fontWeight: "900",
+      letterSpacing: 1.2,
+    },
+
+    biometricHint: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 9,
+      borderWidth: 1,
+      borderColor:
+        c.lightBorder,
+      backgroundColor: c.soft,
+      borderRadius: 14,
+      padding: 12,
+      marginBottom: 16,
+    },
+
+    biometricHintText: {
+      flex: 1,
+      color: c.muted,
+      fontSize: 12,
+      lineHeight: 18,
+      fontWeight: "700",
     },
 
     buttonDisabled: {

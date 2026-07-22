@@ -2,10 +2,14 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   BackHandler,
   ImageBackground,
+  Linking,
+  RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,12 +22,17 @@ import {
   Clock3,
   CreditCard,
   FileText,
+  Headphones,
   Home,
   MapPinned,
+  Navigation,
   ReceiptText,
+  RefreshCw,
   Route,
+  Share2,
   ShieldCheck,
   Sparkles,
+  UserRoundCheck,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
@@ -84,6 +93,174 @@ function shortenId(value?: string) {
   return `${value.slice(0, 8)}...${value.slice(-6)}`;
 }
 
+function normalizeStatus(value: any) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+}
+
+function formatStatus(value: any) {
+  const normalized = normalizeStatus(value || "pending");
+
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function getDriverStatus(booking: BookingRecord | null) {
+  if (!booking) {
+    return {
+      label: "Searching for Driver",
+      detail: "Angel Express is coordinating your ride request.",
+      liveTripReady: false,
+    };
+  }
+
+  const status = normalizeStatus(
+    firstValue(
+      booking.trip_phase,
+      booking.driver_status,
+      booking.status,
+      booking.booking_status,
+      "pending"
+    )
+  );
+
+  const hasDriver = Boolean(
+    firstValue(
+      booking.assigned_driver_id,
+      booking.driver_id,
+      booking.chauffeur_id
+    )
+  );
+
+  if (
+    ["completed", "trip_completed", "dropped_off", "dropoff_complete"].includes(
+      status
+    )
+  ) {
+    return {
+      label: "Ride Completed",
+      detail: "Your ride has been completed.",
+      liveTripReady: false,
+    };
+  }
+
+  if (["cancelled", "canceled", "rejected", "declined"].includes(status)) {
+    return {
+      label: "Booking Cancelled",
+      detail: "This ride request is no longer active.",
+      liveTripReady: false,
+    };
+  }
+
+  if (
+    [
+      "in_progress",
+      "trip_started",
+      "picked_up",
+      "passenger_onboard",
+    ].includes(status)
+  ) {
+    return {
+      label: "Trip in Progress",
+      detail: "Your chauffeur is completing the ride.",
+      liveTripReady: true,
+    };
+  }
+
+  if (
+    [
+      "driver_arrived",
+      "arrived",
+      "waiting_for_passenger",
+      "at_pickup",
+    ].includes(status)
+  ) {
+    return {
+      label: "Driver Arrived",
+      detail: "Your chauffeur is waiting at the pickup location.",
+      liveTripReady: true,
+    };
+  }
+
+  if (
+    [
+      "en_route",
+      "driver_en_route",
+      "heading_to_pickup",
+      "accepted",
+      "assigned",
+    ].includes(status)
+  ) {
+    return {
+      label: status === "accepted" ? "Driver Accepted" : "Driver Assigned",
+      detail: "Your chauffeur details and live-trip information are available.",
+      liveTripReady: true,
+    };
+  }
+
+  if (hasDriver) {
+    return {
+      label: "Driver Assigned",
+      detail: "Your chauffeur details will update automatically.",
+      liveTripReady: true,
+    };
+  }
+
+  return {
+    label: "Searching for Driver",
+    detail: "Angel Express is coordinating your ride request.",
+    liveTripReady: false,
+  };
+}
+
+function getPaymentLabel(value: any) {
+  const status = normalizeStatus(value || "unpaid");
+
+  if (["paid", "completed", "succeeded", "settled"].includes(status)) {
+    return "Paid";
+  }
+
+  if (["processing", "pending"].includes(status)) {
+    return "Processing";
+  }
+
+  if (["failed", "declined"].includes(status)) {
+    return "Payment Failed";
+  }
+
+  return "Due after ride";
+}
+
+function buildCalendarUrl({
+  title,
+  start,
+  end,
+  details,
+  location,
+}: {
+  title: string;
+  start: Date;
+  end: Date;
+  details: string;
+  location: string;
+}) {
+  const toCalendarDate = (date: Date) =>
+    date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: title,
+    dates: `${toCalendarDate(start)}/${toCalendarDate(end)}`,
+    details,
+    location,
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export default function BookingSuccessScreen() {
   const params = useLocalSearchParams();
 
@@ -112,16 +289,28 @@ export default function BookingSuccessScreen() {
   const alreadyConfirmed =
     String(firstValue(params.alreadyConfirmed, "false")) === "true";
 
+  const isStudentPool = String(firstValue(params.isStudentPool,"false"))==="true";
+  const studentPoolId = String(firstValue(params.student_pool_id,""));
+  const poolStatus = String(firstValue(params.pool_status,"pending_review"));
+  const seatsRequested = String(firstValue(params.seats_requested,"1"));
+  const expectedPoolSize = String(firstValue(params.expected_pool_size,seatsRequested));
   const [booking, setBooking] = useState<BookingRecord | null>(null);
   const [loadingBooking, setLoadingBooking] = useState(Boolean(bookingId));
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const [openingCalendar, setOpeningCalendar] = useState(false);
 
   const pageFade = useRef(new Animated.Value(0)).current;
   const checkScale = useRef(new Animated.Value(0.72)).current;
   const pulse = useRef(new Animated.Value(1)).current;
   const backgroundScale = useRef(new Animated.Value(1)).current;
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    Animated.parallel([
+    mountedRef.current = true;
+
+    const entranceAnimation = Animated.parallel([
       Animated.timing(pageFade, {
         toValue: 1,
         duration: 650,
@@ -133,9 +322,9 @@ export default function BookingSuccessScreen() {
         tension: 58,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]);
 
-    Animated.loop(
+    const pulseAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, {
           toValue: 1.07,
@@ -148,9 +337,9 @@ export default function BookingSuccessScreen() {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
 
-    Animated.loop(
+    const backgroundAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(backgroundScale, {
           toValue: 1.04,
@@ -163,11 +352,15 @@ export default function BookingSuccessScreen() {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
 
-    loadBooking();
+    entranceAnimation.start();
+    pulseAnimation.start();
+    backgroundAnimation.start();
 
-    const subscription = BackHandler.addEventListener(
+    void loadBooking();
+
+    const backSubscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
         router.replace("/my-trips" as any);
@@ -175,17 +368,62 @@ export default function BookingSuccessScreen() {
       }
     );
 
-    return () => subscription.remove();
-  }, []);
+    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
 
-  async function loadBooking() {
+    if (bookingId) {
+      realtimeChannel = supabase
+        .channel(`passenger-success-booking-${bookingId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "bookings",
+            filter: `id=eq.${bookingId}`,
+          },
+          (payload) => {
+            const nextBooking = payload.new as BookingRecord;
+
+            if (mountedRef.current && nextBooking?.id) {
+              setBooking((current) => ({
+                ...(current || {}),
+                ...nextBooking,
+              }));
+              setLoadError("");
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    return () => {
+      mountedRef.current = false;
+      entranceAnimation.stop();
+      pulseAnimation.stop();
+      backgroundAnimation.stop();
+      backSubscription.remove();
+
+      if (realtimeChannel) {
+        void supabase.removeChannel(realtimeChannel);
+      }
+    };
+  }, [bookingId]);
+
+  async function loadBooking(options?: { silent?: boolean }) {
     if (!bookingId) {
       setLoadingBooking(false);
+      setLoadError(
+        "The booking ID was not received. Open My Trips to locate your new ride."
+      );
       return;
     }
 
     try {
-      setLoadingBooking(true);
+      if (!options?.silent) {
+        setLoadingBooking(true);
+      }
+
+      setLoadError("");
 
       const { data, error } = await supabase
         .from("bookings")
@@ -193,19 +431,39 @@ export default function BookingSuccessScreen() {
         .eq("id", bookingId)
         .maybeSingle();
 
-      if (error) {
-        console.warn("Booking success refresh skipped:", error.message);
-        return;
+      if (error) throw error;
+
+      if (!data) {
+        throw new Error(
+          "The booking was confirmed, but its full record is not available yet."
+        );
       }
 
-      if (data) {
-        setBooking(data);
+      if (mountedRef.current) {
+        setBooking(data as BookingRecord);
       }
-    } catch (error) {
-      console.warn("Booking success refresh skipped:", error);
+    } catch (error: any) {
+      console.warn("Booking success load error:", error);
+
+      if (mountedRef.current) {
+        setLoadError(
+          error?.message ||
+            "We could not refresh this booking. Your ride may still be confirmed."
+        );
+      }
     } finally {
-      setLoadingBooking(false);
+      if (mountedRef.current) {
+        setLoadingBooking(false);
+        setRefreshing(false);
+      }
     }
+  }
+
+  async function handleRefresh() {
+    if (refreshing) return;
+
+    setRefreshing(true);
+    await loadBooking({ silent: true });
   }
 
   const bookingNumber = String(
@@ -247,7 +505,12 @@ export default function BookingSuccessScreen() {
   );
 
   const scheduledAt = String(
-    firstValue(booking?.scheduled_at, "")
+    firstValue(
+      booking?.scheduled_at,
+      booking?.pickup_at,
+      booking?.ride_datetime,
+      ""
+    )
   );
 
   const rideDate = String(
@@ -268,10 +531,135 @@ export default function BookingSuccessScreen() {
     )
   );
 
+  const etaMinutes = Number(
+    firstValue(
+      booking?.eta_minutes,
+      booking?.driver_eta_minutes,
+      booking?.estimated_arrival_minutes,
+      0
+    )
+  );
+
+  const driverName = String(
+    firstValue(
+      booking?.driver_name,
+      booking?.chauffeur_name,
+      booking?.assigned_driver_name,
+      ""
+    )
+  );
+
+  const driverStatus = getDriverStatus(booking);
+
   const pageTranslate = pageFade.interpolate({
     inputRange: [0, 1],
     outputRange: [26, 0],
   });
+
+  async function shareBooking() {
+    if (sharing) return;
+
+    try {
+      setSharing(true);
+
+      const message = [
+        "Angel Express booking confirmed.",
+        `Booking: ${bookingNumber}`,
+        rideDate || rideTime ? `Scheduled: ${[rideDate, rideTime].filter(Boolean).join(" at ")}` : "",
+        pickupAddress ? `Pickup: ${pickupAddress}` : "",
+        dropoffAddress ? `Drop-off: ${dropoffAddress}` : "",
+        `Fare: ${formatMoney(finalFare)}`,
+        "Manage your ride in the Angel Express Passenger App.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await Share.share({
+        title: "Angel Express Booking",
+        message,
+      });
+    } catch (error: any) {
+      Alert.alert(
+        "Unable to Share",
+        error?.message || "Your booking details could not be shared."
+      );
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function addToCalendar() {
+    if (openingCalendar) return;
+
+    try {
+      setOpeningCalendar(true);
+
+      const start = scheduledAt ? new Date(scheduledAt) : new Date();
+
+      if (Number.isNaN(start.getTime())) {
+        throw new Error("The booking date and time are unavailable.");
+      }
+
+      const durationMinutes = Math.max(
+        60,
+        Number(
+          firstValue(
+            booking?.route_duration_minutes,
+            booking?.estimated_duration_minutes,
+            60
+          )
+        )
+      );
+
+      const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+      const calendarUrl = buildCalendarUrl({
+        title: `Angel Express Ride ${bookingNumber}`,
+        start,
+        end,
+        details: `Booking ${bookingNumber}. Fare ${formatMoney(
+          finalFare
+        )}. Open the Angel Express Passenger App for updates.`,
+        location: pickupAddress || "Pickup location in Angel Express booking",
+      });
+
+      const canOpen = await Linking.canOpenURL(calendarUrl);
+
+      if (!canOpen) {
+        throw new Error("No supported calendar application is available.");
+      }
+
+      await Linking.openURL(calendarUrl);
+    } catch (error: any) {
+      Alert.alert(
+        "Calendar Unavailable",
+        error?.message || "The ride could not be added to your calendar."
+      );
+    } finally {
+      setOpeningCalendar(false);
+    }
+  }
+
+  function openLiveTrip() {
+    if (!bookingId) {
+      router.replace("/my-trips" as any);
+      return;
+    }
+
+    router.push(`/live-trip?bookingId=${encodeURIComponent(bookingId)}` as any);
+  }
+
+  function contactSupport() {
+    router.push({
+      pathname: "/support" as any,
+      params: bookingId
+        ? {
+            bookingId,
+            bookingNumber,
+          }
+        : undefined,
+    });
+  }
 
   return (
     <View style={styles.root}>
@@ -293,6 +681,13 @@ export default function BookingSuccessScreen() {
           style={styles.container}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.gold}
+            />
+          }
         >
           <View style={styles.topRow}>
             <View style={styles.brandPill}>
@@ -333,9 +728,7 @@ export default function BookingSuccessScreen() {
 
               <Text style={styles.kicker}>RIDE REQUEST RECEIVED</Text>
 
-              <Text style={styles.title}>
-                Booking Confirmed
-              </Text>
+              <Text style={styles.title}>Booking Confirmed</Text>
 
               <Text style={styles.subtitle}>
                 Your Angel Express ride request has been securely created and
@@ -352,6 +745,44 @@ export default function BookingSuccessScreen() {
                 </View>
               ) : null}
             </View>
+
+            {loadError ? (
+              <View style={styles.warningCard}>
+                <View style={styles.warningCopy}>
+                  <Text style={styles.warningTitle}>
+                    Booking refresh unavailable
+                  </Text>
+                  <Text style={styles.warningText}>{loadError}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.retrySmallButton}
+                  onPress={() => void loadBooking()}
+                  disabled={loadingBooking}
+                  activeOpacity={0.86}
+                >
+                  {loadingBooking ? (
+                    <ActivityIndicator size="small" color={colors.navy} />
+                  ) : (
+                    <RefreshCw size={17} color={colors.navy} />
+                  )}
+                  <Text style={styles.retrySmallText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {isStudentPool ? (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <ShieldCheck size={22} color={colors.gold}/>
+                <Text style={styles.cardTitle}>Student Pool Status</Text>
+              </View>
+              <DetailRow icon={<Sparkles size={17} color={colors.gold}/>} label="Pool Status" value={formatStatus(poolStatus)} styles={styles}/>
+              <DetailRow icon={<ReceiptText size={17} color={colors.gold}/>} label="Pool ID" value={shortenId(studentPoolId)} styles={styles}/>
+              <DetailRow icon={<UserRoundCheck size={17} color={colors.gold}/>} label="Seats Reserved" value={seatsRequested} styles={styles}/>
+              <DetailRow icon={<UserRoundCheck size={17} color={colors.gold}/>} label="Expected Capacity" value={expectedPoolSize} styles={styles}/>
+              <Text style={styles.stepText}>Your booking has been linked to the Student Pool workflow. Angel Express Operations will review or publish the pool before assigning a driver.</Text>
+            </View>) : null}
 
             <View style={styles.fareCard}>
               <View style={styles.fareCardTop}>
@@ -370,9 +801,7 @@ export default function BookingSuccessScreen() {
               <View style={styles.paymentRow}>
                 <Text style={styles.paymentLabel}>Payment Status</Text>
                 <Text style={styles.paymentValue}>
-                  {paymentStatus.toLowerCase() === "paid"
-                    ? "Paid"
-                    : "Due after ride"}
+                  {getPaymentLabel(paymentStatus)}
                 </Text>
               </View>
             </View>
@@ -395,12 +824,66 @@ export default function BookingSuccessScreen() {
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Route size={22} color={colors.gold} />
-                <Text style={styles.cardTitle}>Ride Summary</Text>
+                <UserRoundCheck size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>Driver Assignment</Text>
 
                 {loadingBooking ? (
                   <ActivityIndicator size="small" color={colors.gold} />
                 ) : null}
+              </View>
+
+              <View style={styles.driverStatusRow}>
+                <View
+                  style={[
+                    styles.driverStatusDot,
+                    driverStatus.liveTripReady && styles.driverStatusDotActive,
+                  ]}
+                />
+
+                <View style={styles.driverStatusCopy}>
+                  <Text style={styles.driverStatusTitle}>
+                    {driverStatus.label}
+                  </Text>
+                  <Text style={styles.driverStatusText}>
+                    {driverStatus.detail}
+                  </Text>
+                </View>
+              </View>
+
+              {driverName ? (
+                <DetailRow
+                  icon={<UserRoundCheck size={17} color={colors.gold} />}
+                  label="Chauffeur"
+                  value={driverName}
+                  styles={styles}
+                />
+              ) : null}
+
+              {etaMinutes > 0 ? (
+                <DetailRow
+                  icon={<Clock3 size={17} color={colors.gold} />}
+                  label="Estimated Arrival"
+                  value={`${Math.round(etaMinutes)} minutes`}
+                  styles={styles}
+                />
+              ) : null}
+
+              {driverStatus.liveTripReady ? (
+                <TouchableOpacity
+                  style={styles.liveTripButton}
+                  onPress={openLiveTrip}
+                  activeOpacity={0.88}
+                >
+                  <Navigation size={18} color={colors.navy} />
+                  <Text style={styles.liveTripButtonText}>Open Live Trip</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Route size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>Ride Summary</Text>
               </View>
 
               {pickupAddress ? (
@@ -492,6 +975,33 @@ export default function BookingSuccessScreen() {
               <ArrowRight size={19} color={colors.navy} />
             </TouchableOpacity>
 
+            <View style={styles.actionGrid}>
+              <ActionButton
+                icon={<Share2 size={18} color={colors.gold} />}
+                title={sharing ? "Sharing..." : "Share Booking"}
+                onPress={() => void shareBooking()}
+                disabled={sharing}
+                styles={styles}
+              />
+
+              <ActionButton
+                icon={<CalendarDays size={18} color={colors.gold} />}
+                title={openingCalendar ? "Opening..." : "Add to Calendar"}
+                onPress={() => void addToCalendar()}
+                disabled={openingCalendar}
+                styles={styles}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={contactSupport}
+              activeOpacity={0.88}
+            >
+              <Headphones size={18} color={colors.gold} />
+              <Text style={styles.secondaryButtonText}>Contact Support</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => router.replace("/dashboard" as any)}
@@ -555,6 +1065,32 @@ function DetailRow({
         <Text style={styles.detailValue}>{value}</Text>
       </View>
     </View>
+  );
+}
+
+function ActionButton({
+  icon,
+  title,
+  onPress,
+  disabled,
+  styles,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  styles: any;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.actionButton, disabled && styles.actionButtonDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.86}
+    >
+      {icon}
+      <Text style={styles.actionButtonText}>{title}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -678,6 +1214,50 @@ function createStyles(c: any) {
       flex: 1,
     },
 
+    warningCard: {
+      backgroundColor: c.card,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 15,
+      marginBottom: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    warningCopy: {
+      flex: 1,
+    },
+    warningTitle: {
+      color: c.gold,
+      fontSize: 14,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+    warningText: {
+      color: c.text2,
+      fontSize: 12.5,
+      lineHeight: 18,
+      fontWeight: "700",
+    },
+    retrySmallButton: {
+      minWidth: 86,
+      borderRadius: 14,
+      backgroundColor: c.gold,
+      paddingVertical: 11,
+      paddingHorizontal: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+    },
+    retrySmallText: {
+      color: c.navy,
+      fontSize: 12,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+
     fareCard: {
       backgroundColor: c.gold,
       borderRadius: 24,
@@ -793,6 +1373,57 @@ function createStyles(c: any) {
       flex: 1,
     },
 
+    driverStatusRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 11,
+      marginBottom: 14,
+    },
+    driverStatusDot: {
+      width: 12,
+      height: 12,
+      borderRadius: 6,
+      marginTop: 4,
+      backgroundColor: c.gold,
+      opacity: 0.45,
+    },
+    driverStatusDotActive: {
+      backgroundColor: "#22c55e",
+      opacity: 1,
+    },
+    driverStatusCopy: {
+      flex: 1,
+    },
+    driverStatusTitle: {
+      color: c.text,
+      fontSize: 16,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+    driverStatusText: {
+      color: c.text2,
+      fontSize: 13.5,
+      lineHeight: 20,
+      fontWeight: "700",
+    },
+    liveTripButton: {
+      minHeight: 49,
+      borderRadius: 15,
+      backgroundColor: c.gold,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 9,
+      paddingHorizontal: 16,
+      marginTop: 3,
+    },
+    liveTripButtonText: {
+      color: c.navy,
+      fontSize: 14,
+      fontWeight: "900",
+      textTransform: "uppercase",
+    },
+
     detailRow: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -880,6 +1511,36 @@ function createStyles(c: any) {
       fontWeight: "900",
       textTransform: "uppercase",
     },
+
+    actionGrid: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 13,
+    },
+    actionButton: {
+      flex: 1,
+      minHeight: 54,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
+      paddingHorizontal: 10,
+    },
+    actionButtonDisabled: {
+      opacity: 0.6,
+    },
+    actionButtonText: {
+      color: c.gold,
+      fontSize: 12.5,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      textAlign: "center",
+    },
+
     secondaryButton: {
       borderWidth: 1,
       borderColor: c.border,

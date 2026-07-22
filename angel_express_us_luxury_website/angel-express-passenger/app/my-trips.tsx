@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import {
+  AlertTriangle,
   ArrowLeft,
   CalendarDays,
   CarFront,
@@ -22,6 +23,7 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
+  GraduationCap,
   MapPinned,
   MessageCircle,
   Navigation,
@@ -29,7 +31,9 @@ import {
   ReceiptText,
   RefreshCcw,
   ShieldCheck,
+  TimerReset,
   Star,
+  UsersRound,
   UserRound,
   XCircle,
 } from "lucide-react-native";
@@ -37,17 +41,42 @@ import {
 import { supabase } from "../lib/supabase";
 import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
-const PENDING_STATUSES = ["pending", "confirmed", "booked"];
+const PENDING_STATUSES = [
+  "pending",
+  "confirmed",
+  "booked",
+  "pending_review",
+  "pending_assignment",
+];
+
+const SMART_QUEUE_STATUSES = [
+  "smart_queue",
+  "student_pool_pending",
+  "matching",
+];
+
+const SMART_QUEUE_READY_STATUSES = [
+  "smart_queue_ready",
+  "pool_matched",
+];
+
+const UNASSIGNED_STATUSES = ["unassigned"];
 
 const ASSIGNED_STATUSES = [
   "assigned",
   "driver_assigned",
   "accepted",
   "driver_accepted",
+  "driver_en_route",
+  "en_route",
   "driver_arrived",
 ];
 
-const IN_PROGRESS_STATUSES = ["in_progress"];
+const IN_PROGRESS_STATUSES = [
+  "passenger_onboard",
+  "picked_up",
+  "in_progress",
+];
 const COMPLETED_STATUSES = ["completed"];
 const CANCELLED_STATUSES = ["cancelled", "canceled"];
 
@@ -79,13 +108,17 @@ function displayRideCategory(trip: any) {
   const map: Record<string, string> = {
     private: "Standard Ride",
     student_private: "Student Ride",
-    student_pool: "Student Shared Ride",
+    student_pool: "Student Pool Ride",
     airport: "Airport Transfer",
     tourist_event: "Tourist/Event Ride",
     corporate: "Corporate Ride",
   };
 
-  return map[String(label || "").toLowerCase()] || titleCaseFromCode(label) || "Standard Ride";
+  return (
+    map[String(label || "").toLowerCase()] ||
+    titleCaseFromCode(label) ||
+    "Standard Ride"
+  );
 }
 
 function displayTripType(trip: any) {
@@ -99,6 +132,249 @@ function displayTripType(trip: any) {
   return titleCaseFromCode(value) || "One Way";
 }
 
+function getScheduledPickupDate(trip: any): Date | null {
+  const directValue = firstValue(
+    trip.scheduled_pickup_at,
+    trip.scheduled_at,
+    trip.pickup_datetime
+  );
+
+  if (directValue) {
+    const directDate = new Date(directValue);
+    if (!Number.isNaN(directDate.getTime())) return directDate;
+  }
+
+  const dateValue = firstValue(
+    trip.ride_date,
+    trip.date,
+    trip.pickup_date
+  );
+
+  const timeValue = firstValue(
+    trip.ride_time,
+    trip.time,
+    trip.pickup_time,
+    "00:00"
+  );
+
+  if (!dateValue) return null;
+
+  const dateText = String(dateValue).trim();
+  const timeText = String(timeValue).trim();
+
+  // Handles ISO dates such as 2026-07-18 plus 08:00 or 8:00 AM.
+  const combined = new Date(`${dateText} ${timeText}`);
+  if (!Number.isNaN(combined.getTime())) return combined;
+
+  const dateOnly = new Date(dateText);
+  if (!Number.isNaN(dateOnly.getTime())) return dateOnly;
+
+  return null;
+}
+
+function isStudentPoolTrip(trip: any) {
+  const category = normalize(
+    firstValue(
+      trip.ride_category,
+      trip.ride_category_label,
+      trip.ride_category_name
+    )
+  );
+
+  return (
+    category === "student_pool" ||
+    category === "student shared ride" ||
+    trip.student_pool_requested === true ||
+    trip.shared_ride === true ||
+    Boolean(firstValue(trip.student_pool_id, trip.pool_id))
+  );
+}
+
+
+function getPoolId(trip: any) {
+  return String(firstValue(trip.student_pool_id, trip.pool_id, "") || "");
+}
+
+function getPoolStatus(trip: any) {
+  return normalize(
+    firstValue(
+      trip.pool_status,
+      trip.student_pool_status,
+      trip.pool?.status,
+      trip.pool_member_status,
+      trip.member_status,
+      "pending_review"
+    )
+  );
+}
+
+function getPoolCapacity(trip: any) {
+  return Math.max(
+    1,
+    numberValue(
+      trip.pool_capacity,
+      trip.expected_pool_size,
+      trip.pool?.seats_total,
+      4
+    )
+  );
+}
+
+function getPoolSeatsReserved(trip: any) {
+  return Math.max(
+    0,
+    numberValue(
+      trip.pool_seats_reserved,
+      trip.pool?.seats_reserved,
+      trip.seats_requested,
+      0
+    )
+  );
+}
+
+function getPoolSeatsRemaining(trip: any) {
+  const capacity = getPoolCapacity(trip);
+  const direct = firstValue(
+    trip.pool_seats_available,
+    trip.pool?.seats_available
+  );
+
+  if (direct !== undefined && direct !== null && direct !== "") {
+    return Math.max(0, numberValue(direct));
+  }
+
+  return Math.max(0, capacity - getPoolSeatsReserved(trip));
+}
+
+function getPoolProgressIndex(trip: any) {
+  const status = getPoolStatus(trip);
+
+  if (["cancelled", "canceled", "rejected", "removed"].includes(status)) {
+    return -1;
+  }
+
+  if (["completed", "trip_completed"].includes(status)) return 5;
+  if (
+    ["in_progress", "picked_up", "passenger_onboard", "driver_arrived"].includes(
+      status
+    )
+  ) {
+    return 5;
+  }
+
+  if (
+    [
+      "driver_assigned",
+      "assigned",
+      "accepted",
+      "driver_accepted",
+      "driver_en_route",
+      "en_route",
+    ].includes(status)
+  ) {
+    return 4;
+  }
+
+  if (
+    [
+      "confirmed",
+      "ready",
+      "pool_ready",
+      "smart_queue_ready",
+      "pool_matched",
+      "dispatch_ready",
+    ].includes(status)
+  ) {
+    return 3;
+  }
+
+  if (["forming", "open", "matching", "smart_queue"].includes(status)) {
+    return 2;
+  }
+
+  if (["approved", "owner_approved"].includes(status)) return 1;
+
+  return 0;
+}
+
+function getPoolStatusMessage(trip: any) {
+  const status = getPoolStatus(trip);
+
+  const messages: Record<string, string> = {
+    pending_review:
+      "Angel Express Operations is reviewing this Student Pool request.",
+    creator_pending_review:
+      "Your new Student Pool is awaiting Operations review.",
+    pending_approval:
+      "Your request to join this Student Pool is awaiting approval.",
+    approved:
+      "Your Student Pool request has been approved.",
+    owner_approved:
+      "Operations approved this Student Pool and matching is beginning.",
+    forming:
+      "The pool is forming and matching verified students.",
+    open:
+      "The pool is open to additional verified students.",
+    matching:
+      "Smart Queue is matching eligible students for this route.",
+    smart_queue:
+      "Smart Queue is matching eligible students for this route.",
+    confirmed:
+      "The Student Pool is confirmed and ready for chauffeur dispatch.",
+    ready:
+      "The Student Pool is ready for chauffeur dispatch.",
+    pool_ready:
+      "The Student Pool is ready for chauffeur dispatch.",
+    driver_assigned:
+      "A chauffeur has been assigned to the Student Pool.",
+    assigned:
+      "A chauffeur has been assigned to the Student Pool.",
+    completed:
+      "This Student Pool ride has been completed.",
+    cancelled:
+      "This Student Pool request was cancelled.",
+    rejected:
+      "This Student Pool request was not approved.",
+  };
+
+  return messages[status] || `Student Pool status: ${titleCaseFromCode(status)}.`;
+}
+
+function shortPoolId(value: string) {
+  if (!value) return "Pending";
+  if (value.length <= 18) return value;
+  return `${value.slice(0, 8)}...${value.slice(-6)}`;
+}
+
+function getEffectiveStatus(trip: any) {
+  const storedStatus = normalize(trip.status);
+
+  if (!isPendingStatus(storedStatus)) {
+    return storedStatus;
+  }
+
+  if (trip.driver_id || trip.assigned_driver_id) {
+    return storedStatus;
+  }
+
+  // A Student Pool remains in Smart Queue while matching. It should not be
+  // treated as Unassigned until the pool has been released for dispatch.
+  if (
+    isStudentPoolTrip(trip) &&
+    trip.pool_ready !== true &&
+    !SMART_QUEUE_READY_STATUSES.includes(storedStatus)
+  ) {
+    return "smart_queue";
+  }
+
+  const scheduledPickup = getScheduledPickupDate(trip);
+  if (!scheduledPickup) return storedStatus;
+
+  const unassignedAt = scheduledPickup.getTime() + 45 * 60 * 1000;
+
+  return Date.now() >= unassignedAt ? "unassigned" : storedStatus;
+}
+
 export default function MyTripsScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -109,6 +385,7 @@ export default function MyTripsScreen() {
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     Animated.loop(
@@ -131,6 +408,50 @@ export default function MyTripsScreen() {
       duration: 650,
       useNativeDriver: true,
     }).start();
+
+    mountedRef.current = true;
+
+    const channel = supabase
+      .channel("passenger-my-trips-v6")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+        },
+        () => {
+          void loadTrips(false);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "student_pool_rides",
+        },
+        () => {
+          void loadTrips(false);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "student_pool_members",
+        },
+        () => {
+          void loadTrips(false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mountedRef.current = false;
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   useFocusEffect(
@@ -172,62 +493,190 @@ export default function MyTripsScreen() {
 
       if (error) throw error;
 
-      setTrips(data || []);
+      const seen = new Set<string>();
+      const uniqueTrips = (data || []).filter((trip) => {
+        const key = String(trip.id || "");
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const poolIds = Array.from(
+        new Set(
+          uniqueTrips
+            .map((trip) => getPoolId(trip))
+            .filter(Boolean)
+        )
+      );
+
+      let poolsById: Record<string, any> = {};
+      let membershipsByBookingId: Record<string, any> = {};
+
+      if (poolIds.length > 0) {
+        const [{ data: pools, error: poolsError }, { data: members, error: membersError }] =
+          await Promise.all([
+            supabase
+              .from("student_pool_rides")
+              .select(
+                "id, status, route_label, campus_hub, origin, destination, seats_total, seats_available, seats_reserved, scheduled_at, creator_user_id, lead_booking_id, updated_at"
+              )
+              .in("id", poolIds),
+            supabase
+              .from("student_pool_members")
+              .select(
+                "id, pool_id, booking_id, passenger_user_id, seats_reserved, status, member_status, joined_at"
+              )
+              .in("pool_id", poolIds),
+          ]);
+
+        if (poolsError) {
+          console.warn("Student Pool rides load warning:", poolsError);
+        }
+
+        if (membersError) {
+          console.warn("Student Pool memberships load warning:", membersError);
+        }
+
+        poolsById = Object.fromEntries(
+          (pools || []).map((pool) => [String(pool.id), pool])
+        );
+
+        membershipsByBookingId = Object.fromEntries(
+          (members || [])
+            .filter((member) => member.booking_id)
+            .map((member) => [String(member.booking_id), member])
+        );
+      }
+
+      const enrichedTrips = uniqueTrips.map((trip) => {
+        const poolId = getPoolId(trip);
+        const pool = poolId ? poolsById[poolId] : null;
+        const membership = membershipsByBookingId[String(trip.id)] || null;
+
+        if (!pool && !membership) return trip;
+
+        return {
+          ...trip,
+          pool,
+          pool_status: firstValue(
+            pool?.status,
+            membership?.member_status,
+            membership?.status,
+            trip.pool_status
+          ),
+          pool_member_status: firstValue(
+            membership?.member_status,
+            membership?.status,
+            trip.pool_member_status
+          ),
+          pool_capacity: firstValue(
+            pool?.seats_total,
+            trip.expected_pool_size,
+            trip.pool_capacity
+          ),
+          pool_seats_reserved: firstValue(
+            pool?.seats_reserved,
+            trip.pool_seats_reserved
+          ),
+          pool_seats_available: firstValue(
+            pool?.seats_available,
+            trip.pool_seats_available
+          ),
+          pool_member_seats: firstValue(
+            membership?.seats_reserved,
+            trip.seats_requested
+          ),
+          student_pool_route: firstValue(
+            pool?.route_label,
+            trip.student_pool_route
+          ),
+        };
+      });
+
+      if (mountedRef.current) {
+        setTrips(enrichedTrips);
+      }
     } catch (error: any) {
       Alert.alert("Trips Error", error.message || "Could not load trips.");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (mountedRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }
 
   const sections = [
     {
       title: "Pending",
-      description: "Ride requests waiting for review or confirmation.",
+      description:
+        "Confirmed bookings still within the normal chauffeur-dispatch window.",
       icon: <Clock3 size={20} color={colors.gold} />,
-      trips: trips.filter((t) => isPendingStatus(t.status)),
+      trips: trips.filter((t) => isPendingStatus(getEffectiveStatus(t))),
+    },
+    {
+      title: "Smart Queue",
+      description:
+        "Student Shared Rides currently matching eligible students and building a pool.",
+      icon: <UsersRound size={20} color={colors.gold} />,
+      trips: trips.filter((t) => isSmartQueueStatus(getEffectiveStatus(t))),
+    },
+    {
+      title: "Unassigned",
+      description:
+        "Rides that still need a chauffeur after the dispatch deadline or a declined assignment.",
+      icon: <AlertTriangle size={20} color={colors.gold} />,
+      trips: trips.filter((t) => isUnassignedStatus(getEffectiveStatus(t))),
     },
     {
       title: "Assigned",
-      description: "Rides with a chauffeur assigned or preparing.",
+      description:
+        "Rides reserved for or accepted by an Angel Express chauffeur.",
       icon: <UserRound size={20} color={colors.gold} />,
-      trips: trips.filter((t) => isAssignedStatus(t.status)),
+      trips: trips.filter(
+        (t) =>
+          isAssignedStatus(getEffectiveStatus(t)) ||
+          isSmartQueueReadyStatus(getEffectiveStatus(t))
+      ),
     },
     {
       title: "In Progress",
       description: "Active rides currently moving.",
       icon: <Navigation size={20} color={colors.gold} />,
-      trips: trips.filter((t) => isInProgressStatus(t.status)),
+      trips: trips.filter((t) => isInProgressStatus(getEffectiveStatus(t))),
     },
     {
       title: "Completed",
       description: "Finished rides, receipts, payments, and driver reviews.",
       icon: <CheckCircle2 size={20} color={colors.gold} />,
-      trips: trips.filter((t) => isCompletedStatus(t.status)),
+      trips: trips.filter((t) => isCompletedStatus(getEffectiveStatus(t))),
     },
     {
       title: "Cancelled",
-      description: "Cancelled ride requests and cancelled trips.",
+      description: "Trips explicitly cancelled by a passenger, driver, owner, or authorized process.",
       icon: <XCircle size={20} color={colors.gold} />,
-      trips: trips.filter((t) => isCancelledStatus(t.status)),
+      trips: trips.filter((t) => isCancelledStatus(getEffectiveStatus(t))),
     },
   ];
 
   const activeTrips = trips.filter(
     (trip) =>
-      isAssignedStatus(trip.status) ||
-      isInProgressStatus(trip.status) ||
-      normalize(trip.status) === "driver_arrived"
+      isAssignedStatus(getEffectiveStatus(trip)) ||
+      isSmartQueueReadyStatus(getEffectiveStatus(trip)) ||
+      isInProgressStatus(getEffectiveStatus(trip))
   ).length;
 
   const completedTrips = trips.filter((trip) =>
-    isCompletedStatus(trip.status)
+    isCompletedStatus(getEffectiveStatus(trip))
+  ).length;
+
+  const studentPoolTrips = trips.filter((trip) =>
+    isStudentPoolTrip(trip)
   ).length;
 
   const unpaidCompletedTrips = trips.filter(
     (trip) =>
-      isCompletedStatus(trip.status) &&
+      isCompletedStatus(getEffectiveStatus(trip)) &&
       normalize(trip.payment_status || "unpaid") !== "paid"
   ).length;
 
@@ -282,8 +731,8 @@ export default function MyTripsScreen() {
             <Text style={styles.title}>My Trips</Text>
 
             <Text style={styles.subtitle}>
-              View pending, assigned, live, completed, cancelled, paid, and unpaid Angel
-              Express rides.
+              View pending, Smart Queue, unassigned, assigned, live,
+              completed, cancelled, paid, and unpaid Angel Express rides.
             </Text>
 
             <View style={styles.heroCard}>
@@ -297,7 +746,7 @@ export default function MyTripsScreen() {
                 </Text>
                 <Text style={styles.heroText}>
                   {activeTrips} active • {completedTrips} completed •{" "}
-                  {unpaidCompletedTrips} payment due
+                  {studentPoolTrips} Student Pool • {unpaidCompletedTrips} payment due
                 </Text>
               </View>
             </View>
@@ -406,23 +855,27 @@ function TripCard({
     trip.ride_date ||
     trip.date ||
     trip.pickup_date ||
-    (trip.scheduled_at
-      ? new Date(trip.scheduled_at).toLocaleDateString()
+    (firstValue(trip.scheduled_pickup_at, trip.scheduled_at)
+      ? new Date(
+          firstValue(trip.scheduled_pickup_at, trip.scheduled_at)
+        ).toLocaleDateString()
       : "Date not added");
 
   const time =
     trip.ride_time ||
     trip.time ||
     trip.pickup_time ||
-    (trip.scheduled_at
-      ? new Date(trip.scheduled_at).toLocaleTimeString([], {
+    (firstValue(trip.scheduled_pickup_at, trip.scheduled_at)
+      ? new Date(
+          firstValue(trip.scheduled_pickup_at, trip.scheduled_at)
+        ).toLocaleTimeString([], {
           hour: "numeric",
           minute: "2-digit",
         })
       : "Time not added");
 
-  const normalizedStatus = normalize(trip.status);
-  const displayStatus = getDisplayStatus(trip.status);
+  const normalizedStatus = getEffectiveStatus(trip);
+  const displayStatus = getDisplayStatus(normalizedStatus);
   const paymentStatus = normalize(trip.payment_status || "unpaid");
 
   const bookingNumber = String(
@@ -459,6 +912,26 @@ function TripCard({
   const rideCategory = displayRideCategory(trip);
   const tripType = displayTripType(trip);
   const driverId = trip.driver_id || trip.assigned_driver_id;
+
+  const studentPool = isStudentPoolTrip(trip);
+  const poolId = getPoolId(trip);
+  const poolStatus = getPoolStatus(trip);
+  const poolCapacity = getPoolCapacity(trip);
+  const poolSeatsFilled = getPoolSeatsReserved(trip);
+  const poolSeatsRemaining = getPoolSeatsRemaining(trip);
+  const passengerSeats = Math.max(
+    1,
+    numberValue(trip.pool_member_seats, trip.seats_requested, 1)
+  );
+  const poolProgressIndex = getPoolProgressIndex(trip);
+  const poolRoute = String(
+    firstValue(
+      trip.student_pool_route,
+      trip.pool?.route_label,
+      trip.pool?.campus_hub,
+      `${pickup} → ${dropoff}`
+    )
+  );
 
   const canPayRide =
     isCompletedStatus(normalizedStatus) && paymentStatus !== "paid";
@@ -557,6 +1030,18 @@ function TripCard({
     });
   }
 
+  function openPoolDetails() {
+    router.push({
+      pathname: "/student-pool-details" as any,
+      params: {
+        bookingId: String(trip.id || ""),
+        booking_id: String(trip.id || ""),
+        student_pool_id: poolId,
+        poolId,
+      },
+    });
+  }
+
   function openLiveTrip() {
     router.push({
       pathname: "/live-trip" as any,
@@ -580,6 +1065,15 @@ function TripCard({
           </View>
 
           <Text style={styles.invoiceSub}>Invoice: {invoiceNumber}</Text>
+
+          {studentPool ? (
+            <View style={styles.studentPoolBadge}>
+              <GraduationCap size={14} color={colors.navy} />
+              <Text style={styles.studentPoolBadgeText}>
+                STUDENT POOL RIDE
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View
@@ -598,6 +1092,188 @@ function TripCard({
           {getLifecycleMessage(normalizedStatus, paymentStatus)}
         </Text>
       </View>
+
+      {studentPool ? (
+        <View style={styles.poolCard}>
+          <View style={styles.poolCardHeader}>
+            <View style={styles.poolIconWrap}>
+              <GraduationCap size={23} color={colors.navy} />
+            </View>
+
+            <View style={styles.poolHeaderCopy}>
+              <Text style={styles.poolEyebrow}>STUDENT POOL ENGINE</Text>
+              <Text style={styles.poolTitle}>
+                {titleCaseFromCode(poolStatus)}
+              </Text>
+            </View>
+
+            <View style={styles.poolSeatsPill}>
+              <UsersRound size={15} color={colors.gold} />
+              <Text style={styles.poolSeatsPillText}>
+                {Math.min(poolSeatsFilled, poolCapacity)}/{poolCapacity}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.poolMessage}>
+            {getPoolStatusMessage(trip)}
+          </Text>
+
+          <View style={styles.poolMetaGrid}>
+            <View style={styles.poolMetaBox}>
+              <Text style={styles.poolMetaLabel}>Pool ID</Text>
+              <Text style={styles.poolMetaValue}>
+                {shortPoolId(poolId)}
+              </Text>
+            </View>
+
+            <View style={styles.poolMetaBox}>
+              <Text style={styles.poolMetaLabel}>Your Seats</Text>
+              <Text style={styles.poolMetaValue}>{passengerSeats}</Text>
+            </View>
+
+            <View style={styles.poolMetaBox}>
+              <Text style={styles.poolMetaLabel}>Seats Filled</Text>
+              <Text style={styles.poolMetaValue}>
+                {Math.min(poolSeatsFilled, poolCapacity)}
+              </Text>
+            </View>
+
+            <View style={styles.poolMetaBox}>
+              <Text style={styles.poolMetaLabel}>Seats Left</Text>
+              <Text style={styles.poolMetaValue}>{poolSeatsRemaining}</Text>
+            </View>
+          </View>
+
+          <View style={styles.poolRouteBox}>
+            <MapPinned size={17} color={colors.gold} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.poolRouteLabel}>POOL ROUTE</Text>
+              <Text style={styles.poolRouteText}>{poolRoute}</Text>
+            </View>
+          </View>
+
+          <View style={styles.occupancyHeader}>
+            <Text style={styles.occupancyTitle}>Pool Occupancy</Text>
+            <Text style={styles.occupancyValue}>
+              {Math.min(poolSeatsFilled, poolCapacity)} of {poolCapacity} filled
+            </Text>
+          </View>
+
+          <View style={styles.occupancyTrack}>
+            <View
+              style={[
+                styles.occupancyFill,
+                {
+                  width: `${Math.min(
+                    100,
+                    Math.max(
+                      0,
+                      (Math.min(poolSeatsFilled, poolCapacity) /
+                        Math.max(poolCapacity, 1)) *
+                        100
+                    )
+                  )}%`,
+                },
+              ]}
+            />
+          </View>
+
+          <View style={styles.seatRow}>
+            {Array.from({ length: poolCapacity }).map((_, index) => {
+              const occupied = index < poolSeatsFilled;
+
+              return (
+                <View
+                  key={`${poolId || trip.id}-seat-${index}`}
+                  style={[
+                    styles.seatDot,
+                    occupied && styles.seatDotOccupied,
+                  ]}
+                >
+                  <UserRound
+                    size={15}
+                    color={occupied ? colors.navy : colors.gold}
+                  />
+                </View>
+              );
+            })}
+          </View>
+
+          <View style={styles.poolTimeline}>
+            {[
+              "Request",
+              "Review",
+              "Matching",
+              "Pool Ready",
+              "Driver",
+              "Trip",
+            ].map((label, index) => {
+              const complete = poolProgressIndex >= index;
+              const active =
+                poolProgressIndex === index && poolProgressIndex >= 0;
+
+              return (
+                <View
+                  key={`${poolId || trip.id}-${label}`}
+                  style={styles.poolTimelineItem}
+                >
+                  <View
+                    style={[
+                      styles.poolTimelineDot,
+                      complete && styles.poolTimelineDotComplete,
+                      active && styles.poolTimelineDotActive,
+                    ]}
+                  >
+                    {complete ? (
+                      <CheckCircle2
+                        size={13}
+                        color={colors.navy}
+                        strokeWidth={3}
+                      />
+                    ) : (
+                      <Text style={styles.poolTimelineDotText}>
+                        {index + 1}
+                      </Text>
+                    )}
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.poolTimelineLabel,
+                      complete && styles.poolTimelineLabelComplete,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            style={styles.poolDetailsButton}
+            onPress={openPoolDetails}
+            activeOpacity={0.86}
+          >
+            <UsersRound size={17} color={colors.navy} />
+            <Text style={styles.poolDetailsButtonText}>
+              View Student Pool
+            </Text>
+            <ChevronRight size={18} color={colors.navy} />
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      {normalizedStatus === "unassigned" && normalize(trip.status) !== "unassigned" ? (
+        <View style={styles.derivedStatusBox}>
+          <AlertTriangle size={17} color="#FDBA74" />
+          <Text style={styles.derivedStatusText}>
+            The scheduled pickup passed more than 45 minutes ago without an
+            accepted chauffeur. This trip is now displayed as Unassigned.
+          </Text>
+        </View>
+      ) : null}
 
       {driverId ? (
         <View style={styles.driverCard}>
@@ -703,6 +1379,10 @@ function TripCard({
           <Text style={styles.noDriverText}>
             {isCancelledStatus(normalizedStatus)
               ? "This ride was cancelled before chauffeur assignment."
+              : isSmartQueueStatus(normalizedStatus)
+              ? "Smart Queue is matching verified students for your Student Pool Ride."
+              : isUnassignedStatus(normalizedStatus)
+              ? "This ride remains active and Angel Express is searching for a chauffeur."
               : "Chauffeur assignment pending."}
           </Text>
         </View>
@@ -763,6 +1443,24 @@ function TripCard({
           text={`Source: ${source}`}
           styles={styles}
         />
+
+        {studentPool ? (
+          <>
+            <Detail
+              icon={<GraduationCap size={16} color={colors.gold} />}
+              text={`Pool Status: ${titleCaseFromCode(poolStatus)}`}
+              styles={styles}
+            />
+            <Detail
+              icon={<UsersRound size={16} color={colors.gold} />}
+              text={`Pool Occupancy: ${Math.min(
+                poolSeatsFilled,
+                poolCapacity
+              )}/${poolCapacity}`}
+              styles={styles}
+            />
+          </>
+        ) : null}
 
         {pricingVersion ? (
           <Detail
@@ -913,12 +1611,24 @@ function getLifecycleMessage(status: string, paymentStatus: string) {
   const normalizedStatus = normalize(status);
   const normalizedPayment = normalize(paymentStatus);
 
+  if (isSmartQueueStatus(normalizedStatus)) {
+    return "Smart Queue is matching your Student Shared Ride with eligible students and a chauffeur.";
+  }
+
+  if (isSmartQueueReadyStatus(normalizedStatus)) {
+    return "Your student pool is ready and has entered chauffeur dispatch.";
+  }
+
+  if (isUnassignedStatus(normalizedStatus)) {
+    return "Your booking remains active. Angel Express is rebroadcasting it to chauffeurs and Operations.";
+  }
+
   if (isPendingStatus(normalizedStatus)) {
-    return "Waiting for Angel Express to review and assign your ride.";
+    return "Your booking is confirmed and currently within the normal chauffeur-dispatch window.";
   }
 
   if (normalizedStatus === "driver_assigned") {
-    return "Your chauffeur has accepted this ride and is preparing for pickup.";
+    return "A chauffeur has been selected and is reviewing the assignment.";
   }
 
   if (
@@ -926,11 +1636,25 @@ function getLifecycleMessage(status: string, paymentStatus: string) {
     normalizedStatus === "accepted" ||
     normalizedStatus === "driver_accepted"
   ) {
-    return "Your chauffeur has accepted this ride.";
+    return "Your chauffeur accepted this ride.";
+  }
+
+  if (
+    normalizedStatus === "driver_en_route" ||
+    normalizedStatus === "en_route"
+  ) {
+    return "Your chauffeur is on the way to your pickup location.";
   }
 
   if (normalizedStatus === "driver_arrived") {
     return "Your chauffeur has arrived at pickup.";
+  }
+
+  if (
+    normalizedStatus === "passenger_onboard" ||
+    normalizedStatus === "picked_up"
+  ) {
+    return "You are onboard. Your trip is now active.";
   }
 
   if (isInProgressStatus(normalizedStatus)) {
@@ -946,7 +1670,7 @@ function getLifecycleMessage(status: string, paymentStatus: string) {
   }
 
   if (isCancelledStatus(normalizedStatus)) {
-    return "This ride was cancelled.";
+    return "This ride was explicitly cancelled.";
   }
 
   return "Ride status updated.";
@@ -955,22 +1679,41 @@ function getLifecycleMessage(status: string, paymentStatus: string) {
 function getDisplayStatus(status: string) {
   const normalizedStatus = normalize(status);
 
+  if (isSmartQueueStatus(normalizedStatus)) return "Smart Queue";
+  if (isSmartQueueReadyStatus(normalizedStatus)) return "Pool Ready";
+  if (isUnassignedStatus(normalizedStatus)) return "Unassigned";
   if (isPendingStatus(normalizedStatus)) return "Pending";
-  if (normalizedStatus === "driver_assigned") return "Assigned";
+  if (normalizedStatus === "driver_assigned") return "Driver Reviewing";
+  if (normalizedStatus === "driver_en_route" || normalizedStatus === "en_route") {
+    return "Driver En Route";
+  }
   if (normalizedStatus === "driver_arrived") return "Driver Arrived";
-  if (normalizedStatus === "assigned") return "Assigned";
-  if (normalizedStatus === "accepted") return "Assigned";
-  if (normalizedStatus === "driver_accepted") return "Assigned";
+  if (
+    normalizedStatus === "assigned" ||
+    normalizedStatus === "accepted" ||
+    normalizedStatus === "driver_accepted"
+  ) {
+    return "Assigned";
+  }
+  if (
+    normalizedStatus === "passenger_onboard" ||
+    normalizedStatus === "picked_up"
+  ) {
+    return "Passenger Onboard";
+  }
   if (isInProgressStatus(normalizedStatus)) return "In Progress";
   if (isCompletedStatus(normalizedStatus)) return "Completed";
   if (isCancelledStatus(normalizedStatus)) return "Cancelled";
 
-  return String(status || "Pending").replace(/_/g, " ");
+  return titleCaseFromCode(status || "pending");
 }
 
 function getStatusPillStyle(status: string, styles: any) {
   const normalizedStatus = normalize(status);
 
+  if (isSmartQueueStatus(normalizedStatus)) return styles.smartQueuePill;
+  if (isSmartQueueReadyStatus(normalizedStatus)) return styles.assignedPill;
+  if (isUnassignedStatus(normalizedStatus)) return styles.unassignedPill;
   if (isPendingStatus(normalizedStatus)) return styles.pendingPill;
   if (isAssignedStatus(normalizedStatus)) return styles.assignedPill;
   if (isInProgressStatus(normalizedStatus)) return styles.progressPill;
@@ -982,6 +1725,18 @@ function getStatusPillStyle(status: string, styles: any) {
 
 function isPendingStatus(status: string) {
   return PENDING_STATUSES.includes(normalize(status));
+}
+
+function isSmartQueueStatus(status: string) {
+  return SMART_QUEUE_STATUSES.includes(normalize(status));
+}
+
+function isSmartQueueReadyStatus(status: string) {
+  return SMART_QUEUE_READY_STATUSES.includes(normalize(status));
+}
+
+function isUnassignedStatus(status: string) {
+  return UNASSIGNED_STATUSES.includes(normalize(status));
 }
 
 function isAssignedStatus(status: string) {
@@ -1078,7 +1833,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     subtitle: {
-      color: c.text2,
+      color: c.mode === "dark" ? "#E5EAF2" : c.text2,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
@@ -1169,7 +1924,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     emptyText: {
-      color: c.text2,
+      color: c.mode === "dark" ? "#E5EAF2" : c.text2,
       fontSize: 16,
       lineHeight: 24,
       marginBottom: 22,
@@ -1221,7 +1976,7 @@ function createStyles(c: any) {
       marginBottom: 3,
     },
     dropdownDescription: {
-      color: c.text2,
+      color: c.mode === "dark" ? "#E5EAF2" : c.text2,
       fontSize: 12.5,
       lineHeight: 18,
       fontWeight: "700",
@@ -1232,7 +1987,7 @@ function createStyles(c: any) {
       borderTopColor: c.borderSoft,
     },
     noTripsText: {
-      color: c.muted,
+      color: c.mode === "dark" ? "#B8C2D0" : c.muted,
       fontSize: 15,
       paddingVertical: 12,
       fontWeight: "800",
@@ -1269,7 +2024,7 @@ function createStyles(c: any) {
       flex: 1,
     },
     invoiceSub: {
-      color: c.text2,
+      color: c.mode === "dark" ? "#E5EAF2" : c.text2,
       fontSize: 12.5,
       fontWeight: "800",
       marginTop: 4,
@@ -1286,6 +2041,14 @@ function createStyles(c: any) {
     pendingPill: {
       borderColor: "rgba(212,175,55,0.45)",
       backgroundColor: "rgba(212,175,55,0.10)",
+    },
+    smartQueuePill: {
+      borderColor: "rgba(168,85,247,0.50)",
+      backgroundColor: "rgba(168,85,247,0.16)",
+    },
+    unassignedPill: {
+      borderColor: "rgba(249,115,22,0.55)",
+      backgroundColor: "rgba(249,115,22,0.16)",
     },
     assignedPill: {
       borderColor: "rgba(59,130,246,0.45)",
@@ -1308,6 +2071,245 @@ function createStyles(c: any) {
       fontSize: 12,
       fontWeight: "900",
       textTransform: "uppercase",
+    },
+    studentPoolBadge: {
+      alignSelf: "flex-start",
+      marginTop: 9,
+      borderRadius: 999,
+      backgroundColor: c.gold,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    studentPoolBadgeText: {
+      color: c.navy,
+      fontSize: 10.5,
+      fontWeight: "900",
+      letterSpacing: 0.5,
+    },
+    poolCard: {
+      backgroundColor:
+        c.mode === "dark" ? "rgba(168,85,247,0.10)" : "#FAF5FF",
+      borderWidth: 1,
+      borderColor: "rgba(168,85,247,0.42)",
+      borderRadius: 20,
+      padding: 16,
+      marginBottom: 15,
+    },
+    poolCardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 11,
+      marginBottom: 12,
+    },
+    poolIconWrap: {
+      width: 46,
+      height: 46,
+      borderRadius: 16,
+      backgroundColor: c.gold,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    poolHeaderCopy: {
+      flex: 1,
+    },
+    poolEyebrow: {
+      color: c.gold,
+      fontSize: 10.5,
+      fontWeight: "900",
+      letterSpacing: 1,
+      marginBottom: 3,
+    },
+    poolTitle: {
+      color: c.text,
+      fontSize: 20,
+      fontWeight: "900",
+    },
+    poolSeatsPill: {
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    poolSeatsPillText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    poolMessage: {
+      color: c.mode === "dark" ? "#E9D5FF" : "#6B21A8",
+      fontSize: 13.5,
+      lineHeight: 20,
+      fontWeight: "800",
+      marginBottom: 14,
+    },
+    poolMetaGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    poolMetaBox: {
+      width: "48%",
+      minHeight: 68,
+      borderRadius: 14,
+      padding: 11,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+    },
+    poolMetaLabel: {
+      color: c.mode === "dark" ? "#B8C2D0" : c.muted,
+      fontSize: 10.5,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      marginBottom: 4,
+    },
+    poolMetaValue: {
+      color: c.gold,
+      fontSize: 16,
+      fontWeight: "900",
+    },
+    poolRouteBox: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 9,
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginBottom: 14,
+    },
+    poolRouteLabel: {
+      color: c.gold,
+      fontSize: 10.5,
+      fontWeight: "900",
+      marginBottom: 4,
+    },
+    poolRouteText: {
+      color: c.text,
+      fontSize: 13.5,
+      lineHeight: 19,
+      fontWeight: "800",
+    },
+    occupancyHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 8,
+    },
+    occupancyTitle: {
+      color: c.text,
+      fontSize: 13.5,
+      fontWeight: "900",
+    },
+    occupancyValue: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    occupancyTrack: {
+      height: 9,
+      borderRadius: 999,
+      overflow: "hidden",
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    occupancyFill: {
+      height: "100%",
+      borderRadius: 999,
+      backgroundColor: c.gold,
+    },
+    seatRow: {
+      flexDirection: "row",
+      gap: 8,
+      marginTop: 11,
+      marginBottom: 15,
+    },
+    seatDot: {
+      width: 34,
+      height: 34,
+      borderRadius: 12,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+    },
+    seatDotOccupied: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    poolTimeline: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: 4,
+      marginBottom: 15,
+    },
+    poolTimelineItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    poolTimelineDot: {
+      width: 25,
+      height: 25,
+      borderRadius: 9,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      marginBottom: 5,
+    },
+    poolTimelineDotComplete: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    poolTimelineDotActive: {
+      borderWidth: 2,
+    },
+    poolTimelineDotText: {
+      color: c.gold,
+      fontSize: 9.5,
+      fontWeight: "900",
+    },
+    poolTimelineLabel: {
+      color: c.mode === "dark" ? "#B8C2D0" : c.muted,
+      fontSize: 8.5,
+      lineHeight: 11,
+      fontWeight: "800",
+      textAlign: "center",
+    },
+    poolTimelineLabelComplete: {
+      color: c.gold,
+    },
+    poolDetailsButton: {
+      minHeight: 48,
+      borderRadius: 14,
+      backgroundColor: c.gold,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingHorizontal: 14,
+    },
+    poolDetailsButtonText: {
+      color: c.navy,
+      fontSize: 13.5,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      flex: 1,
+      textAlign: "center",
     },
     lifecycleBox: {
       backgroundColor: c.soft,
@@ -1373,7 +2375,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     driverInfoLabel: {
-      color: c.muted,
+      color: c.mode === "dark" ? "#B8C2D0" : c.muted,
       fontSize: 12,
       fontWeight: "900",
       textTransform: "uppercase",
@@ -1418,10 +2420,28 @@ function createStyles(c: any) {
       fontWeight: "900",
     },
     driverMuted: {
-      color: c.muted,
+      color: c.mode === "dark" ? "#B8C2D0" : c.muted,
       fontSize: 14,
       lineHeight: 20,
       fontWeight: "700",
+    },
+    derivedStatusBox: {
+      backgroundColor: "rgba(249,115,22,0.12)",
+      borderWidth: 1,
+      borderColor: "rgba(249,115,22,0.42)",
+      borderRadius: 14,
+      padding: 13,
+      marginBottom: 14,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 9,
+    },
+    derivedStatusText: {
+      color: c.mode === "dark" ? "#FED7AA" : "#9A3412",
+      fontSize: 13.5,
+      lineHeight: 20,
+      fontWeight: "800",
+      flex: 1,
     },
     noDriverBox: {
       backgroundColor: c.soft,
@@ -1469,7 +2489,7 @@ function createStyles(c: any) {
       gap: 9,
     },
     detailText: {
-      color: c.text2,
+      color: c.mode === "dark" ? "#E5EAF2" : c.text2,
       fontSize: 14,
       flex: 1,
       fontWeight: "700",

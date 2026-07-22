@@ -15,6 +15,12 @@ export type ResolvedThemeMode = "dark" | "light";
 
 const STORAGE_KEY = "angel-express-theme-preference";
 
+/**
+ * Angel Express Passenger App V5/V6 dark theme.
+ *
+ * All shared text tokens are intentionally bright enough to remain readable
+ * against the dark navy cards and background.
+ */
 export const darkTheme = {
   mode: "dark" as const,
 
@@ -24,32 +30,44 @@ export const darkTheme = {
   surfaceRaised: "#151F2B",
   overlay: "rgba(5,11,22,0.91)",
 
-  card: "rgba(16,24,39,0.94)",
-  card2: "rgba(21,31,43,0.95)",
+  card: "rgba(16,24,39,0.96)",
+  card2: "rgba(21,31,43,0.97)",
   cardSolid: "#101827",
 
+  // Primary and secondary text
   text: "#FFFFFF",
-  textSecondary: "#D7DCE3",
-  muted: "#B8C1CC",
-  disabled: "#727B88",
+  textSecondary: "#EEF2F7",
+  text2: "#E5EAF2",
+
+  // Supporting text
+  muted: "#CBD3DE",
+  muted2: "#B8C2D0",
+  disabled: "#8791A0",
+  placeholder: "#A8B2C0",
+
+  // Text placed on gold/light buttons
+  onGold: "#07111F",
+  buttonText: "#07111F",
+  inverseText: "#07111F",
 
   gold: "#D4AF37",
-  gold2: "#B8860B",
+  gold2: "#E0BE4F",
   goldSoft: "rgba(212,175,55,0.16)",
   navy: "#050B16",
 
-  soft: "rgba(255,255,255,0.07)",
-  border: "rgba(212,175,55,0.26)",
-  lightBorder: "rgba(255,255,255,0.10)",
-  divider: "rgba(255,255,255,0.10)",
-  input: "rgba(255,255,255,0.06)",
+  soft: "rgba(255,255,255,0.08)",
+  border: "rgba(212,175,55,0.30)",
+  lightBorder: "rgba(255,255,255,0.14)",
+  borderSoft: "rgba(255,255,255,0.12)",
+  divider: "rgba(255,255,255,0.12)",
+  input: "rgba(255,255,255,0.08)",
   nav: "rgba(8,14,24,0.98)",
 
-  green: "#20C461",
-  success: "#20C461",
-  warning: "#F59E0B",
-  danger: "#EF4444",
-  info: "#3B82F6",
+  green: "#4ADE80",
+  success: "#4ADE80",
+  warning: "#FBBF24",
+  danger: "#F87171",
+  info: "#60A5FA",
 
   shadow: "#000000",
   goldShadow: "#D4AF37",
@@ -57,6 +75,9 @@ export const darkTheme = {
   statusBar: "light" as const,
 };
 
+/**
+ * Angel Express Passenger App V5/V6 light theme.
+ */
 export const lightTheme = {
   mode: "light" as const,
 
@@ -66,14 +87,25 @@ export const lightTheme = {
   surfaceRaised: "#FFF8E8",
   overlay: "rgba(247,247,245,0.90)",
 
-  card: "rgba(255,255,255,0.97)",
+  card: "rgba(255,255,255,0.98)",
   card2: "#FFF8E8",
   cardSolid: "#FFFFFF",
 
+  // Primary and secondary text
   text: "#07111F",
   textSecondary: "#303946",
+  text2: "#374151",
+
+  // Supporting text
   muted: "#5D6673",
+  muted2: "#6B7280",
   disabled: "#9299A3",
+  placeholder: "#7B8491",
+
+  // Text placed on gold/dark buttons
+  onGold: "#07111F",
+  buttonText: "#07111F",
+  inverseText: "#FFFFFF",
 
   gold: "#B8860B",
   gold2: "#D4AF37",
@@ -81,10 +113,11 @@ export const lightTheme = {
   navy: "#07111F",
 
   soft: "rgba(7,17,31,0.05)",
-  border: "rgba(184,134,11,0.24)",
+  border: "rgba(184,134,11,0.28)",
   lightBorder: "rgba(7,17,31,0.10)",
+  borderSoft: "rgba(7,17,31,0.10)",
   divider: "rgba(7,17,31,0.10)",
-  input: "rgba(7,17,31,0.045)",
+  input: "rgba(7,17,31,0.055)",
   nav: "rgba(255,255,255,0.98)",
 
   green: "#16A34A",

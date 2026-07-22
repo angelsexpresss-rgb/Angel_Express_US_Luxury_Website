@@ -28,6 +28,13 @@ import {
   Phone,
   ShieldCheck,
   Sparkles,
+  Send,
+  Bot,
+  UserCheck,
+  Wifi,
+  WifiOff,
+  Share2,
+  UsersRound,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
@@ -49,7 +56,6 @@ const quickQuestions = [
   "I need to add luggage",
   "I need emergency support",
   "I need help with student verification",
-  "I need World Cup travel support",
 ];
 
 export default function SupportScreen() {
@@ -64,7 +70,12 @@ export default function SupportScreen() {
   const [activeTrip, setActiveTrip] = useState<any>(null);
   const [userId, setUserId] = useState("");
   const [chatTarget, setChatTarget] = useState<"owner" | "driver">("owner");
+  const [channelState, setChannelState] = useState<"connecting" | "online" | "offline">("connecting");
+  const [remoteTyping, setRemoteTyping] = useState(false);
+  const [sendingIds, setSendingIds] = useState<string[]>([]);
+  const [failedMessages, setFailedMessages] = useState<any[]>([]);
 
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
   const chatRef = useRef<ScrollView | null>(null);
@@ -95,14 +106,53 @@ export default function SupportScreen() {
   useFocusEffect(
     useCallback(() => {
       loadSupportData();
-
-      const interval = setInterval(() => {
-        loadMessages(false);
-      }, 5000);
-
-      return () => clearInterval(interval);
-    }, [chatTarget, activeTrip?.id])
+    }, [])
   );
+
+  useEffect(() => {
+    if (!activeTrip?.id) return;
+
+    setChannelState("connecting");
+
+    const channel = supabase
+      .channel(`passenger-support-${activeTrip.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "chat_messages",
+          filter: `booking_id=eq.${normalizeBookingId(activeTrip.id)}`,
+        },
+        () => {
+          loadMessages(false, activeTrip.id);
+        }
+      )
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        if (
+          payload?.sender_role === chatTarget &&
+          payload?.sender_id !== userId
+        ) {
+          setRemoteTyping(Boolean(payload?.typing));
+
+          if (typingTimer.current) clearTimeout(typingTimer.current);
+          typingTimer.current = setTimeout(() => {
+            setRemoteTyping(false);
+          }, 2500);
+        }
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setChannelState("online");
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setChannelState("offline");
+        }
+      });
+
+    return () => {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      supabase.removeChannel(channel);
+    };
+  }, [activeTrip?.id, chatTarget, userId]);
 
   function normalizeBookingId(id: any) {
     const numeric = Number(id);
@@ -139,6 +189,10 @@ export default function SupportScreen() {
           "assigned",
           "confirmed",
           "driver_arrived",
+          "driver_en_route",
+          "en_route",
+          "passenger_onboard",
+          "picked_up",
           "in_progress",
         ])
         .order("created_at", { ascending: false })
@@ -190,7 +244,66 @@ export default function SupportScreen() {
     }
   }
 
-  async function sendMessage(text?: string) {
+  function ticketNumber() {
+    const invoice =
+      activeTrip?.invoice_number ||
+      activeTrip?.invoice_no ||
+      activeTrip?.booking_number ||
+      activeTrip?.booking_no;
+
+    if (invoice) return `AE-${String(invoice).replace(/[^a-zA-Z0-9]/g, "").slice(-10).toUpperCase()}`;
+    if (activeTrip?.id) return `AE-${String(activeTrip.id).slice(-10).toUpperCase()}`;
+    return "Not assigned";
+  }
+
+  function tripContext() {
+    if (!activeTrip) return "";
+
+    return [
+      "",
+      "--- Trip Context ---",
+      `Ticket: ${ticketNumber()}`,
+      `Booking ID: ${activeTrip.id || "N/A"}`,
+      `Invoice: ${activeTrip.invoice_number || activeTrip.invoice_no || "N/A"}`,
+      `Status: ${activeTrip.status || "N/A"}`,
+      `Pickup: ${activeTrip.pickup_address || activeTrip.pickup || "N/A"}`,
+      `Drop-off: ${activeTrip.dropoff_address || activeTrip.dropoff || "N/A"}`,
+      `Driver: ${activeTrip.driver_name || activeTrip.assigned_driver_name || "Not assigned"}`,
+      `Vehicle: ${activeTrip.vehicle || activeTrip.vehicle_type || "Not available"}`,
+    ].join("\\n");
+  }
+
+  async function broadcastTyping(typing: boolean) {
+    if (!activeTrip?.id) return;
+
+    try {
+      await supabase
+        .channel(`passenger-support-${activeTrip.id}`)
+        .send({
+          type: "broadcast",
+          event: "typing",
+          payload: {
+            typing,
+            sender_role: "passenger",
+            sender_id: userId,
+          },
+        });
+    } catch {
+      // Typing presence is non-critical.
+    }
+  }
+
+  function handleMessageChange(value: string) {
+    setMessage(value);
+    void broadcastTyping(Boolean(value.trim()));
+
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    typingTimer.current = setTimeout(() => {
+      void broadcastTyping(false);
+    }, 1200);
+  }
+
+  async function sendMessage(text?: string, retryPayload?: any) {
     const cleanMessage = (text || message).trim();
 
     if (!cleanMessage) {
@@ -206,26 +319,109 @@ export default function SupportScreen() {
       return;
     }
 
-    try {
-      setSending(true);
-
-      const { error } = await supabase.from("chat_messages").insert({
+    const localId = `local-${Date.now()}`;
+    const payload =
+      retryPayload || {
         booking_id: normalizeBookingId(activeTrip.id),
         sender_id: userId,
         sender_role: "passenger",
         receiver_role: chatTarget,
-        message: cleanMessage,
-      });
+        message:
+          chatTarget === "owner"
+            ? `${cleanMessage}${tripContext()}`
+            : cleanMessage,
+      };
+
+    const optimisticMessage = {
+      ...payload,
+      id: localId,
+      created_at: new Date().toISOString(),
+      optimistic: true,
+    };
+
+    try {
+      setSending(true);
+      setSendingIds((current) => [...current, localId]);
+      setMessages((current) => [...current, optimisticMessage]);
+      setMessage("");
+      void broadcastTyping(false);
+
+      const { error } = await supabase.from("chat_messages").insert(payload);
 
       if (error) throw error;
 
-      setMessage("");
-      await loadMessages(false);
+      setFailedMessages((current) =>
+        current.filter((item) => item.localId !== localId)
+      );
+
+      await loadMessages(false, activeTrip.id);
     } catch (error: any) {
-      Alert.alert("Send Failed", error.message || "Unable to send message.");
+      setMessages((current) =>
+        current.filter((item) => item.id !== localId)
+      );
+
+      setFailedMessages((current) => [
+        ...current,
+        {
+          localId,
+          payload,
+          displayMessage: cleanMessage,
+          error: error.message || "Message failed to send.",
+        },
+      ]);
+
+      Alert.alert(
+        "Send Failed",
+        error.message || "Unable to send message. You can retry below."
+      );
     } finally {
+      setSendingIds((current) => current.filter((id) => id !== localId));
       setSending(false);
     }
+  }
+
+  async function retryFailedMessage(item: any) {
+    setFailedMessages((current) =>
+      current.filter((failed) => failed.localId !== item.localId)
+    );
+    await sendMessage(item.displayMessage, item.payload);
+  }
+
+
+  function escalateToSupervisor() {
+    Alert.alert(
+      "Escalate Support Ticket",
+      `Escalate ticket ${ticketNumber()} to an Angel Express supervisor?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Escalate",
+          onPress: () =>
+            sendMessage(
+              `PRIORITY ESCALATION REQUEST: Please escalate ticket ${ticketNumber()} to a supervisor.`
+            ),
+        },
+      ]
+    );
+  }
+
+  async function shareTripContext() {
+    if (!activeTrip) {
+      Alert.alert("No Active Trip", "There is no active trip to share.");
+      return;
+    }
+
+    const text = [
+      "Angel Express Support Context",
+      `Ticket: ${ticketNumber()}`,
+      `Status: ${activeTrip.status || "N/A"}`,
+      `Pickup: ${activeTrip.pickup_address || activeTrip.pickup || "N/A"}`,
+      `Drop-off: ${activeTrip.dropoff_address || activeTrip.dropoff || "N/A"}`,
+      `Invoice: ${activeTrip.invoice_number || activeTrip.invoice_no || "N/A"}`,
+    ].join("\\n");
+
+    const { Share } = await import("react-native");
+    await Share.share({ message: text, title: "Angel Express Trip Support" });
   }
 
   function callSupport() {
@@ -369,7 +565,7 @@ ${message || ""}`;
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Headphones size={30} color={colors.navy} />
+                <Headphones size={30} color={colors.onGold || colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -403,13 +599,42 @@ ${message || ""}`;
             </View>
 
             <View style={styles.statusRow}>
-              <StatusCard title="Chat" value="Owner" styles={styles} />
+              <StatusCard
+                title="Connection"
+                value={
+                  channelState === "online"
+                    ? "Live"
+                    : channelState === "connecting"
+                    ? "Connecting"
+                    : "Offline"
+                }
+                styles={styles}
+              />
               <StatusCard
                 title="Driver"
                 value={activeTrip ? "Trip Linked" : "No Trip"}
                 styles={styles}
               />
-              <StatusCard title="Priority" value="Safety" styles={styles} />
+              <StatusCard
+                title="Ticket"
+                value={ticketNumber()}
+                styles={styles}
+              />
+            </View>
+
+            <View style={styles.connectionBanner}>
+              {channelState === "online" ? (
+                <Wifi size={18} color={colors.success || "#22C55E"} />
+              ) : (
+                <WifiOff size={18} color={colors.warning || "#F59E0B"} />
+              )}
+              <Text style={styles.connectionText}>
+                {channelState === "online"
+                  ? "Realtime support is connected."
+                  : channelState === "connecting"
+                  ? "Connecting to realtime support..."
+                  : "Realtime support is offline. Pull down to refresh."}
+              </Text>
             </View>
 
             {activeTrip ? (
@@ -459,6 +684,59 @@ ${message || ""}`;
                 </Text>
               </View>
             )}
+
+            <View style={styles.operationsCard}>
+              <View style={styles.cardHeader}>
+                <UserCheck size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>Support Operations</Text>
+              </View>
+
+              <View style={styles.operationsGrid}>
+                <TouchableOpacity
+                  style={styles.operationButton}
+                  onPress={() => router.push("/ai-assistant" as any)}
+                >
+                  <Bot size={20} color={colors.gold} />
+                  <Text style={styles.operationTitle}>Ask AI Concierge</Text>
+                  <Text style={styles.operationText}>
+                    Get fast help with common ride questions.
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.operationButton}
+                  onPress={escalateToSupervisor}
+                >
+                  <AlertTriangle size={20} color={colors.gold} />
+                  <Text style={styles.operationTitle}>Escalate Ticket</Text>
+                  <Text style={styles.operationText}>
+                    Request priority supervisor review.
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.operationButton}
+                  onPress={shareTripContext}
+                >
+                  <Share2 size={20} color={colors.gold} />
+                  <Text style={styles.operationTitle}>Share Trip Context</Text>
+                  <Text style={styles.operationText}>
+                    Share ticket and ride details externally.
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.operationButton}
+                  onPress={() => router.push("/family-checkin" as any)}
+                >
+                  <UsersRound size={20} color={colors.gold} />
+                  <Text style={styles.operationTitle}>Family Check-In</Text>
+                  <Text style={styles.operationText}>
+                    Update a trusted family member.
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <View style={styles.chatCard}>
               <View style={styles.cardHeader}>
@@ -517,6 +795,17 @@ ${message || ""}`;
                 </View>
               ) : null}
 
+              {remoteTyping ? (
+                <View style={styles.typingBanner}>
+                  <View style={styles.typingDot} />
+                  <Text style={styles.typingText}>
+                    {chatTarget === "driver"
+                      ? "Driver is typing..."
+                      : "Angel Support is typing..."}
+                  </Text>
+                </View>
+              ) : null}
+
               <ScrollView
                 ref={chatRef}
                 style={styles.chatScroll}
@@ -550,17 +839,50 @@ ${message || ""}`;
                             : "Angel Support"}
                         </Text>
                         <Text style={styles.bubbleText}>{item.message}</Text>
-                        <Text style={styles.timeText}>
-                          {item.created_at
-                            ? new Date(item.created_at).toLocaleString()
-                            : ""}
-                        </Text>
+                        <View style={styles.messageMeta}>
+                          <Text style={styles.timeText}>
+                            {item.created_at
+                              ? new Date(item.created_at).toLocaleString()
+                              : ""}
+                          </Text>
+                          {isPassenger ? (
+                            <Text style={styles.deliveryText}>
+                              {item.optimistic ? "Sending..." : "Sent"}
+                            </Text>
+                          ) : null}
+                        </View>
                       </View>
                     );
                   })
                 )}
               </ScrollView>
             </View>
+
+            {failedMessages.length > 0 ? (
+              <View style={styles.failedCard}>
+                <View style={styles.cardHeader}>
+                  <AlertTriangle size={22} color={colors.danger} />
+                  <Text style={styles.failedTitle}>Messages Not Sent</Text>
+                </View>
+
+                {failedMessages.map((item) => (
+                  <View style={styles.failedRow} key={item.localId}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.failedMessage} numberOfLines={2}>
+                        {item.displayMessage}
+                      </Text>
+                      <Text style={styles.failedError}>{item.error}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.retryButton}
+                      onPress={() => retryFailedMessage(item)}
+                    >
+                      <Text style={styles.retryText}>Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            ) : null}
 
             <View style={styles.messageCard}>
               <Text style={styles.inputLabel}>
@@ -576,7 +898,7 @@ ${message || ""}`;
                 }
                 placeholderTextColor={colors.placeholder}
                 value={message}
-                onChangeText={setMessage}
+                onChangeText={handleMessageChange}
                 multiline
               />
 
@@ -587,9 +909,12 @@ ${message || ""}`;
                 activeOpacity={0.88}
               >
                 {sending ? (
-                  <ActivityIndicator color={colors.navy} />
+                  <ActivityIndicator color={colors.onGold || colors.navy} />
                 ) : (
-                  <Text style={styles.goldButtonText}>Send Message</Text>
+                  <>
+                    <Send size={18} color={colors.onGold || colors.navy} />
+                    <Text style={styles.goldButtonText}>Send Message</Text>
+                  </>
                 )}
               </TouchableOpacity>
 
@@ -651,6 +976,24 @@ ${message || ""}`;
                 a="Verified students receive exclusive discounts and benefits."
                 styles={styles}
               />
+            </View>
+
+            <View style={styles.safetyShortcutGrid}>
+              <TouchableOpacity
+                style={styles.safetyShortcut}
+                onPress={() => router.push("/live-trip" as any)}
+              >
+                <MapPinned size={18} color={colors.gold} />
+                <Text style={styles.safetyShortcutText}>Open Live Trip</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.safetyShortcut}
+                onPress={() => router.push("/family-checkin" as any)}
+              >
+                <UsersRound size={18} color={colors.gold} />
+                <Text style={styles.safetyShortcutText}>Family Check-In</Text>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -809,7 +1152,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
@@ -837,13 +1180,13 @@ function createStyles(c: any) {
     },
     heroCopy: { flex: 1 },
     heroTitle: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 24,
       fontWeight: "900",
       marginBottom: 6,
     },
     heroText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 15,
       lineHeight: 21,
       fontWeight: "800",
@@ -907,7 +1250,7 @@ function createStyles(c: any) {
       flex: 1,
       backgroundColor: c.card,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       borderRadius: 17,
       padding: 13,
       ...v5Shadow(c),
@@ -920,6 +1263,117 @@ function createStyles(c: any) {
       marginTop: 4,
     },
 
+    connectionBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 9,
+      padding: 13,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      backgroundColor: c.card,
+      marginBottom: 18,
+    },
+    connectionText: {
+      flex: 1,
+      color: c.text2 || c.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+      fontWeight: "800",
+    },
+    operationsCard: cardBase(c),
+    operationsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    operationButton: {
+      width: "48%",
+      minHeight: 132,
+      borderRadius: 17,
+      padding: 14,
+      backgroundColor: c.card2,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+    },
+    operationTitle: {
+      color: c.text,
+      fontSize: 14.5,
+      fontWeight: "900",
+      marginTop: 9,
+      marginBottom: 5,
+    },
+    operationText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 12,
+      lineHeight: 17,
+      fontWeight: "700",
+    },
+    typingBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      borderRadius: 13,
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      alignSelf: "flex-start",
+    },
+    typingDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: c.gold,
+    },
+    typingText: {
+      color: c.gold,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    failedCard: {
+      ...cardBase(c),
+      borderColor: c.danger,
+    },
+    failedTitle: {
+      color: c.danger,
+      fontSize: 20,
+      fontWeight: "900",
+      flex: 1,
+    },
+    failedRow: {
+      flexDirection: "row",
+      gap: 10,
+      alignItems: "center",
+      paddingVertical: 11,
+      borderTopWidth: 1,
+      borderTopColor: c.borderSoft || c.lightBorder,
+    },
+    failedMessage: {
+      color: c.text,
+      fontSize: 14,
+      fontWeight: "800",
+    },
+    failedError: {
+      color: c.danger,
+      fontSize: 11.5,
+      marginTop: 4,
+      fontWeight: "700",
+    },
+    retryButton: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.danger,
+      paddingHorizontal: 13,
+      paddingVertical: 9,
+    },
+    retryText: {
+      color: c.danger,
+      fontSize: 12,
+      fontWeight: "900",
+    },
     tripCard: cardBase(c),
     quickCard: cardBase(c),
     chatCard: cardBase(c),
@@ -995,7 +1449,7 @@ function createStyles(c: any) {
       fontWeight: "900",
     },
     activeTargetText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
     },
 
     driverQuickRow: {
@@ -1011,7 +1465,7 @@ function createStyles(c: any) {
       alignItems: "center",
     },
     driverQuickText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontWeight: "900",
       fontSize: 12,
     },
@@ -1022,11 +1476,11 @@ function createStyles(c: any) {
       borderRadius: 16,
       padding: 12,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
     },
     chatContent: { paddingBottom: 8 },
     noMessageText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       textAlign: "center",
       padding: 12,
       lineHeight: 22,
@@ -1041,7 +1495,7 @@ function createStyles(c: any) {
     supportBubble: {
       backgroundColor: c.card,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       alignSelf: "flex-start",
     },
     passengerBubble: {
@@ -1063,11 +1517,22 @@ function createStyles(c: any) {
       lineHeight: 23,
       fontWeight: "700",
     },
-    timeText: {
-      color: c.text2,
-      fontSize: 10,
+    messageMeta: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
       marginTop: 6,
+    },
+    timeText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 10,
       fontWeight: "700",
+    },
+    deliveryText: {
+      color: c.gold,
+      fontSize: 10,
+      fontWeight: "900",
     },
 
     inputLabel: {
@@ -1085,7 +1550,7 @@ function createStyles(c: any) {
       minHeight: 105,
       textAlignVertical: "top",
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       marginBottom: 16,
       fontWeight: "700",
     },
@@ -1096,11 +1561,13 @@ function createStyles(c: any) {
       backgroundColor: c.gold,
       alignItems: "center",
       justifyContent: "center",
+      flexDirection: "row",
+      gap: 8,
       marginTop: 2,
       ...v5Shadow(c),
     },
     goldButtonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 15,
       fontWeight: "900",
       textTransform: "uppercase",
@@ -1129,7 +1596,7 @@ function createStyles(c: any) {
       borderRadius: 16,
       marginBottom: 10,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       flexDirection: "row",
       alignItems: "center",
       gap: 12,
@@ -1162,12 +1629,34 @@ function createStyles(c: any) {
       marginBottom: 5,
     },
     answer: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15,
       lineHeight: 22,
       fontWeight: "700",
     },
 
+    safetyShortcutGrid: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 12,
+    },
+    safetyShortcut: {
+      flex: 1,
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 7,
+    },
+    safetyShortcutText: {
+      color: c.gold,
+      fontSize: 12.5,
+      fontWeight: "900",
+    },
     safetyButton: {
       minHeight: 54,
       borderRadius: 16,
@@ -1190,7 +1679,7 @@ function cardBase(c: any) {
     backgroundColor: c.card,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: c.borderSoft,
+    borderColor: c.borderSoft || c.lightBorder,
     ...v5Shadow(c),
   };
 }

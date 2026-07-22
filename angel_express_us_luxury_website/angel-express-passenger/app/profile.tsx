@@ -85,6 +85,7 @@ export default function ProfileScreen() {
   const [termsModalVisible, setTermsModalVisible] = useState(false);
 
   const [userId, setUserId] = useState("");
+  const [profileColumns, setProfileColumns] = useState<string[]>([]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -94,6 +95,7 @@ export default function ProfileScreen() {
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
   const [emergencyEmail, setEmergencyEmail] = useState("");
+  const [emergencyRelationship, setEmergencyRelationship] = useState("");
 
   const [studentStatus, setStudentStatus] = useState(false);
   const [studentVerified, setStudentVerified] = useState(false);
@@ -311,6 +313,8 @@ export default function ProfileScreen() {
 
       if (profileError) throw profileError;
 
+      setProfileColumns(profile ? Object.keys(profile) : []);
+
       setFirstName(profile?.first_name || passenger?.first_name || "");
       setLastName(profile?.last_name || passenger?.last_name || "");
       setPhone(profile?.phone || passenger?.phone || "");
@@ -329,6 +333,11 @@ export default function ProfileScreen() {
       setEmergencyEmail(
         profile?.emergency_contact_email ||
           profile?.emergency_email ||
+          ""
+      );
+      setEmergencyRelationship(
+        profile?.emergency_relationship ||
+          profile?.emergency_contact_relationship ||
           ""
       );
 
@@ -430,11 +439,12 @@ Thank you.`;
     if (
       !emergencyName.trim() ||
       !emergencyPhone.trim() ||
-      !emergencyEmail.trim()
+      !emergencyEmail.trim() ||
+      !emergencyRelationship.trim()
     ) {
       Alert.alert(
         "Emergency Contact Required",
-        "Please add your emergency contact name, phone, and email before continuing."
+        "Please add your emergency contact name, phone, email, and relationship before continuing."
       );
       return;
     }
@@ -450,31 +460,63 @@ Thank you.`;
     try {
       setSaving(true);
 
-      const profileData = {
+      const supports = (column: string) =>
+        profileColumns.length === 0 || profileColumns.includes(column);
+
+      const profileData: Record<string, any> = {
         user_id: userId,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         phone: phone.trim(),
         email: email.trim().toLowerCase(),
-
         emergency_name: emergencyName.trim(),
         emergency_phone: emergencyPhone.trim(),
-        emergency_contact_email: emergencyEmail.trim().toLowerCase(),
+        terms_accepted: termsAccepted,
+        profile_completed: true,
+      };
 
+      if (supports("emergency_contact_email")) {
+        profileData.emergency_contact_email = emergencyEmail.trim().toLowerCase();
+      } else if (supports("emergency_email")) {
+        profileData.emergency_email = emergencyEmail.trim().toLowerCase();
+      }
+
+      if (supports("emergency_relationship")) {
+        profileData.emergency_relationship = emergencyRelationship.trim();
+      } else if (supports("emergency_contact_relationship")) {
+        profileData.emergency_contact_relationship =
+          emergencyRelationship.trim();
+      }
+
+      const optionalValues: Record<string, any> = {
         student_status: studentStatus,
         preferred_route: preferredRoute.trim(),
         luggage_preference: luggagePreference.trim(),
         music_preference: musicPreference.trim(),
         ac_preference: acPreference.trim(),
         conversation_preference: conversationPreference.trim(),
-
-        favorite_pickup: favoritePickup.trim(),
-        favorite_dropoff: favoriteDropoff.trim(),
         preferred_payment_method: preferredPaymentMethod.trim(),
-
-        terms_accepted: termsAccepted,
-        profile_completed: true,
       };
+
+      Object.entries(optionalValues).forEach(([column, value]) => {
+        if (supports(column)) profileData[column] = value;
+      });
+
+      if (supports("favorite_pickup")) {
+        profileData.favorite_pickup = favoritePickup.trim();
+      } else if (supports("favorite_pickup_location")) {
+        profileData.favorite_pickup_location = favoritePickup.trim();
+      } else if (supports("preferred_pickup")) {
+        profileData.preferred_pickup = favoritePickup.trim();
+      }
+
+      if (supports("favorite_dropoff")) {
+        profileData.favorite_dropoff = favoriteDropoff.trim();
+      } else if (supports("favorite_dropoff_location")) {
+        profileData.favorite_dropoff_location = favoriteDropoff.trim();
+      } else if (supports("preferred_dropoff")) {
+        profileData.preferred_dropoff = favoriteDropoff.trim();
+      }
 
       const { error } = await supabase
         .from("passenger_profiles")
@@ -510,6 +552,7 @@ Thank you.`;
     emergencyName,
     emergencyPhone,
     emergencyEmail,
+    emergencyRelationship,
     preferredRoute,
     favoritePickup,
     favoriteDropoff,
@@ -803,6 +846,15 @@ Thank you.`;
               onChangeText={setEmergencyEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Emergency Contact Relationship e.g. Mother, Spouse, Friend"
+              placeholderTextColor={colors.placeholder}
+              value={emergencyRelationship}
+              onChangeText={setEmergencyRelationship}
+              autoCapitalize="words"
             />
 
             <Section

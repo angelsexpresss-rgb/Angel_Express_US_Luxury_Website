@@ -80,7 +80,7 @@ function displayRideCategory(value?: string, label?: string) {
     private: "Standard Ride",
     airport: "Airport Transfer",
     student_private: "Student Ride",
-    student_pool: "Student Shared Ride",
+    student_pool: "Student Pool Ride",
     tourist_event: "Tourist/Event Ride",
     corporate: "Corporate Ride",
   };
@@ -117,12 +117,17 @@ export default function FareEstimateScreen() {
   const [refreshingQuote, setRefreshingQuote] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [quoteExpired, setQuoteExpired] = useState(false);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
+  const lastValidDraftRef = useRef<JsonRecord | null>(null);
+  const lastValidQuoteRef = useRef<JsonRecord | null>(null);
+  const autoRefreshAttemptedRef = useRef(false);
 
   useEffect(() => {
-    Animated.loop(
+    const backgroundAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(bgScale, {
           toValue: 1.04,
@@ -135,16 +140,77 @@ export default function FareEstimateScreen() {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
 
-    Animated.timing(pageFade, {
+    const entranceAnimation = Animated.timing(pageFade, {
       toValue: 1,
       duration: 650,
       useNativeDriver: true,
-    }).start();
+    });
 
-    initializeFareEstimate();
+    backgroundAnimation.start();
+    entranceAnimation.start();
+    void initializeFareEstimate();
+
+    return () => {
+      backgroundAnimation.stop();
+      entranceAnimation.stop();
+    };
   }, []);
+
+  useEffect(() => {
+    const expiresAt = firstValue(
+      quote?.expires_at,
+      draft?.quote_expires_at
+    );
+
+    if (!expiresAt) {
+      setSecondsRemaining(0);
+      setQuoteExpired(false);
+      return;
+    }
+
+    const updateCountdown = () => {
+      const remaining = Math.max(
+        0,
+        Math.floor(
+          (new Date(expiresAt).getTime() - Date.now()) / 1000
+        )
+      );
+
+      setSecondsRemaining(remaining);
+      setQuoteExpired(remaining <= 0);
+
+      if (
+        remaining <= 0 &&
+        !autoRefreshAttemptedRef.current &&
+        !refreshingQuote &&
+        !loading
+      ) {
+        autoRefreshAttemptedRef.current = true;
+        void initializeFareEstimate(true);
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+
+    return () => clearInterval(timer);
+  }, [
+    quote?.expires_at,
+    draft?.quote_expires_at,
+    refreshingQuote,
+    loading,
+  ]);
+
+  function formatCountdown(totalSeconds: number) {
+    if (totalSeconds <= 0) return "Expired";
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
 
   async function getDraft() {
     if (!draftId) {
@@ -284,8 +350,16 @@ export default function FareEstimateScreen() {
       student_verified: currentDraft.student_verified,
       student_discount_eligible:
         currentDraft.student_discount_eligible,
+
       student_pool_requested: currentDraft.student_pool_requested,
+      shared_ride: currentDraft.shared_ride,
+      student_pool_mode: currentDraft.student_pool_mode,
+      create_student_pool: currentDraft.create_student_pool,
+      student_pool_id: currentDraft.student_pool_id,
+      seats_requested: currentDraft.seats_requested,
       expected_pool_size: currentDraft.expected_pool_size,
+      student_pool_route: currentDraft.student_pool_route,
+      pool_member_status: currentDraft.pool_member_status,
 
       referral_code: currentDraft.referral_code,
       referrer_user_id: currentDraft.referrer_user_id,
@@ -295,7 +369,72 @@ export default function FareEstimateScreen() {
     };
   }
 
+  function validateStudentPoolDraft(currentDraft: JsonRecord) {
+    const isPool =
+      currentDraft.ride_category === "student_pool" ||
+      currentDraft.student_pool_requested ||
+      currentDraft.shared_ride;
+
+    if (!isPool) return;
+
+    if (
+      !currentDraft.student_verified &&
+      !currentDraft.student_discount_eligible
+    ) {
+      throw new Error(
+        "Student Pool Ride requires an approved student profile."
+      );
+    }
+
+    const requestedSeats = Number(
+      firstValue(
+        currentDraft.seats_requested,
+        currentDraft.passenger_count,
+        1
+      )
+    );
+
+    const capacity = Number(
+      firstValue(currentDraft.expected_pool_size, requestedSeats)
+    );
+
+    if (
+      !Number.isInteger(requestedSeats) ||
+      requestedSeats < 1 ||
+      requestedSeats > 4
+    ) {
+      throw new Error(
+        "Student Pool seats requested must be between 1 and 4."
+      );
+    }
+
+    if (
+      !Number.isInteger(capacity) ||
+      capacity < requestedSeats ||
+      capacity > 4
+    ) {
+      throw new Error(
+        "Student Pool capacity must be between the requested seats and 4."
+      );
+    }
+
+    const mode = String(
+      firstValue(
+        currentDraft.student_pool_mode,
+        currentDraft.student_pool_id ? "join" : "create"
+      )
+    );
+
+    if (mode === "join" && !currentDraft.student_pool_id) {
+      throw new Error(
+        "A Student Pool ID is required when joining an existing pool."
+      );
+    }
+  }
+
   async function generateAndAttachQuote(currentDraft: JsonRecord) {
+    validateStudentPoolDraft(currentDraft);
+
     const { data: quoteResponse, error: quoteError } = await supabase.rpc(
       "generate_fare_quote_v2",
       {
@@ -332,12 +471,17 @@ export default function FareEstimateScreen() {
 
     const refreshedDraft = await getDraft();
 
-    setDraft(refreshedDraft);
-    setQuote({
+    const attachedQuote = {
       ...generatedQuote,
       ...attached,
       quote_id: quoteId,
-    });
+    };
+
+    setDraft(refreshedDraft);
+    setQuote(attachedQuote);
+    lastValidDraftRef.current = refreshedDraft;
+    lastValidQuoteRef.current = attachedQuote;
+    autoRefreshAttemptedRef.current = false;
   }
 
   async function initializeFareEstimate(forceNewQuote = false) {
@@ -357,14 +501,32 @@ export default function FareEstimateScreen() {
         throw new Error("This booking draft has been cancelled.");
       }
 
-      const route = await calculateRoute(currentDraft);
+      try {
+        const route = await calculateRoute(currentDraft);
 
-      currentDraft = await saveRoute(
-        currentDraft,
-        route.distanceMiles,
-        route.durationMinutes,
-        route.metadata
-      );
+        currentDraft = await saveRoute(
+          currentDraft,
+          route.distanceMiles,
+          route.durationMinutes,
+          route.metadata
+        );
+      } catch (routeError: any) {
+        const existingDistance = Number(
+          currentDraft.route_distance_miles || 0
+        );
+        const existingDuration = Number(
+          currentDraft.route_duration_minutes || 0
+        );
+
+        if (existingDistance > 0 && existingDuration > 0) {
+          console.log(
+            "Using previously saved route because route refresh failed:",
+            routeError?.message
+          );
+        } else {
+          throw routeError;
+        }
+      }
 
       setDraft(currentDraft);
 
@@ -376,7 +538,7 @@ export default function FareEstimateScreen() {
         ["quoted", "quote_accepted"].includes(currentDraft.status);
 
       if (existingQuoteIsActive) {
-        setQuote({
+        const activeQuote = {
           quote_id: currentDraft.fare_quote_id,
           quote_number: currentDraft.quote_number,
           pricing_version: currentDraft.pricing_version,
@@ -387,16 +549,38 @@ export default function FareEstimateScreen() {
           driver_share: currentDraft.quoted_driver_share,
           company_share: currentDraft.quoted_company_share,
           expires_at: currentDraft.quote_expires_at,
-        });
+        };
+
+        setQuote(activeQuote);
+        lastValidDraftRef.current = currentDraft;
+        lastValidQuoteRef.current = activeQuote;
+        autoRefreshAttemptedRef.current = false;
       } else {
         await generateAndAttachQuote(currentDraft);
       }
     } catch (error: any) {
       console.error("Fare Estimate V2 error:", error);
+
       const message =
         error?.message || "Angel Express could not generate your fare quote.";
-      setErrorMessage(message);
-      Alert.alert("Fare Estimate Error", message);
+
+      if (
+        forceNewQuote &&
+        lastValidDraftRef.current &&
+        lastValidQuoteRef.current
+      ) {
+        setDraft(lastValidDraftRef.current);
+        setQuote(lastValidQuoteRef.current);
+        setErrorMessage("");
+
+        Alert.alert(
+          "Quote Refresh Unavailable",
+          "Your last valid fare quote is still displayed. Please try refreshing again before it expires."
+        );
+      } else {
+        setErrorMessage(message);
+        Alert.alert("Fare Estimate Error", message);
+      }
     } finally {
       setLoading(false);
       setRefreshingQuote(false);
@@ -405,6 +589,15 @@ export default function FareEstimateScreen() {
 
   async function continueToConfirmation() {
     if (accepting || !draftId) return;
+
+    if (quoteExpired) {
+      Alert.alert(
+        "Quote Expired",
+        "This fare quote has expired. Refresh the quote before continuing."
+      );
+      void initializeFareEstimate(true);
+      return;
+    }
 
     try {
       setAccepting(true);
@@ -535,6 +728,60 @@ export default function FareEstimateScreen() {
     quote?.fare_breakdown?.shared_ride_discount
   );
 
+  const isStudentPool = Boolean(
+    draft?.ride_category === "student_pool" ||
+      draft?.student_pool_requested ||
+      draft?.shared_ride
+  );
+
+  const seatsRequested = Math.max(
+    1,
+    Number(
+      firstValue(
+        draft?.seats_requested,
+        draft?.passenger_count,
+        1
+      )
+    ) || 1
+  );
+
+  const expectedPoolSize = Math.max(
+    seatsRequested,
+    Number(firstValue(draft?.expected_pool_size, seatsRequested)) ||
+      seatsRequested
+  );
+
+  const poolMode = String(
+    firstValue(
+      draft?.student_pool_mode,
+      draft?.student_pool_id ? "join" : "create",
+      "create"
+    )
+  );
+
+  const farePerSeat = firstValue(
+    quote?.fare_per_seat,
+    quote?.seat_fare,
+    quote?.pool_fare_per_seat,
+    quote?.fare_breakdown?.fare_per_seat,
+    isStudentPool && seatsRequested > 0
+      ? money(finalFare) / seatsRequested
+      : undefined
+  );
+
+  const poolSubtotal = firstValue(
+    quote?.pool_subtotal,
+    quote?.student_pool_subtotal,
+    quote?.fare_breakdown?.pool_subtotal,
+    subtotal
+  );
+
+  const poolSavings = firstValue(
+    quote?.pool_savings,
+    quote?.student_pool_savings,
+    sharedRideDiscount
+  );
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -558,7 +805,7 @@ export default function FareEstimateScreen() {
           style={styles.retryButton}
           onPress={() => initializeFareEstimate(false)}
         >
-          <RefreshCw size={18} color={colors.navy} />
+          <RefreshCw size={18} color={colors.onGold || colors.navy} />
           <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
 
@@ -625,17 +872,22 @@ export default function FareEstimateScreen() {
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <CreditCard size={30} color={colors.navy} />
+                <CreditCard size={30} color={colors.onGold || colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
-                <Text style={styles.heroTitle}>Quoted Fare</Text>
+                <Text style={styles.heroTitle}>
+                  {isStudentPool ? "Student Pool Quote" : "Quoted Fare"}
+                </Text>
                 <Text style={styles.heroPrice}>
                   {formatMoney(finalFare)}
                 </Text>
                 <Text style={styles.heroText}>
                   {Number(draft.route_distance_miles || 0).toFixed(1)} miles •{" "}
                   {formatDuration(draft.route_duration_minutes)}
+                  {isStudentPool
+                    ? ` • ${seatsRequested} seat${seatsRequested === 1 ? "" : "s"}`
+                    : ""}
                 </Text>
               </View>
             </View>
@@ -705,11 +957,49 @@ export default function FareEstimateScreen() {
                 styles={styles}
               />
 
-              {draft.student_pool_requested ? (
-                <View style={styles.sharedBox}>
-                  <Users size={18} color="#22c55e" />
-                  <Text style={styles.sharedText}>
-                    Student Shared Ride matching is active for this draft.
+              {isStudentPool ? (
+                <View style={styles.poolCard}>
+                  <View style={styles.poolCardHeader}>
+                    <Users size={19} color="#22c55e" />
+                    <Text style={styles.poolCardTitle}>
+                      Student Pool Ride
+                    </Text>
+                  </View>
+
+                  <Info
+                    label="Pool Action"
+                    value={
+                      poolMode === "join"
+                        ? "Join Existing Pool"
+                        : "Create New Pool"
+                    }
+                    styles={styles}
+                  />
+
+                  <Info
+                    label="Seats Reserved"
+                    value={String(seatsRequested)}
+                    styles={styles}
+                  />
+
+                  <Info
+                    label="Expected Pool Capacity"
+                    value={String(expectedPoolSize)}
+                    styles={styles}
+                  />
+
+                  {draft.student_pool_id ? (
+                    <Info
+                      label="Pool Reference"
+                      value={String(draft.student_pool_id)}
+                      styles={styles}
+                    />
+                  ) : null}
+
+                  <Text style={styles.poolCardText}>
+                    {poolMode === "join"
+                      ? "This quote reserves your requested seats in the selected Student Pool. Final participation is confirmed after availability and owner approval are verified."
+                      : "This quote creates a pending Student Pool request. Angel Express Operations will review, publish, and match verified students before driver assignment."}
                   </Text>
                 </View>
               ) : null}
@@ -761,6 +1051,31 @@ export default function FareEstimateScreen() {
                 />
               ) : null}
 
+              {isStudentPool ? (
+                <>
+                  <BreakdownRow
+                    label="Fare Per Reserved Seat"
+                    value={formatMoney(farePerSeat)}
+                    styles={styles}
+                  />
+                  <BreakdownRow
+                    label="Seats Reserved"
+                    value={String(seatsRequested)}
+                    styles={styles}
+                  />
+                  <BreakdownRow
+                    label="Expected Pool Capacity"
+                    value={String(expectedPoolSize)}
+                    styles={styles}
+                  />
+                  <BreakdownRow
+                    label="Pool Pricing Subtotal"
+                    value={formatMoney(poolSubtotal)}
+                    styles={styles}
+                  />
+                </>
+              ) : null}
+
               <View style={styles.divider} />
 
               <BreakdownRow
@@ -790,8 +1105,19 @@ export default function FareEstimateScreen() {
               {money(sharedRideDiscount) > 0 ? (
                 <DiscountRow
                   icon={<Users size={17} color="#22c55e" />}
-                  label="Shared Ride Discount"
+                  label="Student Pool Savings"
                   value={`-${formatMoney(sharedRideDiscount)}`}
+                  styles={styles}
+                />
+              ) : null}
+
+              {isStudentPool &&
+              money(poolSavings) > 0 &&
+              money(sharedRideDiscount) <= 0 ? (
+                <DiscountRow
+                  icon={<Users size={17} color="#22c55e" />}
+                  label="Student Pool Savings"
+                  value={`-${formatMoney(poolSavings)}`}
                   styles={styles}
                 />
               ) : null}
@@ -809,6 +1135,30 @@ export default function FareEstimateScreen() {
                 </Text>
               </View>
             </View>
+
+            {isStudentPool ? (
+              <View style={styles.poolNoticeCard}>
+                <View style={styles.poolNoticeHeader}>
+                  <GraduationCap size={21} color={colors.gold} />
+                  <Text style={styles.poolNoticeTitle}>
+                    How Student Pool Pricing Works
+                  </Text>
+                </View>
+
+                <Text style={styles.poolNoticeText}>
+                  This estimate is for the seats you are reserving. Each
+                  passenger receives an individual booking and pays separately.
+                  Angel Express Operations manages the shared pool, approves
+                  members, and assigns one driver to the grouped trip.
+                </Text>
+
+                <Text style={styles.poolNoticeText}>
+                  Pool pricing is not combined with private-student discounts
+                  unless the centralized Fare Engine explicitly authorizes it.
+                  The Passenger App never applies or stacks discounts locally.
+                </Text>
+              </View>
+            ) : null}
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -834,7 +1184,18 @@ export default function FareEstimateScreen() {
                 styles={styles}
               />
 
-              <Text style={styles.notice}>
+              <BreakdownRow
+                label="Time Remaining"
+                value={formatCountdown(secondsRemaining)}
+                styles={styles}
+              />
+
+              <Text
+                style={[
+                  styles.notice,
+                  quoteExpired && styles.expiredNotice,
+                ]}
+              >
                 This quote is generated and stored by the Angel Express Fare
                 Engine. The Passenger App does not calculate or override the
                 price locally.
@@ -844,22 +1205,26 @@ export default function FareEstimateScreen() {
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                accepting && styles.actionButtonDisabled,
+                (accepting || quoteExpired) && styles.actionButtonDisabled,
               ]}
               onPress={continueToConfirmation}
               activeOpacity={0.88}
-              disabled={accepting}
+              disabled={accepting || quoteExpired}
             >
               {accepting ? (
                 <View style={styles.actionLoadingRow}>
-                  <ActivityIndicator color={colors.navy} />
+                  <ActivityIndicator color={colors.onGold || colors.navy} />
                   <Text style={styles.actionButtonText}>
                     Accepting Fare Quote
                   </Text>
                 </View>
               ) : (
                 <Text style={styles.actionButtonText}>
-                  Continue to Confirm Booking
+                  {quoteExpired
+                    ? "Refresh Expired Quote"
+                    : isStudentPool
+                      ? "Continue to Confirm Student Pool"
+                      : "Continue to Confirm Booking"}
                 </Text>
               )}
             </TouchableOpacity>
@@ -1024,7 +1389,7 @@ function createStyles(c: any) {
       marginBottom: 12,
     },
     errorText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15,
       fontWeight: "700",
       textAlign: "center",
@@ -1043,7 +1408,7 @@ function createStyles(c: any) {
       minWidth: 190,
     },
     retryButtonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 15,
       fontWeight: "900",
       textTransform: "uppercase",
@@ -1117,7 +1482,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
@@ -1147,19 +1512,19 @@ function createStyles(c: any) {
       flex: 1,
     },
     heroTitle: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 20,
       fontWeight: "900",
       marginBottom: 4,
     },
     heroPrice: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 42,
       fontWeight: "900",
       letterSpacing: -1,
     },
     heroText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 14,
       lineHeight: 20,
       fontWeight: "800",
@@ -1176,7 +1541,7 @@ function createStyles(c: any) {
       minHeight: 88,
       borderRadius: 17,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       backgroundColor: c.card,
       alignItems: "center",
       justifyContent: "center",
@@ -1185,7 +1550,7 @@ function createStyles(c: any) {
       ...v5Shadow(c),
     },
     miniTitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 11,
       fontWeight: "800",
       textAlign: "center",
@@ -1201,7 +1566,7 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
@@ -1222,7 +1587,7 @@ function createStyles(c: any) {
     infoRow: {
       marginBottom: 14,
       borderBottomWidth: 1,
-      borderBottomColor: c.borderSoft,
+      borderBottomColor: c.borderSoft || c.lightBorder,
       paddingBottom: 11,
     },
     infoLabel: {
@@ -1258,6 +1623,62 @@ function createStyles(c: any) {
       flex: 1,
       lineHeight: 19,
     },
+    poolCard: {
+      backgroundColor: "rgba(34,197,94,0.08)",
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      borderRadius: 18,
+      padding: 15,
+      marginTop: 4,
+      marginBottom: 10,
+    },
+    poolCardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 9,
+      marginBottom: 12,
+    },
+    poolCardTitle: {
+      color: "#22c55e",
+      fontSize: 17,
+      fontWeight: "900",
+      flex: 1,
+    },
+    poolCardText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 13,
+      lineHeight: 20,
+      fontWeight: "700",
+      marginTop: 2,
+    },
+    poolNoticeCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    poolNoticeHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 12,
+    },
+    poolNoticeTitle: {
+      color: c.gold,
+      fontSize: 19,
+      fontWeight: "900",
+      flex: 1,
+    },
+    poolNoticeText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 13.5,
+      lineHeight: 21,
+      fontWeight: "700",
+      marginBottom: 9,
+    },
     gpsBox: {
       flexDirection: "row",
       alignItems: "center",
@@ -1284,7 +1705,7 @@ function createStyles(c: any) {
       marginBottom: 13,
     },
     breakdownLabel: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15,
       flex: 1,
       fontWeight: "700",
@@ -1347,11 +1768,14 @@ function createStyles(c: any) {
       fontWeight: "900",
     },
     notice: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 14,
       lineHeight: 22,
       fontWeight: "700",
       marginTop: 8,
+    },
+    expiredNotice: {
+      color: "#EF4444",
     },
 
     actionButton: {
@@ -1373,7 +1797,7 @@ function createStyles(c: any) {
       gap: 10,
     },
     actionButtonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 16,
       fontWeight: "900",
       textTransform: "uppercase",

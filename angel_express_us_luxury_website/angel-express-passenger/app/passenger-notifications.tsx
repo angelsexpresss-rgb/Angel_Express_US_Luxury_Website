@@ -7,6 +7,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  TextInput,
   Switch,
   Text,
   TouchableOpacity,
@@ -23,8 +24,10 @@ import {
   Gift,
   Megaphone,
   MessageCircle,
+  Search,
   RefreshCcw,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Star,
 } from "lucide-react-native";
@@ -41,6 +44,8 @@ export default function PassengerNotificationsScreen() {
 
   const [passengerId, setPassengerId] = useState("");
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
 
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [rideAlerts, setRideAlerts] = useState(true);
@@ -49,18 +54,23 @@ export default function PassengerNotificationsScreen() {
 
   useEffect(() => {
     loadPage();
+  }, []);
+
+  useEffect(() => {
+    if (!passengerId) return;
 
     const channel = supabase
-      .channel("passenger-notifications-live")
+      .channel(`passenger-notifications-live-${passengerId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "passenger_notifications",
+          filter: `passenger_id=eq.${passengerId}`,
         },
         () => {
-          loadNotifications(false);
+          loadNotifications(false, passengerId);
         }
       )
       .subscribe();
@@ -68,7 +78,7 @@ export default function PassengerNotificationsScreen() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [passengerId]);
 
   async function loadPage() {
     try {
@@ -241,12 +251,10 @@ export default function PassengerNotificationsScreen() {
         );
       }
 
-      if (
-        notification.action_route &&
-        notification.action_route !== "/dashboard" &&
-        notification.action_route !== "/passenger-notifications"
-      ) {
-        router.push(notification.action_route as any);
+      const destination = resolveNotificationRoute(notification);
+
+      if (destination) {
+        router.push(destination as any);
       }
     } catch (error: any) {
       Alert.alert("Update Error", error.message || "Unable to mark as read.");
@@ -278,6 +286,147 @@ export default function PassengerNotificationsScreen() {
     } catch (error: any) {
       Alert.alert("Update Error", error.message || "Unable to mark all as read.");
     }
+  }
+
+  function cleanType(value: any) {
+    return String(value || "general").trim().toLowerCase();
+  }
+
+  function notificationCategory(notification: any) {
+    const haystack = [
+      notification?.type,
+      notification?.title,
+      notification?.message,
+    ]
+      .map(cleanType)
+      .join(" ");
+
+    if (
+      haystack.includes("payment") ||
+      haystack.includes("fare") ||
+      haystack.includes("refund") ||
+      haystack.includes("invoice")
+    ) {
+      return "payments";
+    }
+
+    if (
+      haystack.includes("safety") ||
+      haystack.includes("family") ||
+      haystack.includes("emergency") ||
+      haystack.includes("sos")
+    ) {
+      return "safety";
+    }
+
+    if (
+      haystack.includes("support") ||
+      haystack.includes("message") ||
+      haystack.includes("reply")
+    ) {
+      return "support";
+    }
+
+    if (
+      haystack.includes("trip") ||
+      haystack.includes("ride") ||
+      haystack.includes("driver") ||
+      haystack.includes("booking")
+    ) {
+      return "trips";
+    }
+
+    return "general";
+  }
+
+  function resolveNotificationRoute(notification: any) {
+    const explicitRoute = String(notification?.action_route || "").trim();
+    if (
+      explicitRoute &&
+      explicitRoute !== "/dashboard" &&
+      explicitRoute !== "/passenger-notifications"
+    ) {
+      return explicitRoute;
+    }
+
+    const type = cleanType(notification?.type);
+    const bookingId = String(
+      notification?.booking_id ||
+        notification?.bookingId ||
+        notification?.metadata?.booking_id ||
+        ""
+    );
+
+    if (
+      type.includes("driver") ||
+      type.includes("trip") ||
+      type.includes("ride_started") ||
+      type.includes("arrived") ||
+      type.includes("onboard")
+    ) {
+      return bookingId
+        ? {
+            pathname: "/live-trip" as any,
+            params: {
+              booking_id: bookingId,
+              bookingId,
+            },
+          }
+        : "/my-trips";
+    }
+
+    if (
+      type.includes("change_approved") ||
+      type.includes("change_rejected") ||
+      type.includes("booking_change")
+    ) {
+      return bookingId
+        ? {
+            pathname: "/manage-booking" as any,
+            params: {
+              booking_id: bookingId,
+              bookingId,
+            },
+          }
+        : "/my-trips";
+    }
+
+    if (
+      type.includes("payment") ||
+      type.includes("fare") ||
+      type.includes("invoice")
+    ) {
+      return bookingId
+        ? {
+            pathname: "/pay-ride" as any,
+            params: {
+              booking_id: bookingId,
+              bookingId,
+            },
+          }
+        : "/my-trips";
+    }
+
+    if (type.includes("support") || type.includes("reply")) {
+      return bookingId
+        ? {
+            pathname: "/support" as any,
+            params: {
+              booking_id: bookingId,
+            },
+          }
+        : "/support";
+    }
+
+    return null;
+  }
+
+  function priorityLabel(priority: any) {
+    const value = cleanType(priority);
+    if (["urgent", "critical", "high"].includes(value)) {
+      return value === "critical" ? "Critical" : value === "urgent" ? "Urgent" : "High";
+    }
+    return "";
   }
 
   function notificationIcon(type: string) {
@@ -331,6 +480,43 @@ export default function PassengerNotificationsScreen() {
 
   const unreadCount = notifications.filter((item) => !item.is_read).length;
 
+  const filteredNotifications = notifications.filter((item) => {
+    const matchesFilter =
+      activeFilter === "all" ||
+      notificationCategory(item) === activeFilter;
+
+    const searchable = [
+      item?.title,
+      item?.message,
+      item?.type,
+      item?.priority,
+    ]
+      .map((value) => String(value || "").toLowerCase())
+      .join(" ");
+
+    const matchesSearch =
+      !searchText.trim() ||
+      searchable.includes(searchText.trim().toLowerCase());
+
+    return matchesFilter && matchesSearch;
+  });
+
+  const filterCounts = {
+    all: notifications.length,
+    trips: notifications.filter(
+      (item) => notificationCategory(item) === "trips"
+    ).length,
+    payments: notifications.filter(
+      (item) => notificationCategory(item) === "payments"
+    ).length,
+    safety: notifications.filter(
+      (item) => notificationCategory(item) === "safety"
+    ).length,
+    support: notifications.filter(
+      (item) => notificationCategory(item) === "support"
+    ).length,
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -381,7 +567,7 @@ export default function PassengerNotificationsScreen() {
 
           <View style={styles.heroCard}>
             <View style={styles.heroIcon}>
-              <BellRing size={31} color={colors.navy} />
+              <BellRing size={31} color={colors.onGold || colors.navy} />
             </View>
 
             <View style={{ flex: 1 }}>
@@ -407,6 +593,59 @@ export default function PassengerNotificationsScreen() {
               <Text style={styles.quickText}>Mark All Read</Text>
             </TouchableOpacity>
           </View>
+
+          <View style={styles.searchCard}>
+            <Search size={19} color={colors.gold} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search notifications"
+              placeholderTextColor={colors.placeholder || colors.muted}
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+          </View>
+
+          <View style={styles.filterHeader}>
+            <SlidersHorizontal size={18} color={colors.gold} />
+            <Text style={styles.filterHeaderText}>Filter Updates</Text>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            {[
+              ["all", "All"],
+              ["trips", "Trips"],
+              ["payments", "Payments"],
+              ["safety", "Safety"],
+              ["support", "Support"],
+            ].map(([key, label]) => {
+              const active = activeFilter === key;
+              const count = filterCounts[key as keyof typeof filterCounts];
+
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.filterPill,
+                    active && styles.filterPillActive,
+                  ]}
+                  onPress={() => setActiveFilter(key)}
+                >
+                  <Text
+                    style={[
+                      styles.filterPillText,
+                      active && styles.filterPillTextActive,
+                    ]}
+                  >
+                    {label} ({count})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
 
           <Text style={styles.sectionTitle}>Preferences</Text>
 
@@ -447,7 +686,7 @@ export default function PassengerNotificationsScreen() {
               disabled={savingPrefs}
             >
               {savingPrefs ? (
-                <ActivityIndicator color={colors.navy} />
+                <ActivityIndicator color={colors.onGold || colors.navy} />
               ) : (
                 <Text style={styles.savePrefsText}>Save Preferences</Text>
               )}
@@ -456,17 +695,18 @@ export default function PassengerNotificationsScreen() {
 
           <Text style={styles.sectionTitle}>Recent Updates</Text>
 
-          {notifications.length === 0 ? (
+          {filteredNotifications.length === 0 ? (
             <View style={styles.emptyCard}>
               <Star size={31} color={colors.gold} />
               <Text style={styles.emptyTitle}>No notifications yet</Text>
               <Text style={styles.emptyText}>
-                Your ride updates, payment reminders, rewards, and Angel Express
-                announcements will appear here.
+                {notifications.length === 0
+                  ? "Your ride updates, payment reminders, rewards, and Angel Express announcements will appear here."
+                  : "No notifications match the selected filter or search."}
               </Text>
             </View>
           ) : (
-            notifications.map((notification) => {
+            filteredNotifications.map((notification) => {
               const unread = !notification.is_read;
 
               return (
@@ -495,6 +735,22 @@ export default function PassengerNotificationsScreen() {
                     <Text style={styles.notificationMessage}>
                       {notification.message}
                     </Text>
+
+                    {priorityLabel(notification.priority) ? (
+                      <View
+                        style={[
+                          styles.priorityBadge,
+                          cleanType(notification.priority) === "critical" ||
+                          cleanType(notification.priority) === "urgent"
+                            ? styles.priorityBadgeCritical
+                            : styles.priorityBadgeHigh,
+                        ]}
+                      >
+                        <Text style={styles.priorityBadgeText}>
+                          {priorityLabel(notification.priority)}
+                        </Text>
+                      </View>
+                    ) : null}
 
                     <View style={styles.notificationMetaRow}>
                       <Text style={styles.notificationType}>
@@ -545,7 +801,7 @@ function PreferenceRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: colors.borderSoft, true: colors.gold }}
+        trackColor={{ false: colors.borderSoft || colors.lightBorder, true: colors.gold }}
         thumbColor={value ? "#FFFFFF" : "#CBD5E1"}
       />
     </View>
@@ -629,7 +885,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
@@ -654,13 +910,13 @@ function createStyles(c: any) {
       justifyContent: "center",
     },
     heroTitle: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 22,
       fontWeight: "900",
       marginBottom: 4,
     },
     heroText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 14,
       fontWeight: "800",
       lineHeight: 20,
@@ -675,7 +931,7 @@ function createStyles(c: any) {
       flex: 1,
       backgroundColor: c.card,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       borderRadius: 16,
       paddingVertical: 14,
       alignItems: "center",
@@ -687,6 +943,61 @@ function createStyles(c: any) {
       color: c.gold,
       fontWeight: "900",
       fontSize: 13,
+    },
+    searchCard: {
+      minHeight: 54,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      borderRadius: 16,
+      paddingHorizontal: 15,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16,
+    },
+    searchInput: {
+      flex: 1,
+      color: c.text,
+      fontSize: 15,
+      fontWeight: "700",
+      paddingVertical: 12,
+    },
+    filterHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 10,
+    },
+    filterHeaderText: {
+      color: c.text,
+      fontSize: 15,
+      fontWeight: "900",
+    },
+    filterRow: {
+      gap: 8,
+      paddingBottom: 6,
+      paddingRight: 8,
+    },
+    filterPill: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      paddingHorizontal: 13,
+      paddingVertical: 10,
+    },
+    filterPillActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    filterPillText: {
+      color: c.gold,
+      fontSize: 12.5,
+      fontWeight: "900",
+    },
+    filterPillTextActive: {
+      color: c.onGold || c.navy,
     },
     sectionTitle: {
       color: c.gold,
@@ -701,7 +1012,7 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 16,
       marginBottom: 22,
       ...v5Shadow(c),
@@ -712,7 +1023,7 @@ function createStyles(c: any) {
       gap: 12,
       paddingVertical: 13,
       borderBottomWidth: 1,
-      borderBottomColor: c.borderSoft,
+      borderBottomColor: c.borderSoft || c.lightBorder,
     },
     prefIcon: {
       width: 42,
@@ -734,7 +1045,7 @@ function createStyles(c: any) {
       marginBottom: 4,
     },
     prefText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 12.5,
       lineHeight: 18,
       fontWeight: "700",
@@ -747,7 +1058,7 @@ function createStyles(c: any) {
       marginTop: 16,
     },
     savePrefsText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 15,
       fontWeight: "900",
       textTransform: "uppercase",
@@ -759,7 +1070,7 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 24,
       alignItems: "center",
       ...v5Shadow(c),
@@ -773,7 +1084,7 @@ function createStyles(c: any) {
       textAlign: "center",
     },
     emptyText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 14.5,
       lineHeight: 22,
       textAlign: "center",
@@ -782,7 +1093,7 @@ function createStyles(c: any) {
     notificationCard: {
       backgroundColor: c.card,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       borderRadius: 22,
       padding: 16,
       marginBottom: 13,
@@ -826,11 +1137,34 @@ function createStyles(c: any) {
       backgroundColor: c.danger,
     },
     notificationMessage: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 13.5,
       lineHeight: 20,
       fontWeight: "700",
       marginBottom: 10,
+    },
+    priorityBadge: {
+      alignSelf: "flex-start",
+      borderRadius: 999,
+      paddingHorizontal: 9,
+      paddingVertical: 5,
+      marginBottom: 9,
+      borderWidth: 1,
+    },
+    priorityBadgeCritical: {
+      backgroundColor: "rgba(220,38,38,0.12)",
+      borderColor: "rgba(220,38,38,0.45)",
+    },
+    priorityBadgeHigh: {
+      backgroundColor: "rgba(245,158,11,0.12)",
+      borderColor: "rgba(245,158,11,0.45)",
+    },
+    priorityBadgeText: {
+      color: c.text,
+      fontSize: 10.5,
+      fontWeight: "900",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
     },
     notificationMetaRow: {
       flexDirection: "row",

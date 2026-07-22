@@ -4,10 +4,14 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  Image,
   ImageBackground,
   Linking,
+  Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,26 +19,68 @@ import {
 } from "react-native";
 import {
   ArrowLeft,
+  BadgeCheck,
+  BellRing,
+  CarFront,
   CheckCircle2,
+  Clock3,
+  Copy,
   HeartHandshake,
   Mail,
   MapPinned,
   MessageCircle,
+  Navigation,
   Phone,
+  Radio,
+  RefreshCw,
+  Send,
+  Share2,
+  ShieldAlert,
   ShieldCheck,
+  Siren,
   UserRound,
+  UsersRound,
+  Wifi,
+  WifiOff,
 } from "lucide-react-native";
 
 import { supabase } from "../lib/supabase";
 import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
+
+const SUPPORT_PHONE = "19728367910";
+
+const ACTIVE_STATUSES = [
+  "Pending",
+  "Confirmed",
+  "Driver Assigned",
+  "Arrived at Pickup",
+  "Picked Up",
+  "In Progress",
+  "pending_assignment",
+  "assigned",
+  "accepted",
+  "confirmed",
+  "driver_en_route",
+  "en_route",
+  "driver_arrived",
+  "picked_up",
+  "passenger_onboard",
+  "in_progress",
+];
 
 export default function FamilyCheckInScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sending, setSending] = useState(false);
   const [profile, setProfile] = useState<any>(null);
   const [activeTrip, setActiveTrip] = useState<any>(null);
+  const [checkInHistory, setCheckInHistory] = useState<any[]>([]);
+  const [connectionState, setConnectionState] =
+    useState<"connecting" | "online" | "offline">("connecting");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -68,6 +114,61 @@ export default function FamilyCheckInScreen() {
     }, [])
   );
 
+  useEffect(() => {
+    if (!activeTrip?.id) {
+      setConnectionState("offline");
+      return;
+    }
+
+    setConnectionState("connecting");
+
+    const bookingChannel = supabase
+      .channel(`family-checkin-booking-${activeTrip.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `id=eq.${activeTrip.id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            setActiveTrip((current: any) => ({
+              ...current,
+              ...(payload.new as any),
+            }));
+            setLastUpdatedAt(new Date());
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setConnectionState("online");
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setConnectionState("offline");
+        }
+      });
+
+    const checkInChannel = supabase
+      .channel(`family-checkin-log-${activeTrip.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "family_checkins",
+          filter: `booking_id=eq.${activeTrip.id}`,
+        },
+        () => loadCheckInHistory(activeTrip.id)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(bookingChannel);
+      supabase.removeChannel(checkInChannel);
+    };
+  }, [activeTrip?.id]);
+
   async function loadFamilyCheckIn() {
     try {
       setLoading(true);
@@ -91,7 +192,8 @@ export default function FamilyCheckInScreen() {
           phone,
           emergency_name,
           emergency_phone,
-          emergency_contact_email
+          emergency_contact_email,
+          emergency_relationship
         `)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -103,6 +205,8 @@ export default function FamilyCheckInScreen() {
         emergencyName: profileData?.emergency_name || "",
         emergencyPhone: profileData?.emergency_phone || "",
         emergencyEmail: profileData?.emergency_contact_email || "",
+        emergencyRelationship:
+          profileData?.emergency_relationship || "Primary Emergency Contact",
       };
 
       setProfile(normalizedProfile);
@@ -111,13 +215,22 @@ export default function FamilyCheckInScreen() {
         .from("bookings")
         .select("*")
         .or(`user_id.eq.${user.id},email.ilike.${userEmail}`)
-        .in("status", ["In Progress", "in_progress", "driver_arrived"])
+        .in("status", ACTIVE_STATUSES)
         .order("created_at", { ascending: false })
         .limit(1);
 
       if (tripsError) throw tripsError;
 
-      setActiveTrip(trips?.[0] || null);
+      const currentTrip = trips?.[0] || null;
+      setActiveTrip(currentTrip);
+
+      if (currentTrip?.id) {
+        await loadCheckInHistory(currentTrip.id);
+      } else {
+        setCheckInHistory([]);
+      }
+
+      setLastUpdatedAt(new Date());
     } catch (error: any) {
       Alert.alert(
         "Family Check-In Error",
@@ -125,7 +238,34 @@ export default function FamilyCheckInScreen() {
       );
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }
+
+  async function loadCheckInHistory(bookingId: any) {
+    try {
+      const { data, error } = await supabase
+        .from("family_checkins")
+        .select("*")
+        .eq("booking_id", bookingId)
+        .order("sent_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setCheckInHistory(data || []);
+    } catch (error) {
+      console.log("Family check-in history unavailable:", error);
+    }
+  }
+
+  function trackingLink() {
+    if (!activeTrip) return "https://angelexpressus.com";
+
+    return `https://angelexpressus.com/live-trip/${
+      activeTrip.invoice_no ||
+      activeTrip.invoice_number ||
+      activeTrip.id
+    }`;
   }
 
   function buildMessage(type: string) {
@@ -133,54 +273,58 @@ export default function FamilyCheckInScreen() {
       profile?.last_name || ""
     }`.trim();
 
+    const driverName =
+      activeTrip?.driver_name ||
+      activeTrip?.assigned_driver_name ||
+      "Driver assignment pending";
+
+    const vehicle =
+      activeTrip?.vehicle ||
+      activeTrip?.vehicle_type ||
+      [activeTrip?.vehicle_make, activeTrip?.vehicle_model]
+        .filter(Boolean)
+        .join(" ") ||
+      "Vehicle details pending";
+
+    const plate =
+      activeTrip?.license_plate ||
+      activeTrip?.vehicle_plate ||
+      activeTrip?.plate_number ||
+      "Plate pending";
+
     const tripBlock = activeTrip
       ? `
 
 Trip Details:
+Status: ${formatStatus(activeTrip.status)}
 Pickup: ${activeTrip.pickup_address || activeTrip.pickup || "N/A"}
 Drop-off: ${activeTrip.dropoff_address || activeTrip.dropoff || "N/A"}
-Invoice: ${activeTrip.invoice_no || "N/A"}
-Live Link: https://angelexpressus.com/live-trip/${
-          activeTrip.invoice_no || activeTrip.id
-        }`
+Driver: ${driverName}
+Vehicle: ${vehicle}
+License Plate: ${plate}
+Invoice: ${activeTrip.invoice_no || activeTrip.invoice_number || "N/A"}
+Live Link: ${trackingLink()}`
       : "";
 
-    if (type === "picked_up") {
-      return `Angel Express Family Check-In
-
-${passengerName || "Your loved one"} has been picked up safely.
-
-The Angel Express ride has started.${tripBlock}
-
-Safe. Reliable. Professional.`;
-    }
-
-    if (type === "halfway") {
-      return `Angel Express Family Check-In
-
-${passengerName || "Your loved one"} is halfway to the destination.
-
-The trip is continuing safely.${tripBlock}
-
-Safe. Reliable. Professional.`;
-    }
-
-    if (type === "arrived") {
-      return `Angel Express Family Check-In
-
-${passengerName || "Your loved one"} has arrived safely.
-
-Thank you for trusting Angel Express.${tripBlock}
-
-Safe. Reliable. Professional.`;
-    }
+    const messages: Record<string, string> = {
+      leaving: `${passengerName || "Your loved one"} is preparing to leave for an Angel Express trip.`,
+      driver_assigned: `${passengerName || "Your loved one"} now has an assigned Angel Express driver.`,
+      driver_arrived: `The Angel Express driver has arrived for ${passengerName || "your loved one"}.`,
+      picked_up: `${passengerName || "Your loved one"} has been picked up safely and the ride has started.`,
+      halfway: `${passengerName || "Your loved one"} is halfway to the destination.`,
+      almost_there: `${passengerName || "Your loved one"} is almost at the destination.`,
+      arrived: `${passengerName || "Your loved one"} has arrived safely.`,
+    };
 
     return `Angel Express Family Check-In
 
-${passengerName || "Your loved one"} is sharing a safety update from Angel Express.${tripBlock}
+${messages[type] || `${passengerName || "Your loved one"} is sharing a safety update.`}${tripBlock}
+
+Angel Express Operations: +1 (972) 836-7910
 
 Safe. Reliable. Professional.`;
   }
+
 
   async function saveCheckInLog(type: string, method: string) {
     try {
@@ -194,6 +338,9 @@ Safe. Reliable. Professional.`;
         emergency_contact_name: profile?.emergencyName || null,
         emergency_contact_phone: profile?.emergencyPhone || null,
         emergency_contact_email: profile?.emergencyEmail || null,
+        emergency_contact_relationship:
+          profile?.emergencyRelationship || null,
+        trip_status: activeTrip?.status || null,
         sent_at: new Date().toISOString(),
       });
     } catch {
@@ -261,6 +408,48 @@ Safe. Reliable. Professional.`;
     await Linking.openURL(url);
   }
 
+  async function sendNative(type: string) {
+    await saveCheckInLog(type, "native_share");
+
+    await Share.share({
+      title: "Angel Express Family Check-In",
+      message: buildMessage(type),
+      url: activeTrip ? trackingLink() : undefined,
+    });
+  }
+
+  async function copyTrackingLink() {
+    if (!activeTrip) {
+      Alert.alert("No Active Trip", "There is no active trip link to share.");
+      return;
+    }
+
+    await Share.share({
+      title: "Angel Express Live Trip",
+      message: trackingLink(),
+    });
+  }
+
+  function callOperations() {
+    Linking.openURL(`tel:${SUPPORT_PHONE}`);
+  }
+
+  function openLiveTrip() {
+    if (!activeTrip?.id) {
+      Alert.alert("No Active Trip", "There is no active trip to open.");
+      return;
+    }
+
+    router.push({
+      pathname: "/live-trip" as any,
+      params: {
+        booking_id: activeTrip.id,
+        invoice_no:
+          activeTrip.invoice_no || activeTrip.invoice_number || "",
+      },
+    });
+  }
+
   function sendAll(type: string) {
     Alert.alert(
       "Send Family Check-In",
@@ -269,6 +458,7 @@ Safe. Reliable. Professional.`;
         { text: "WhatsApp", onPress: () => sendWhatsApp(type) },
         { text: "SMS", onPress: () => sendSMS(type) },
         { text: "Email", onPress: () => sendEmail(type) },
+        { text: "More", onPress: () => sendNative(type) },
         { text: "Cancel", style: "cancel" },
       ]
     );
@@ -303,6 +493,16 @@ Safe. Reliable. Professional.`;
           style={styles.container}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              tintColor={colors.gold}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadFamilyCheckIn();
+              }}
+            />
+          }
         >
           <View style={styles.topRow}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -334,7 +534,7 @@ Safe. Reliable. Professional.`;
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <HeartHandshake size={30} color={colors.navy} />
+                <HeartHandshake size={30} color={colors.onGold || colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -343,6 +543,33 @@ Safe. Reliable. Professional.`;
                   One tap to share picked up, halfway, and arrived safely updates.
                 </Text>
               </View>
+            </View>
+
+            <View style={styles.connectionBanner}>
+              {connectionState === "online" ? (
+                <Wifi size={18} color={colors.success || "#22C55E"} />
+              ) : (
+                <WifiOff size={18} color={colors.warning || "#F59E0B"} />
+              )}
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.connectionTitle}>
+                  {connectionState === "online"
+                    ? "Realtime family updates connected"
+                    : connectionState === "connecting"
+                    ? "Connecting to realtime trip updates"
+                    : "Realtime trip updates unavailable"}
+                </Text>
+                <Text style={styles.connectionText}>
+                  {lastUpdatedAt
+                    ? `Last updated ${lastUpdatedAt.toLocaleTimeString()}`
+                    : "Waiting for trip activity"}
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={loadFamilyCheckIn}>
+                <RefreshCw size={18} color={colors.gold} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.featureGrid}>
@@ -372,6 +599,11 @@ Safe. Reliable. Professional.`;
               <Info label="Name" value={profile?.emergencyName || "Not added"} styles={styles} />
               <Info label="Phone" value={profile?.emergencyPhone || "Not added"} styles={styles} />
               <Info label="Email" value={profile?.emergencyEmail || "Not added"} styles={styles} />
+              <Info
+                label="Relationship"
+                value={profile?.emergencyRelationship || "Not added"}
+                styles={styles}
+              />
 
               <TouchableOpacity
                 style={styles.outlineButton}
@@ -387,8 +619,17 @@ Safe. Reliable. Professional.`;
                 <View style={styles.cardHeader}>
                   <MapPinned size={22} color={colors.gold} />
                   <Text style={styles.cardTitle}>Active Trip</Text>
+                  <View style={styles.liveBadge}>
+                    <Radio size={13} color={colors.onGold || colors.navy} />
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
+                  </View>
                 </View>
 
+                <Info
+                  label="Status"
+                  value={formatStatus(activeTrip.status)}
+                  styles={styles}
+                />
                 <Info
                   label="Pickup"
                   value={activeTrip.pickup_address || activeTrip.pickup || "N/A"}
@@ -399,7 +640,64 @@ Safe. Reliable. Professional.`;
                   value={activeTrip.dropoff_address || activeTrip.dropoff || "N/A"}
                   styles={styles}
                 />
-                <Info label="Invoice" value={activeTrip.invoice_no || "N/A"} styles={styles} />
+                <Info
+                  label="Driver"
+                  value={
+                    activeTrip.driver_name ||
+                    activeTrip.assigned_driver_name ||
+                    "Assignment pending"
+                  }
+                  styles={styles}
+                />
+                <Info
+                  label="Vehicle"
+                  value={
+                    activeTrip.vehicle ||
+                    activeTrip.vehicle_type ||
+                    [activeTrip.vehicle_make, activeTrip.vehicle_model]
+                      .filter(Boolean)
+                      .join(" ") ||
+                    "Details pending"
+                  }
+                  styles={styles}
+                />
+                <Info
+                  label="License Plate"
+                  value={
+                    activeTrip.license_plate ||
+                    activeTrip.vehicle_plate ||
+                    activeTrip.plate_number ||
+                    "Pending"
+                  }
+                  styles={styles}
+                />
+                <Info
+                  label="Invoice"
+                  value={
+                    activeTrip.invoice_no ||
+                    activeTrip.invoice_number ||
+                    "N/A"
+                  }
+                  styles={styles}
+                />
+
+                <View style={styles.tripActionRow}>
+                  <TouchableOpacity
+                    style={styles.tripAction}
+                    onPress={openLiveTrip}
+                  >
+                    <Navigation size={18} color={colors.gold} />
+                    <Text style={styles.tripActionText}>Live Trip</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.tripAction}
+                    onPress={copyTrackingLink}
+                  >
+                    <Copy size={18} color={colors.gold} />
+                    <Text style={styles.tripActionText}>Share Link</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (
               <View style={styles.tripBox}>
@@ -409,11 +707,38 @@ Safe. Reliable. Professional.`;
                 </View>
 
                 <Text style={styles.text}>
-                  You can still send a family check-in message, but live trip
-                  details will appear when your ride is in progress.
+                  You can still send a family message. Live driver, vehicle, and
+                  tracking details will appear once a trip is active.
                 </Text>
               </View>
             )}
+
+            <View style={styles.quickGrid}>
+              <QuickAction
+                title="Leaving"
+                icon={<CarFront size={18} color={colors.gold} />}
+                onPress={() => sendAll("leaving")}
+                styles={styles}
+              />
+              <QuickAction
+                title="Driver Assigned"
+                icon={<BadgeCheck size={18} color={colors.gold} />}
+                onPress={() => sendAll("driver_assigned")}
+                styles={styles}
+              />
+              <QuickAction
+                title="Driver Arrived"
+                icon={<MapPinned size={18} color={colors.gold} />}
+                onPress={() => sendAll("driver_arrived")}
+                styles={styles}
+              />
+              <QuickAction
+                title="Almost There"
+                icon={<Clock3 size={18} color={colors.gold} />}
+                onPress={() => sendAll("almost_there")}
+                styles={styles}
+              />
+            </View>
 
             <CheckInButton
               title="Passenger Picked Up"
@@ -438,6 +763,53 @@ Safe. Reliable. Professional.`;
               styles={styles}
               colors={colors}
             />
+
+            <View style={styles.historyCard}>
+              <View style={styles.cardHeader}>
+                <BellRing size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>Recent Check-Ins</Text>
+              </View>
+
+              {checkInHistory.length === 0 ? (
+                <Text style={styles.emptyHistory}>
+                  No family check-ins have been recorded for this trip yet.
+                </Text>
+              ) : (
+                checkInHistory.map((item) => (
+                  <View style={styles.historyRow} key={String(item.id)}>
+                    <CheckCircle2 size={17} color={colors.gold} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.historyTitle}>
+                        {formatStatus(item.checkin_type)} • {formatStatus(item.method)}
+                      </Text>
+                      <Text style={styles.historyTime}>
+                        {item.sent_at
+                          ? new Date(item.sent_at).toLocaleString()
+                          : "Sent"}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </View>
+
+            <View style={styles.safetyActionRow}>
+              <TouchableOpacity
+                style={styles.safetyAction}
+                onPress={() => router.push("/safety-share" as any)}
+              >
+                <ShieldAlert size={18} color={colors.gold} />
+                <Text style={styles.safetyActionText}>Safety Share</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.safetyAction}
+                onPress={callOperations}
+              >
+                <Phone size={18} color={colors.gold} />
+                <Text style={styles.safetyActionText}>Operations</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.supportButton}
@@ -514,6 +886,33 @@ function CheckInButton({
       </View>
     </Pressable>
   );
+}
+
+function QuickAction({
+  title,
+  icon,
+  onPress,
+  styles,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  onPress: () => void;
+  styles: any;
+}) {
+  return (
+    <TouchableOpacity style={styles.quickAction} onPress={onPress}>
+      {icon}
+      <Text style={styles.quickActionText}>{title}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function formatStatus(value: any) {
+  if (!value) return "Pending";
+
+  return String(value)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function createStyles(c: any) {
@@ -607,7 +1006,7 @@ function createStyles(c: any) {
       letterSpacing: -0.7,
     },
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
@@ -637,19 +1036,43 @@ function createStyles(c: any) {
       flex: 1,
     },
     heroTitle: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 24,
       fontWeight: "900",
       marginBottom: 6,
     },
     heroText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 15,
       lineHeight: 21,
       fontWeight: "800",
       opacity: 0.82,
     },
 
+
+    connectionBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      backgroundColor: c.card,
+      padding: 14,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    connectionTitle: {
+      color: c.text,
+      fontSize: 13.5,
+      fontWeight: "900",
+    },
+    connectionText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 11.5,
+      fontWeight: "700",
+      marginTop: 2,
+    },
     featureGrid: {
       flexDirection: "row",
       gap: 9,
@@ -660,7 +1083,7 @@ function createStyles(c: any) {
       minHeight: 78,
       borderRadius: 17,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       backgroundColor: c.card,
       alignItems: "center",
       justifyContent: "center",
@@ -677,7 +1100,7 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
@@ -686,12 +1109,73 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
     },
 
+
+    liveBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      backgroundColor: c.gold,
+      borderRadius: 999,
+      paddingVertical: 6,
+      paddingHorizontal: 9,
+    },
+    liveBadgeText: {
+      color: c.onGold || c.navy,
+      fontSize: 10,
+      fontWeight: "900",
+    },
+    tripActionRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginTop: 8,
+    },
+    tripAction: {
+      flex: 1,
+      minHeight: 54,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: 7,
+    },
+    tripActionText: {
+      color: c.gold,
+      fontSize: 12.5,
+      fontWeight: "900",
+    },
+    quickGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 18,
+    },
+    quickAction: {
+      width: "48%",
+      minHeight: 74,
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      backgroundColor: c.card,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      ...v5Shadow(c),
+    },
+    quickActionText: {
+      color: c.text,
+      fontSize: 12.5,
+      fontWeight: "900",
+      textAlign: "center",
+    },
     cardHeader: {
       flexDirection: "row",
       alignItems: "center",
@@ -751,7 +1235,7 @@ function createStyles(c: any) {
       padding: 18,
       marginBottom: 16,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       flexDirection: "row",
       gap: 14,
       ...v5Shadow(c),
@@ -773,7 +1257,7 @@ function createStyles(c: any) {
       marginBottom: 7,
     },
     checkText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15,
       lineHeight: 22,
       marginBottom: 12,
@@ -785,6 +1269,63 @@ function createStyles(c: any) {
       fontWeight: "900",
     },
 
+
+    historyCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    emptyHistory: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 13.5,
+      lineHeight: 20,
+      fontWeight: "700",
+    },
+    historyRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 11,
+      borderTopWidth: 1,
+      borderTopColor: c.borderSoft || c.lightBorder,
+    },
+    historyTitle: {
+      color: c.text,
+      fontSize: 13.5,
+      fontWeight: "900",
+    },
+    historyTime: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 11.5,
+      marginTop: 3,
+      fontWeight: "700",
+    },
+    safetyActionRow: {
+      flexDirection: "row",
+      gap: 10,
+      marginBottom: 12,
+    },
+    safetyAction: {
+      flex: 1,
+      minHeight: 54,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.card,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 7,
+    },
+    safetyActionText: {
+      color: c.gold,
+      fontSize: 12.5,
+      fontWeight: "900",
+    },
     supportButton: {
       minHeight: 54,
       borderRadius: 16,

@@ -30,6 +30,9 @@ import {
 import { supabase } from "../lib/supabase";
 import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 
+const GOOGLE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbzfjXYUphz8-nyETcdMYOpHCPoBY33V17OkAZMODpBRVT2V6m8H9DTG5iBM63QqbHtR/exec";
+
 type JsonRecord = Record<string, any>;
 
 function firstValue(...values: any[]) {
@@ -95,12 +98,92 @@ function displayRideCategory(value?: string, label?: string) {
     private: "Standard Ride",
     airport: "Airport Transfer",
     student_private: "Student Ride",
-    student_pool: "Student Shared Ride",
+    student_pool: "Student Pool Ride",
     tourist_event: "Tourist/Event Ride",
     corporate: "Corporate Ride",
   };
 
   return map[value || ""] || value || "Standard Ride";
+}
+
+
+function normalizeBoolean(value: any) {
+  if (typeof value === "boolean") return value;
+
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+  return ["true", "1", "yes", "on"].includes(normalized);
+}
+
+function normalizePoolMode(draft: JsonRecord) {
+  const requestedMode = String(
+    firstValue(
+      draft.student_pool_mode,
+      draft.student_pool_id ? "join" : "create",
+      "create"
+    )
+  )
+    .trim()
+    .toLowerCase();
+
+  return requestedMode === "join" ? "join" : "create";
+}
+
+function validateStudentPoolDraft(draft: JsonRecord) {
+  const isStudentPool =
+    draft.ride_category === "student_pool" ||
+    normalizeBoolean(draft.student_pool_requested) ||
+    normalizeBoolean(draft.shared_ride);
+
+  if (!isStudentPool) return;
+
+  const isVerified =
+    normalizeBoolean(draft.student_verified) ||
+    normalizeBoolean(draft.student_discount_eligible);
+
+  if (!isVerified) {
+    throw new Error(
+      "Student Pool Ride requires an approved student verification."
+    );
+  }
+
+  const seatsRequested = Number(
+    firstValue(draft.seats_requested, draft.passenger_count, 1)
+  );
+
+  const expectedPoolSize = Number(
+    firstValue(draft.expected_pool_size, seatsRequested)
+  );
+
+  if (
+    !Number.isInteger(seatsRequested) ||
+    seatsRequested < 1 ||
+    seatsRequested > 4
+  ) {
+    throw new Error(
+      "Student Pool seats requested must be a whole number between 1 and 4."
+    );
+  }
+
+  if (
+    !Number.isInteger(expectedPoolSize) ||
+    expectedPoolSize < seatsRequested ||
+    expectedPoolSize > 4
+  ) {
+    throw new Error(
+      "Student Pool capacity must be between the requested seats and 4."
+    );
+  }
+
+  const poolMode = normalizePoolMode(draft);
+
+  if (poolMode === "join" && !draft.student_pool_id) {
+    throw new Error(
+      "The selected Student Pool could not be identified. Return to Student Travel and select the pool again."
+    );
+  }
 }
 
 export default function ConfirmBookingScreen() {
@@ -121,12 +204,14 @@ export default function ConfirmBookingScreen() {
   const [loadingDraft, setLoadingDraft] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
+  const confirmationLockRef = useRef(false);
 
   useEffect(() => {
-    Animated.loop(
+    const backgroundAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(bgScale, {
           toValue: 1.04,
@@ -139,15 +224,22 @@ export default function ConfirmBookingScreen() {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
 
-    Animated.timing(pageFade, {
+    const entranceAnimation = Animated.timing(pageFade, {
       toValue: 1,
       duration: 650,
       useNativeDriver: true,
-    }).start();
+    });
 
-    loadDraft();
+    backgroundAnimation.start();
+    entranceAnimation.start();
+    void loadDraft();
+
+    return () => {
+      backgroundAnimation.stop();
+      entranceAnimation.stop();
+    };
   }, []);
 
   async function loadDraft() {
@@ -184,6 +276,20 @@ export default function ConfirmBookingScreen() {
         throw new Error("This booking draft has been cancelled.");
       }
 
+      const quoteExpiry = loadedDraft.quote_expires_at
+        ? new Date(loadedDraft.quote_expires_at).getTime()
+        : null;
+
+      if (
+        quoteExpiry &&
+        quoteExpiry <= Date.now() &&
+        !["confirmed", "completed"].includes(String(loadedDraft.status))
+      ) {
+        throw new Error(
+          "The accepted fare quote has expired. Return to the fare estimate and refresh your quote."
+        );
+      }
+
       if (
         !["quote_accepted", "confirmed", "completed"].includes(
           String(loadedDraft.status)
@@ -208,10 +314,423 @@ export default function ConfirmBookingScreen() {
     }
   }
 
-  async function confirmBooking() {
-    if (confirming || !draftId || !draft) return;
+
+  async function synchronizeStudentPoolBooking({
+    bookingId,
+    bookingNumber,
+  }: {
+    bookingId: string;
+    bookingNumber: string;
+  }) {
+    if (!draft) {
+      throw new Error("The Student Pool draft is unavailable.");
+    }
+
+    const isPool =
+      draft.ride_category === "student_pool" ||
+      normalizeBoolean(draft.student_pool_requested) ||
+      normalizeBoolean(draft.shared_ride);
+
+    if (!isPool) {
+      return {
+        success: true,
+        student_pool_id: null,
+        pool_member_id: null,
+        pool_status: null,
+        already_linked: false,
+      };
+    }
+
+    validateStudentPoolDraft(draft);
+
+    const poolMode = normalizePoolMode(draft);
+    const seatsRequested = Math.max(
+      1,
+      Number(
+        firstValue(
+          draft.seats_requested,
+          draft.passenger_count,
+          1
+        )
+      ) || 1
+    );
+    const expectedPoolSize = Math.max(
+      seatsRequested,
+      Number(
+        firstValue(
+          draft.expected_pool_size,
+          seatsRequested
+        )
+      ) || seatsRequested
+    );
+
+    /*
+      This RPC must be installed in Supabase before Student Pool confirmation
+      is tested. It is intentionally server-side so seat reservation, pool
+      capacity checks, membership creation, booking linkage, and idempotency
+      happen atomically.
+    */
+    const { data, error } = await supabase.rpc(
+      "sync_student_pool_booking_v1",
+      {
+        p_booking_id: bookingId,
+        p_draft_id: draftId,
+        p_access_token: accessToken || null,
+        p_request: {
+          source_platform:
+            draft.source_platform || "passenger_app",
+          booking_number: bookingNumber || null,
+          pool_mode: poolMode,
+          student_pool_id: draft.student_pool_id || null,
+          seats_requested: seatsRequested,
+          expected_pool_size: expectedPoolSize,
+          student_pool_route:
+            draft.student_pool_route || null,
+          pool_member_status:
+            draft.pool_member_status ||
+            (poolMode === "join"
+              ? "pending_approval"
+              : "creator_pending_review"),
+          pickup_address: draft.pickup_address,
+          pickup_city: draft.pickup_city,
+          pickup_state: draft.pickup_state,
+          pickup_postal_code:
+            draft.pickup_postal_code,
+          pickup_latitude:
+            draft.pickup_latitude,
+          pickup_longitude:
+            draft.pickup_longitude,
+          dropoff_address: draft.dropoff_address,
+          dropoff_city: draft.dropoff_city,
+          dropoff_state: draft.dropoff_state,
+          dropoff_postal_code:
+            draft.dropoff_postal_code,
+          dropoff_latitude:
+            draft.dropoff_latitude,
+          dropoff_longitude:
+            draft.dropoff_longitude,
+          scheduled_at: draft.scheduled_at,
+          return_scheduled_at:
+            draft.return_scheduled_at,
+          trip_type: draft.trip_type,
+          passenger_count:
+            draft.passenger_count,
+          luggage_count: draft.luggage_count,
+          quoted_fare: draft.quoted_fare,
+          quoted_driver_share:
+            draft.quoted_driver_share,
+          quoted_company_share:
+            draft.quoted_company_share,
+        },
+      }
+    );
+
+    if (error) throw error;
+
+    const result = data?.result || data || {};
+
+    if (!result?.success) {
+      throw new Error(
+        result?.message ||
+          "The Student Pool booking could not be synchronized."
+      );
+    }
+
+    return {
+      success: true,
+      student_pool_id:
+        result.student_pool_id ||
+        result.pool_id ||
+        draft.student_pool_id ||
+        null,
+      pool_member_id:
+        result.pool_member_id ||
+        result.member_id ||
+        null,
+      pool_status:
+        result.pool_status ||
+        result.status ||
+        (poolMode === "join"
+          ? "pending_approval"
+          : "pending_review"),
+      already_linked:
+        Boolean(result.already_linked),
+    };
+  }
+
+  async function sendBookingConfirmation({
+    bookingId,
+    bookingNumber,
+    invoiceNumber,
+    finalFare,
+    poolResult,
+  }: {
+    bookingId: string;
+    bookingNumber: string;
+    invoiceNumber: string;
+    finalFare: string;
+    poolResult: {
+      student_pool_id?: string | null;
+      pool_member_id?: string | null;
+      pool_status?: string | null;
+      already_linked?: boolean;
+    };
+  }) {
+    if (!draft) return;
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const passengerEmail = String(
+        firstValue(
+          draft.passenger_email,
+          draft.email,
+          user?.email,
+          ""
+        )
+      ).trim();
+
+      const passengerName = String(
+        firstValue(
+          draft.passenger_name,
+          draft.name,
+          passengerEmail,
+          "Angel Express Passenger"
+        )
+      ).trim();
+
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          booking_number: bookingNumber,
+          invoice_no: invoiceNumber,
+          invoice_number: invoiceNumber,
+
+          name: passengerName,
+          passenger_name: passengerName,
+          email: passengerEmail,
+          passenger_email: passengerEmail,
+          phone: firstValue(
+            draft.passenger_phone,
+            draft.phone,
+            ""
+          ),
+
+          pickup: draft.pickup_address,
+          pickup_address: draft.pickup_address,
+          dropoff: draft.dropoff_address,
+          dropoff_address: draft.dropoff_address,
+
+          pickup_lat: firstValue(
+            draft.pickup_latitude,
+            draft.pickup_lat
+          ),
+          pickup_lng: firstValue(
+            draft.pickup_longitude,
+            draft.pickup_lng
+          ),
+          dropoff_lat: firstValue(
+            draft.dropoff_latitude,
+            draft.dropoff_lat
+          ),
+          dropoff_lng: firstValue(
+            draft.dropoff_longitude,
+            draft.dropoff_lng
+          ),
+
+          scheduled_at: draft.scheduled_at,
+          return_scheduled_at:
+            draft.return_scheduled_at || null,
+          date: firstValue(
+            draft.ride_date,
+            draft.date,
+            draft.scheduled_at
+          ),
+          time: firstValue(
+            draft.ride_time,
+            draft.time,
+            draft.scheduled_at
+          ),
+
+          trip_type: draft.trip_type,
+          ride_category: draft.ride_category,
+          ride_category_label:
+            draft.ride_category_label || null,
+
+          passengers: Number(
+            firstValue(
+              draft.passenger_count,
+              draft.passengers,
+              1
+            )
+          ),
+          luggage_count: Number(
+            firstValue(draft.luggage_count, 0)
+          ),
+          notes: draft.notes || "",
+
+          promo_code:
+            draft.promotion_code ||
+            draft.promo_code ||
+            "",
+          referral_code:
+            draft.referral_code || "",
+          referral_discount: Number(
+            firstValue(draft.referral_discount, 0)
+          ),
+          referral_applied:
+            normalizeBoolean(draft.referral_applied),
+
+          student_verified:
+            normalizeBoolean(draft.student_verified),
+          student_discount: Number(
+            firstValue(
+              draft.student_discount,
+              draft.fare_breakdown?.student_discount,
+              0
+            )
+          ),
+          student_shared_ride: isStudentPool,
+          student_pool_requested: isStudentPool,
+          student_pool_id:
+            poolResult.student_pool_id || null,
+          pool_member_id:
+            poolResult.pool_member_id || null,
+          pool_status:
+            poolResult.pool_status || null,
+          seats_requested: Number(
+            firstValue(
+              draft.seats_requested,
+              draft.passenger_count,
+              1
+            )
+          ),
+          expected_pool_size: Number(
+            firstValue(
+              draft.expected_pool_size,
+              draft.seats_requested,
+              draft.passenger_count,
+              1
+            )
+          ),
+
+          miles: Number(
+            firstValue(
+              draft.route_distance_miles,
+              draft.distance_miles,
+              0
+            )
+          ),
+          duration_minutes: Number(
+            firstValue(
+              draft.route_duration_minutes,
+              draft.duration_minutes,
+              0
+            )
+          ),
+          pricing_version:
+            draft.pricing_version || "V2",
+          base: Number(
+            firstValue(
+              draft.quoted_subtotal,
+              draft.subtotal,
+              finalFare,
+              0
+            )
+          ),
+          discount: Number(
+            firstValue(
+              draft.quoted_discount,
+              draft.total_discount,
+              0
+            )
+          ),
+          total: Number(finalFare || 0),
+          total_fare: Number(finalFare || 0),
+          amount_paid: 0,
+          balance_due: Number(finalFare || 0),
+
+          source: "passenger_app",
+          source_platform: "passenger_app",
+
+          send_passenger_email: true,
+          send_owner_email: true,
+          create_calendar_event: true,
+          owner_email: "support@angelexpressus.com",
+        }),
+      });
+
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        throw new Error(
+          responseText ||
+            `Confirmation service returned ${response.status}.`
+        );
+      }
+
+      console.log(
+        "Passenger/owner email and calendar confirmation sent:",
+        responseText
+      );
+    } catch (deliveryError: any) {
+      /*
+       * The booking is already confirmed in Supabase. Email or calendar
+       * delivery must never create a duplicate booking or block the success
+       * screen. Log the failure for retry/support instead.
+       */
+      console.warn(
+        "Booking confirmed, but email/calendar delivery failed:",
+        deliveryError
+      );
+    }
+  }
+
+  async function confirmBooking() {
+    if (
+      confirming ||
+      confirmationLockRef.current ||
+      !draftId ||
+      !draft
+    ) {
+      return;
+    }
+
+    if (!termsAccepted) {
+      Alert.alert(
+        "Agreement Required",
+        "Please accept the Terms of Service and cancellation policy before confirming your booking."
+      );
+      return;
+    }
+
+    const quoteExpiry = draft.quote_expires_at
+      ? new Date(draft.quote_expires_at).getTime()
+      : null;
+
+    if (
+      quoteExpiry &&
+      quoteExpiry <= Date.now() &&
+      !["confirmed", "completed"].includes(String(draft.status))
+    ) {
+      Alert.alert(
+        "Quote Expired",
+        "Your accepted fare quote has expired. Return to the fare estimate and refresh it."
+      );
+      router.back();
+      return;
+    }
+
+    try {
+      validateStudentPoolDraft(draft);
+
+      confirmationLockRef.current = true;
       setConfirming(true);
 
       const { data, error } = await supabase.rpc(
@@ -235,6 +754,19 @@ export default function ConfirmBookingScreen() {
       const invoiceNumber = String(data.invoice_number || "");
       const finalFare = String(data.fare ?? draft.quoted_fare ?? "0");
 
+      const poolResult = await synchronizeStudentPoolBooking({
+        bookingId,
+        bookingNumber,
+      });
+
+      await sendBookingConfirmation({
+        bookingId,
+        bookingNumber,
+        invoiceNumber,
+        finalFare,
+        poolResult,
+      });
+
       router.replace({
         pathname: "/success" as any,
         params: {
@@ -247,6 +779,39 @@ export default function ConfirmBookingScreen() {
           finalFare,
           fare: finalFare,
           alreadyConfirmed: data.already_confirmed ? "true" : "false",
+
+          isStudentPool: isStudentPool ? "true" : "false",
+          student_pool_id:
+            poolResult.student_pool_id || "",
+          pool_member_id:
+            poolResult.pool_member_id || "",
+          pool_status:
+            poolResult.pool_status || "",
+          pool_already_linked:
+            poolResult.already_linked ? "true" : "false",
+          student_pool_mode:
+            isStudentPool
+              ? normalizePoolMode(draft)
+              : "",
+          seats_requested: isStudentPool
+            ? String(
+                firstValue(
+                  draft.seats_requested,
+                  draft.passenger_count,
+                  1
+                )
+              )
+            : "",
+          expected_pool_size: isStudentPool
+            ? String(
+                firstValue(
+                  draft.expected_pool_size,
+                  draft.seats_requested,
+                  draft.passenger_count,
+                  1
+                )
+              )
+            : "",
         },
       });
     } catch (error: any) {
@@ -255,7 +820,23 @@ export default function ConfirmBookingScreen() {
       const message =
         error?.message || "Angel Express could not confirm this booking.";
 
-      Alert.alert("Booking Error", message);
+      const isPoolSyncError =
+        isStudentPool &&
+        (
+          message.toLowerCase().includes("student pool") ||
+          message.toLowerCase().includes("sync_student_pool") ||
+          message.toLowerCase().includes("capacity") ||
+          message.toLowerCase().includes("seat")
+        );
+
+      Alert.alert(
+        isPoolSyncError
+          ? "Student Pool Confirmation Error"
+          : "Booking Error",
+        isPoolSyncError
+          ? `${message}\n\nYour booking may already have been created. Do not submit repeatedly. Check My Trips or contact Angel Express Support if the booking appears without a pool status.`
+          : message
+      );
 
       if (
         message.toLowerCase().includes("expired") ||
@@ -264,6 +845,7 @@ export default function ConfirmBookingScreen() {
         router.back();
       }
     } finally {
+      confirmationLockRef.current = false;
       setConfirming(false);
     }
   }
@@ -325,7 +907,38 @@ export default function ConfirmBookingScreen() {
 
   const isStudentPool =
     Boolean(draft?.student_pool_requested) ||
+    Boolean(draft?.shared_ride) ||
     draft?.ride_category === "student_pool";
+
+  const studentPoolMode = draft
+    ? normalizePoolMode(draft)
+    : "create";
+
+  const seatsRequested = Math.max(
+    1,
+    Number(
+      firstValue(
+        draft?.seats_requested,
+        draft?.passenger_count,
+        1
+      )
+    ) || 1
+  );
+
+  const expectedPoolSize = Math.max(
+    seatsRequested,
+    Number(
+      firstValue(
+        draft?.expected_pool_size,
+        seatsRequested
+      )
+    ) || seatsRequested
+  );
+
+  const farePerSeat =
+    isStudentPool && seatsRequested > 0
+      ? money(finalFare) / seatsRequested
+      : 0;
 
   const rewardPoints = Math.max(
     0,
@@ -416,17 +1029,24 @@ export default function ConfirmBookingScreen() {
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <CreditCard size={31} color={colors.navy} />
+                <CreditCard size={31} color={colors.onGold || colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
-                <Text style={styles.heroTitle}>Accepted Fare</Text>
+                <Text style={styles.heroTitle}>
+                  {isStudentPool
+                    ? "Accepted Student Pool Fare"
+                    : "Accepted Fare"}
+                </Text>
                 <Text style={styles.heroPrice}>
                   {formatMoney(finalFare)}
                 </Text>
                 <Text style={styles.heroText}>
                   {Number(draft.route_distance_miles || 0).toFixed(1)} miles •{" "}
                   {formatDuration(draft.route_duration_minutes)}
+                  {isStudentPool
+                    ? ` • ${seatsRequested} seat${seatsRequested === 1 ? "" : "s"}`
+                    : ""}
                 </Text>
               </View>
             </View>
@@ -450,8 +1070,14 @@ export default function ConfirmBookingScreen() {
               />
 
               <StatusPill
-                title="Shared Ride"
-                value={isStudentPool ? "Enabled" : "No"}
+                title={isStudentPool ? "Pool Action" : "Shared Ride"}
+                value={
+                  isStudentPool
+                    ? studentPoolMode === "join"
+                      ? "Join Pool"
+                      : "Create Pool"
+                    : "No"
+                }
                 styles={styles}
               />
             </View>
@@ -515,10 +1141,91 @@ export default function ConfirmBookingScreen() {
                 styles={styles}
               />
 
+              {draft.flight_number ? (
+                <Row
+                  label="Flight Number"
+                  value={String(draft.flight_number)}
+                  styles={styles}
+                />
+              ) : null}
+
+              {draft.airport_terminal ? (
+                <Row
+                  label="Terminal / Airline"
+                  value={String(draft.airport_terminal)}
+                  styles={styles}
+                />
+              ) : null}
+
               {draft.notes ? (
                 <Row label="Notes" value={draft.notes} styles={styles} />
               ) : null}
             </View>
+
+            {isStudentPool ? (
+              <View style={styles.poolCard}>
+                <View style={styles.cardHeader}>
+                  <Users size={22} color={colors.gold} />
+                  <Text style={styles.cardTitle}>
+                    Student Pool Details
+                  </Text>
+                </View>
+
+                <Row
+                  label="Pool Action"
+                  value={
+                    studentPoolMode === "join"
+                      ? "Join Existing Pool"
+                      : "Create New Pool"
+                  }
+                  styles={styles}
+                />
+
+                <Row
+                  label="Seats Reserved"
+                  value={String(seatsRequested)}
+                  styles={styles}
+                />
+
+                <Row
+                  label="Expected Pool Capacity"
+                  value={String(expectedPoolSize)}
+                  styles={styles}
+                />
+
+                <Row
+                  label="Fare Per Reserved Seat"
+                  value={formatMoney(farePerSeat)}
+                  styles={styles}
+                />
+
+                {draft.student_pool_id ? (
+                  <Row
+                    label="Pool Reference"
+                    value={String(draft.student_pool_id)}
+                    styles={styles}
+                  />
+                ) : null}
+
+                {draft.student_pool_route ? (
+                  <Row
+                    label="Pool Route"
+                    value={String(draft.student_pool_route)}
+                    styles={styles}
+                  />
+                ) : null}
+
+                <View style={styles.poolStatusBox}>
+                  <GraduationCap size={19} color="#22c55e" />
+
+                  <Text style={styles.poolStatusText}>
+                    {studentPoolMode === "join"
+                      ? "Your seats will be reserved in the selected pool after confirmation. Angel Express Operations will verify capacity and approve your membership."
+                      : "A pending Student Pool will be created after confirmation. Angel Express Operations will review and publish it before matching other verified students."}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -579,7 +1286,7 @@ export default function ConfirmBookingScreen() {
               {money(sharedRideDiscount) > 0 ? (
                 <DiscountRow
                   icon={<Users size={17} color="#22c55e" />}
-                  label="Shared Ride Discount"
+                  label="Student Pool Savings"
                   value={`-${formatMoney(sharedRideDiscount)}`}
                   styles={styles}
                 />
@@ -640,9 +1347,9 @@ export default function ConfirmBookingScreen() {
               </View>
 
               <Text style={styles.notice}>
-                By confirming, you are submitting this ride request to Angel
-                Express. The booking will appear in your trips and in the Owner
-                and Driver operations systems.
+                {isStudentPool
+                  ? "By confirming, Angel Express will create your individual booking and link it to the Student Pool system. The pool will appear in your trips and in Owner Operations. Drivers will only receive the grouped trip after owner approval and assignment."
+                  : "By confirming, you are submitting this ride request to Angel Express. The booking will appear in your trips and in the Owner and Driver operations systems."}
               </Text>
 
               <View style={styles.rewardBox}>
@@ -655,25 +1362,79 @@ export default function ConfirmBookingScreen() {
               </View>
             </View>
 
+            <View style={styles.agreementCard}>
+              <TouchableOpacity
+                style={styles.agreementRow}
+                onPress={() => setTermsAccepted((current) => !current)}
+                activeOpacity={0.85}
+                disabled={confirming}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    termsAccepted && styles.checkboxActive,
+                  ]}
+                >
+                  {termsAccepted ? (
+                    <BadgeCheck size={18} color={colors.onGold || colors.navy} />
+                  ) : null}
+                </View>
+
+                <Text style={styles.agreementText}>
+                  I agree to the Angel Express Terms of Service and understand
+                  that cancellation or no-show fees may apply after a driver is
+                  assigned or begins traveling to the pickup location.
+                  {isStudentPool
+                    ? " I also understand that Student Pool participation is subject to verification, seat availability, owner approval, and grouped-trip operating rules."
+                    : ""}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.policyLinks}>
+                <TouchableOpacity
+                  onPress={() => router.push("/terms" as any)}
+                  activeOpacity={0.8}
+                  disabled={confirming}
+                >
+                  <Text style={styles.policyLink}>Read Terms</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push("/privacy" as any)}
+                  activeOpacity={0.8}
+                  disabled={confirming}
+                >
+                  <Text style={styles.policyLink}>Privacy Policy</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.cancellationText}>
+                Cancellation notice: fees may apply for late cancellations,
+                passenger no-shows, or material trip changes after confirmation.
+              </Text>
+            </View>
+
             <TouchableOpacity
               style={[
                 styles.button,
-                confirming && styles.buttonDisabled,
+                (confirming || !termsAccepted) && styles.buttonDisabled,
               ]}
               onPress={confirmBooking}
-              disabled={confirming}
+              disabled={confirming || !termsAccepted}
               activeOpacity={0.88}
             >
               {confirming ? (
                 <View style={styles.buttonLoadingRow}>
-                  <ActivityIndicator color={colors.navy} />
+                  <ActivityIndicator color={colors.onGold || colors.navy} />
                   <Text style={styles.buttonText}>
                     Creating Booking
                   </Text>
                 </View>
               ) : (
                 <Text style={styles.buttonText}>
-                  Confirm Booking
+                  {isStudentPool
+                    ? "Confirm Student Pool Booking"
+                    : "Confirm Booking"}
                 </Text>
               )}
             </TouchableOpacity>
@@ -822,7 +1583,7 @@ function createStyles(c: any) {
       marginBottom: 12,
     },
     errorText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15,
       fontWeight: "700",
       textAlign: "center",
@@ -838,7 +1599,7 @@ function createStyles(c: any) {
       alignItems: "center",
     },
     retryButtonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 15,
       fontWeight: "900",
       textTransform: "uppercase",
@@ -903,7 +1664,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
@@ -932,19 +1693,19 @@ function createStyles(c: any) {
       flex: 1,
     },
     heroTitle: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 18,
       fontWeight: "900",
       marginBottom: 2,
     },
     heroPrice: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 42,
       fontWeight: "900",
       letterSpacing: -1,
     },
     heroText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 14,
       lineHeight: 20,
       fontWeight: "800",
@@ -960,7 +1721,7 @@ function createStyles(c: any) {
       flex: 1,
       backgroundColor: c.card,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       borderRadius: 17,
       padding: 12,
       alignItems: "center",
@@ -986,7 +1747,7 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
@@ -1007,7 +1768,7 @@ function createStyles(c: any) {
     row: {
       marginBottom: 14,
       borderBottomWidth: 1,
-      borderBottomColor: c.borderSoft,
+      borderBottomColor: c.borderSoft || c.lightBorder,
       paddingBottom: 11,
     },
     iconLabelRow: {
@@ -1027,6 +1788,34 @@ function createStyles(c: any) {
       fontSize: 15.5,
       lineHeight: 22,
       fontWeight: "800",
+    },
+
+    poolCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.38)",
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    poolStatusBox: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 9,
+      borderWidth: 1,
+      borderColor: "rgba(34,197,94,0.35)",
+      backgroundColor: "rgba(34,197,94,0.10)",
+      borderRadius: 16,
+      padding: 13,
+      marginTop: 4,
+    },
+    poolStatusText: {
+      color: "#22c55e",
+      fontSize: 13,
+      fontWeight: "900",
+      flex: 1,
+      lineHeight: 20,
     },
 
     discountRow: {
@@ -1097,13 +1886,13 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
     },
     notice: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15,
       lineHeight: 23,
       fontWeight: "700",
@@ -1127,6 +1916,66 @@ function createStyles(c: any) {
       lineHeight: 20,
     },
 
+    agreementCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft || c.lightBorder,
+      padding: 18,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    agreementRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 12,
+    },
+    checkbox: {
+      width: 26,
+      height: 26,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: c.gold,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 1,
+    },
+    checkboxActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    agreementText: {
+      flex: 1,
+      color: c.text,
+      fontSize: 14,
+      lineHeight: 21,
+      fontWeight: "800",
+    },
+    policyLinks: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 20,
+      marginTop: 14,
+      marginLeft: 38,
+    },
+    policyLink: {
+      color: c.gold,
+      fontSize: 13,
+      fontWeight: "900",
+      textDecorationLine: "underline",
+    },
+    cancellationText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 12.5,
+      lineHeight: 19,
+      fontWeight: "700",
+      marginTop: 14,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: c.borderSoft,
+    },
+
     button: {
       backgroundColor: c.gold,
       borderRadius: 16,
@@ -1137,7 +1986,7 @@ function createStyles(c: any) {
       ...v5Shadow(c),
     },
     buttonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 16,
       fontWeight: "900",
       textTransform: "uppercase",

@@ -5,6 +5,7 @@ import {
   Alert,
   Animated,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,8 +15,8 @@ import {
 } from "react-native";
 import {
   ArrowLeft,
+  BriefcaseBusiness,
   CalendarClock,
-  CarFront,
   CheckCircle2,
   Edit3,
   MapPin,
@@ -24,6 +25,8 @@ import {
   Route,
   ShieldCheck,
   Timer,
+  UserRound,
+  UsersRound,
   XCircle,
 } from "lucide-react-native";
 
@@ -34,45 +37,105 @@ const OPTIONS = [
   {
     title: "Cancel Ride",
     code: "cancel_ride",
-    subtitle: "Request cancellation review for this booking.",
+    subtitle:
+      "Request cancellation review. An assigned chauffeur is notified, but the ride remains active until Operations approves it.",
     icon: XCircle,
-    requiresDetails: true,
+    placeholder:
+      "Explain why you need to cancel. Include any timing or refund information Angel Express should review.",
   },
   {
     title: "Change Pickup Location",
     code: "change_pickup",
-    subtitle: "Update where your chauffeur should pick you up.",
+    subtitle:
+      "Submit a new pickup address for Operations review and fare recalculation.",
     icon: MapPin,
-    requiresDetails: true,
+    placeholder:
+      "Enter the complete new pickup address and any pickup instructions.",
   },
   {
     title: "Change Drop-off Location",
     code: "change_dropoff",
-    subtitle: "Update your destination before the ride starts.",
+    subtitle:
+      "Submit a new destination for Operations review and fare recalculation.",
     icon: Route,
-    requiresDetails: true,
+    placeholder:
+      "Enter the complete new drop-off address and any destination instructions.",
   },
   {
     title: "Change Date",
     code: "change_date",
-    subtitle: "Request a new ride date.",
+    subtitle:
+      "Request a different ride date. Availability and pricing may change.",
     icon: CalendarClock,
-    requiresDetails: true,
+    placeholder:
+      "Enter the requested date, including year, and explain any flexibility.",
   },
   {
     title: "Change Time",
     code: "change_time",
-    subtitle: "Request a new pickup time.",
+    subtitle:
+      "Request a different pickup time. Chauffeur availability may change.",
     icon: Timer,
-    requiresDetails: true,
+    placeholder:
+      "Enter the requested pickup time, time zone, and any acceptable time window.",
+  },
+  {
+    title: "Passenger Count",
+    code: "change_passenger_count",
+    subtitle:
+      "Update the number of passengers so the correct vehicle can be arranged.",
+    icon: UserRound,
+    placeholder:
+      "Enter the new passenger count, including children and any car-seat needs.",
+  },
+  {
+    title: "Luggage Update",
+    code: "change_luggage",
+    subtitle:
+      "Update luggage quantity or oversized-item information.",
+    icon: BriefcaseBusiness,
+    placeholder:
+      "List the number of bags and describe oversized items, mobility equipment, or special cargo.",
+  },
+  {
+    title: "Student Shared Ride",
+    code: "student_pool_change",
+    subtitle:
+      "Request to join, leave, or update your Student Shared Ride preferences.",
+    icon: UsersRound,
+    placeholder:
+      "State whether you want to join or leave the Student Shared Ride and include your flexibility or matching preferences.",
+  },
+  {
+    title: "Trip Notes",
+    code: "update_trip_notes",
+    subtitle:
+      "Add accessibility, pickup, passenger, or chauffeur instructions.",
+    icon: MessageSquareText,
+    placeholder:
+      "Enter the notes you want Operations and the assigned chauffeur to review.",
   },
   {
     title: "Other Request",
     code: "other_request",
-    subtitle: "Ask Angel Express operations for help.",
+    subtitle:
+      "Ask Angel Express Operations for help with another booking matter.",
     icon: MessageSquareText,
-    requiresDetails: true,
+    placeholder: "Describe the request and the result you need.",
   },
+];
+
+const LOCKED_STATUSES = [
+  "driver_en_route",
+  "en_route",
+  "driver_arrived",
+  "passenger_onboard",
+  "picked_up",
+  "in_progress",
+  "completed",
+  "payment_completed",
+  "cancelled",
+  "canceled",
 ];
 
 function firstValue(...values: any[]) {
@@ -125,9 +188,30 @@ function displayTripType(booking: any) {
   return titleCase(value) || "One Way";
 }
 
+function lifecycleMessage(status: string) {
+  const value = normalize(status);
+
+  if (["smart_queue", "student_pool_pending", "matching"].includes(value)) {
+    return "This Student Shared Ride is still matching. You may request changes, but they can affect pool eligibility and pricing.";
+  }
+
+  if (value === "unassigned") {
+    return "This booking remains active while Angel Express searches for a chauffeur. Changes and cancellation requests still require Operations approval.";
+  }
+
+  if (
+    ["driver_assigned", "assigned", "accepted", "driver_accepted"].includes(
+      value
+    )
+  ) {
+    return "A chauffeur is connected to this ride. New requests are sent to Operations and the chauffeur.";
+  }
+
+  return "This booking is eligible for a change request. Operations must approve the request before the ride is updated.";
+}
+
 export default function ManageBookingScreen() {
   const params = useLocalSearchParams();
-
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -137,17 +221,26 @@ export default function ManageBookingScreen() {
   );
   const routeBookingNumber = String(params.booking_number || "");
 
-  const [requestType, setRequestType] = useState("");
+  const [selectedCode, setSelectedCode] = useState("");
   const [details, setDetails] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingBooking, setLoadingBooking] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [booking, setBooking] = useState<any>(null);
+  const [openRequests, setOpenRequests] = useState<any[]>([]);
 
+  const mountedRef = useRef(true);
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
 
+  const selectedOption = OPTIONS.find(
+    (option) => option.code === selectedCode
+  );
+
   useEffect(() => {
-    Animated.loop(
+    mountedRef.current = true;
+
+    const backgroundAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(bgScale, {
           toValue: 1.04,
@@ -160,7 +253,9 @@ export default function ManageBookingScreen() {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+
+    backgroundAnimation.start();
 
     Animated.timing(pageFade, {
       toValue: 1,
@@ -168,12 +263,42 @@ export default function ManageBookingScreen() {
       useNativeDriver: true,
     }).start();
 
-    loadBooking();
-  }, []);
+    void loadPage();
 
-  async function loadBooking() {
+    const channel = supabase
+      .channel(`manage-booking-v6-${bookingId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `id=eq.${bookingId}`,
+        },
+        () => void loadPage(false)
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "booking_change_requests",
+          filter: `booking_id=eq.${bookingId}`,
+        },
+        () => void loadPage(false)
+      )
+      .subscribe();
+
+    return () => {
+      mountedRef.current = false;
+      backgroundAnimation.stop();
+      void supabase.removeChannel(channel);
+    };
+  }, [bookingId]);
+
+  async function loadPage(showLoader = true) {
     try {
-      setLoadingBooking(true);
+      if (showLoader) setLoadingBooking(true);
 
       if (!bookingId) {
         throw new Error("Missing booking ID.");
@@ -187,36 +312,57 @@ export default function ManageBookingScreen() {
       if (userError) throw userError;
       if (!user) throw new Error("Please sign in again.");
 
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("id", bookingId)
-        .maybeSingle();
+      const [bookingResult, requestsResult] = await Promise.all([
+        supabase
+          .from("bookings")
+          .select("*")
+          .eq("id", bookingId)
+          .maybeSingle(),
+        supabase
+          .from("booking_change_requests")
+          .select("*")
+          .eq("booking_id", bookingId)
+          .order("created_at", { ascending: false }),
+      ]);
 
-      if (error) throw error;
-      if (!data) throw new Error("Booking not found.");
+      if (bookingResult.error) throw bookingResult.error;
+      if (!bookingResult.data) throw new Error("Booking not found.");
 
+      const data = bookingResult.data;
       const bookingOwnerId = String(
-        firstValue(data.user_id, data.passenger_id, "")
+        firstValue(
+          data.user_id,
+          data.passenger_user_id,
+          data.passenger_id,
+          ""
+        )
       );
-
       const bookingEmail = normalize(
         firstValue(data.email, data.passenger_email, "")
       );
-
       const userEmail = normalize(user.email);
 
       const ownerMatches =
         !bookingOwnerId || bookingOwnerId === String(user.id);
-
-      const emailMatches =
-        !bookingEmail || bookingEmail === userEmail;
+      const emailMatches = !bookingEmail || bookingEmail === userEmail;
 
       if (!ownerMatches && !emailMatches) {
         throw new Error("You are not authorized to manage this booking.");
       }
 
-      setBooking(data);
+      if (mountedRef.current) {
+        setBooking(data);
+        setOpenRequests(
+          (requestsResult.data || []).filter((request) =>
+            [
+              "pending",
+              "pending review",
+              "under review",
+              "awaiting owner review",
+            ].includes(normalize(request.status))
+          )
+        );
+      }
     } catch (error: any) {
       Alert.alert(
         "Booking Error",
@@ -229,140 +375,179 @@ export default function ManageBookingScreen() {
         ]
       );
     } finally {
-      setLoadingBooking(false);
+      if (mountedRef.current) {
+        setLoadingBooking(false);
+        setRefreshing(false);
+      }
     }
+  }
+
+  async function refreshPage() {
+    setRefreshing(true);
+    await loadPage(false);
+  }
+
+  function chooseOption(code: string) {
+    const status = normalize(
+      firstValue(booking?.status, booking?.booking_status)
+    );
+
+    if (LOCKED_STATUSES.includes(status)) {
+      Alert.alert(
+        "Booking Changes Locked",
+        "This ride is already active, completed, or cancelled. Contact Angel Express Support for immediate assistance."
+      );
+      return;
+    }
+
+    setSelectedCode(code);
+    setDetails("");
+  }
+
+  function confirmSubmit() {
+    if (!selectedOption) {
+      Alert.alert(
+        "Select Request Type",
+        "Please choose what you want to change."
+      );
+      return;
+    }
+
+    if (!details.trim()) {
+      Alert.alert(
+        "Add Request Details",
+        "Please provide the new information or reason for this request."
+      );
+      return;
+    }
+
+    const duplicate = openRequests.some(
+      (request) =>
+        normalize(request.request_code) === normalize(selectedOption.code) ||
+        normalize(request.request_type) === normalize(selectedOption.title)
+    );
+
+    if (duplicate) {
+      Alert.alert(
+        "Request Already Pending",
+        "A request of this type is already waiting for Operations review."
+      );
+      return;
+    }
+
+    const isCancel = selectedOption.code === "cancel_ride";
+    const assignedDriverId = firstValue(
+      booking?.driver_id,
+      booking?.assigned_driver_id
+    );
+
+    Alert.alert(
+      isCancel ? "Submit Cancellation Request?" : "Submit Change Request?",
+      isCancel
+        ? assignedDriverId
+          ? "Operations and your assigned chauffeur will be notified. The ride is not cancelled until Operations approves the request."
+          : "Operations will be notified. The ride is not cancelled until Operations approves the request."
+        : assignedDriverId
+        ? "Operations and your assigned chauffeur will receive this request. Your booking stays unchanged until approval."
+        : "Operations will receive this request. Your booking stays unchanged until approval.",
+      [
+        { text: "Go Back", style: "cancel" },
+        {
+          text: isCancel ? "Request Cancellation" : "Submit Request",
+          style: isCancel ? "destructive" : "default",
+          onPress: () => void submitRequest(),
+        },
+      ]
+    );
   }
 
   async function submitRequest() {
     try {
-      if (!booking) {
-        Alert.alert("Booking Missing", "This booking could not be loaded.");
-        return;
-      }
-
-      if (!requestType) {
-        Alert.alert(
-          "Select Request Type",
-          "Please choose what you want to change."
-        );
-        return;
-      }
-
-      const selectedOption = OPTIONS.find(
-        (option) => option.title === requestType
-      );
-
-      if (selectedOption?.requiresDetails && !details.trim()) {
-        Alert.alert(
-          "Add Request Details",
-          "Please provide the new information or reason for this request."
-        );
-        return;
-      }
-
-      const status = normalize(booking.status);
-      const paymentStatus = normalize(booking.payment_status);
-
-      if (["cancelled", "canceled"].includes(status)) {
-        Alert.alert(
-          "Booking Already Cancelled",
-          "This booking has already been cancelled."
-        );
-        return;
-      }
-
-      if (status === "completed") {
-        Alert.alert(
-          "Ride Already Completed",
-          "Completed rides can no longer be changed. Please use support for payment or receipt assistance."
-        );
-        return;
-      }
-
-      if (status === "in_progress") {
-        Alert.alert(
-          "Ride In Progress",
-          "This ride has already started. Contact your chauffeur or Angel Express support for immediate assistance."
-        );
-        return;
-      }
-
-      if (selectedOption?.code === "cancel_ride" && paymentStatus === "paid") {
-        Alert.alert(
-          "Paid Booking",
-          "This paid booking requires manual cancellation and refund review by Angel Express operations."
-        );
-      }
+      if (!booking || !selectedOption) return;
 
       setSaving(true);
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError) throw userError;
-      if (!user) throw new Error("Please sign in again.");
-
-      const bookingNumber = String(
-        firstValue(
-          booking.booking_number,
-          booking.booking_no,
-          routeBookingNumber,
-          booking.id
-        )
-      );
-
-      const invoiceNumber = String(
-        firstValue(
-          booking.invoice_number,
-          booking.invoice_no,
-          routeInvoiceNumber,
-          ""
-        )
-      );
-
-      /*
-       * Keep this insert limited to the columns that already exist in the
-       * current booking_change_requests table. Extra booking context can be
-       * retrieved by the Owner App through booking_id.
-       */
       const payload = {
-        booking_id: bookingId,
-        invoice_no: invoiceNumber || null,
-        user_id: user.id,
-        passenger_email: user.email || null,
-        request_type: requestType,
-        request_details: details.trim(),
-        status: "Pending Review",
+        previous_status: firstValue(
+          booking.status,
+          booking.booking_status,
+          "pending"
+        ),
+        previous_pickup: firstValue(
+          booking.pickup_address,
+          booking.pickup,
+          booking.pickup_location
+        ),
+        previous_dropoff: firstValue(
+          booking.dropoff_address,
+          booking.dropoff,
+          booking.dropoff_location,
+          booking.destination
+        ),
+        previous_date: firstValue(
+          booking.ride_date,
+          booking.date,
+          booking.pickup_date
+        ),
+        previous_time: firstValue(
+          booking.ride_time,
+          booking.time,
+          booking.pickup_time
+        ),
+        passenger_count: firstValue(
+          booking.passenger_count,
+          booking.number_of_passengers
+        ),
+        luggage_count: firstValue(
+          booking.luggage_count,
+          booking.number_of_bags
+        ),
+        ride_category: firstValue(
+          booking.ride_category,
+          booking.ride_category_label
+        ),
       };
 
-      const { error } = await supabase
-        .from("booking_change_requests")
-        .insert(payload);
+      const { data, error } = await supabase.rpc(
+        "ae_submit_booking_change_request",
+        {
+          p_booking_id: bookingId,
+          p_request_code: selectedOption.code,
+          p_request_title: selectedOption.title,
+          p_request_details: details.trim(),
+          p_request_payload: payload,
+        }
+      );
 
       if (error) throw error;
 
+      const response =
+        data && typeof data === "object" ? data : {};
+
+      setDetails("");
+      setSelectedCode("");
+      await loadPage(false);
+
       Alert.alert(
         "Request Submitted",
-        "Angel Express has received your request and will review it shortly.",
+        response.driver_notified
+          ? "Angel Express Operations and your assigned chauffeur were notified. Your booking remains unchanged until Operations approves the request."
+          : "Angel Express Operations was notified. Your booking remains unchanged until Operations approves the request.",
         [
           {
             text: "View My Trips",
             onPress: () => router.replace("/my-trips" as any),
           },
+          { text: "Stay Here" },
         ]
       );
-
-      setDetails("");
-      setRequestType("");
     } catch (error: any) {
       Alert.alert(
         "Request Error",
         error.message || "Could not submit request."
       );
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   }
 
@@ -409,13 +594,18 @@ export default function ManageBookingScreen() {
     )
   );
 
+  const scheduledValue = firstValue(
+    booking?.scheduled_pickup_at,
+    booking?.scheduled_at
+  );
+
   const rideDate = String(
     firstValue(
       booking?.ride_date,
       booking?.date,
       booking?.pickup_date,
-      booking?.scheduled_at
-        ? new Date(booking.scheduled_at).toLocaleDateString()
+      scheduledValue
+        ? new Date(scheduledValue).toLocaleDateString()
         : "",
       "Not available"
     )
@@ -426,8 +616,8 @@ export default function ManageBookingScreen() {
       booking?.ride_time,
       booking?.time,
       booking?.pickup_time,
-      booking?.scheduled_at
-        ? new Date(booking.scheduled_at).toLocaleTimeString([], {
+      scheduledValue
+        ? new Date(scheduledValue).toLocaleTimeString([], {
             hour: "numeric",
             minute: "2-digit",
           })
@@ -435,6 +625,11 @@ export default function ManageBookingScreen() {
       "Not available"
     )
   );
+
+  const status = normalize(
+    firstValue(booking?.status, booking?.booking_status, "pending")
+  );
+  const changesLocked = LOCKED_STATUSES.includes(status);
 
   if (loadingBooking) {
     return (
@@ -481,6 +676,13 @@ export default function ManageBookingScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refreshPage}
+              tintColor={colors.gold}
+            />
+          }
         >
           <View style={styles.topRow}>
             <TouchableOpacity
@@ -511,17 +713,18 @@ export default function ManageBookingScreen() {
             <Text style={styles.title}>Manage Booking</Text>
 
             <Text style={styles.subtitle}>
-              Submit a change or cancellation request. Angel Express operations
-              will review it before your ride is updated.
+              Submit changes safely without silently altering an active ride.
+              Operations reviews every request and assigned chauffeurs receive
+              relevant updates.
             </Text>
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Edit3 size={31} color={colors.navy} />
+                <Edit3 size={31} color={colors.onGold || colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
-                <Text style={styles.heroTitle}>Booking Change Request</Text>
+                <Text style={styles.heroTitle}>Booking Change Center</Text>
                 <Text style={styles.heroText}>
                   Booking {bookingNumber}
                 </Text>
@@ -531,79 +734,101 @@ export default function ManageBookingScreen() {
               </View>
             </View>
 
+            <View
+              style={[
+                styles.lifecycleCard,
+                status === "unassigned" && styles.unassignedCard,
+              ]}
+            >
+              <ShieldCheck size={21} color={colors.gold} />
+              <View style={styles.lifecycleCopy}>
+                <Text style={styles.lifecycleTitle}>
+                  {titleCase(status)}
+                </Text>
+                <Text style={styles.lifecycleText}>
+                  {lifecycleMessage(status)}
+                </Text>
+              </View>
+            </View>
+
+            {changesLocked ? (
+              <View style={styles.lockedCard}>
+                <XCircle size={21} color={colors.danger} />
+                <View style={styles.lifecycleCopy}>
+                  <Text style={styles.lockedTitle}>
+                    Online Changes Locked
+                  </Text>
+                  <Text style={styles.lockedText}>
+                    This ride is active, completed, or cancelled. Use Passenger
+                    Support for immediate assistance.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {openRequests.length > 0 ? (
+              <View style={styles.pendingRequestCard}>
+                <CheckCircle2 size={21} color={colors.warning} />
+                <View style={styles.lifecycleCopy}>
+                  <Text style={styles.pendingRequestTitle}>
+                    {openRequests.length} Request
+                    {openRequests.length === 1 ? "" : "s"} Awaiting Review
+                  </Text>
+                  <Text style={styles.pendingRequestText}>
+                    Realtime status updates will appear here after Operations
+                    reviews your request.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.summaryCard}>
               <View style={styles.cardHeader}>
                 <ReceiptText size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>Booking Summary</Text>
               </View>
 
-              <SummaryRow
-                label="Booking Number"
-                value={bookingNumber}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Invoice Number"
-                value={invoiceNumber}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Status"
-                value={titleCase(booking.status || "pending")}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Ride Category"
-                value={displayRideCategory(booking)}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Trip Type"
-                value={displayTripType(booking)}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Pickup"
-                value={pickup}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Drop-off"
-                value={dropoff}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Date"
-                value={rideDate}
-                styles={styles}
-              />
-              <SummaryRow
-                label="Time"
-                value={rideTime}
-                styles={styles}
-              />
+              <SummaryRow label="Booking Number" value={bookingNumber} styles={styles} />
+              <SummaryRow label="Invoice Number" value={invoiceNumber} styles={styles} />
+              <SummaryRow label="Status" value={titleCase(status)} styles={styles} />
+              <SummaryRow label="Ride Category" value={displayRideCategory(booking)} styles={styles} />
+              <SummaryRow label="Trip Type" value={displayTripType(booking)} styles={styles} />
+              <SummaryRow label="Pickup" value={pickup} styles={styles} />
+              <SummaryRow label="Drop-off" value={dropoff} styles={styles} />
+              <SummaryRow label="Date" value={rideDate} styles={styles} />
+              <SummaryRow label="Time" value={rideTime} styles={styles} />
             </View>
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <ShieldCheck size={22} color={colors.gold} />
                 <Text style={styles.cardTitle}>
-                  What do you need help with?
+                  What do you need to change?
                 </Text>
               </View>
 
               {OPTIONS.map((option) => {
                 const Icon = option.icon;
-                const selected = requestType === option.title;
+                const selected = selectedCode === option.code;
+                const duplicatePending = openRequests.some(
+                  (request) =>
+                    normalize(request.request_code) ===
+                      normalize(option.code) ||
+                    normalize(request.request_type) ===
+                      normalize(option.title)
+                );
 
                 return (
                   <TouchableOpacity
-                    key={option.title}
+                    key={option.code}
                     style={[
                       styles.option,
                       selected && styles.selectedOption,
+                      (changesLocked || duplicatePending) &&
+                        styles.disabledOption,
                     ]}
-                    onPress={() => setRequestType(option.title)}
+                    onPress={() => chooseOption(option.code)}
+                    disabled={changesLocked || duplicatePending}
                     activeOpacity={0.86}
                   >
                     <View
@@ -614,7 +839,11 @@ export default function ManageBookingScreen() {
                     >
                       <Icon
                         size={20}
-                        color={selected ? colors.navy : colors.gold}
+                        color={
+                          selected
+                            ? colors.onGold || colors.navy
+                            : colors.gold
+                        }
                       />
                     </View>
 
@@ -634,7 +863,9 @@ export default function ManageBookingScreen() {
                           selected && styles.optionSubtitleActive,
                         ]}
                       >
-                        {option.subtitle}
+                        {duplicatePending
+                          ? "A request of this type is already awaiting review."
+                          : option.subtitle}
                       </Text>
                     </View>
 
@@ -658,18 +889,26 @@ export default function ManageBookingScreen() {
               </View>
 
               <Text style={styles.helperText}>
-                Add the new address, new date/time, cancellation reason,
-                flight update, or any details Angel Express should review.
+                {selectedOption
+                  ? selectedOption.placeholder
+                  : "Select a request above, then provide the complete new information or reason."}
               </Text>
 
               <TextInput
-                style={styles.input}
-                placeholder="Describe your requested change..."
+                style={[
+                  styles.input,
+                  changesLocked && styles.disabledInput,
+                ]}
+                placeholder={
+                  selectedOption?.placeholder ||
+                  "Describe your requested change..."
+                }
                 placeholderTextColor={colors.placeholder}
                 multiline
                 value={details}
                 onChangeText={setDetails}
                 maxLength={1500}
+                editable={!changesLocked}
               />
 
               <Text style={styles.characterCount}>
@@ -680,30 +919,34 @@ export default function ManageBookingScreen() {
             <View style={styles.noticeCard}>
               <View style={styles.noticeHeader}>
                 <ShieldCheck size={20} color={colors.gold} />
-                <Text style={styles.noticeTitle}>Important</Text>
+                <Text style={styles.noticeTitle}>
+                  Approval and Fare Protection
+                </Text>
               </View>
 
               <Text style={styles.noticeText}>
-                This request does not automatically change your booking.
-                Pricing-related changes may require a new fare quote before
-                approval. Angel Express will contact you if confirmation or
-                payment adjustment is needed.
+                Route, schedule, passenger, luggage, and Student Shared Ride
+                changes may produce a new fare quote. Cancellation requests do
+                not immediately cancel the booking. Paid bookings require
+                refund review. The owner must approve the request before any
+                operational booking data changes.
               </Text>
             </View>
 
             <TouchableOpacity
               style={[
                 styles.submitButton,
-                saving && styles.buttonDisabled,
+                (saving || changesLocked || !selectedOption) &&
+                  styles.buttonDisabled,
               ]}
-              onPress={submitRequest}
-              disabled={saving}
+              onPress={confirmSubmit}
+              disabled={saving || changesLocked || !selectedOption}
             >
               {saving ? (
-                <ActivityIndicator color={colors.navy} />
+                <ActivityIndicator color={colors.onGold || colors.navy} />
               ) : (
                 <Text style={styles.submitButtonText}>
-                  Submit Request
+                  Submit for Owner Approval
                 </Text>
               )}
             </TouchableOpacity>
@@ -712,9 +955,7 @@ export default function ManageBookingScreen() {
               style={styles.backTripsButton}
               onPress={() => router.replace("/my-trips" as any)}
             >
-              <Text style={styles.backTripsText}>
-                Back to My Trips
-              </Text>
+              <Text style={styles.backTripsText}>Back to My Trips</Text>
             </TouchableOpacity>
           </Animated.View>
         </ScrollView>
@@ -765,7 +1006,6 @@ function createStyles(c: any) {
       paddingTop: 58,
       paddingBottom: 54,
     },
-
     center: {
       flex: 1,
       backgroundColor: c.bg,
@@ -787,7 +1027,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     errorText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15,
       lineHeight: 22,
       fontWeight: "700",
@@ -801,12 +1041,11 @@ function createStyles(c: any) {
       paddingHorizontal: 24,
     },
     errorButtonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 15,
       fontWeight: "900",
       textTransform: "uppercase",
     },
-
     topRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -842,7 +1081,6 @@ function createStyles(c: any) {
       fontSize: 12,
       fontWeight: "900",
     },
-
     kicker: {
       color: c.gold,
       fontSize: 12,
@@ -857,13 +1095,12 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
       fontWeight: "700",
     },
-
     heroCard: {
       backgroundColor: c.gold,
       borderRadius: 24,
@@ -886,24 +1123,105 @@ function createStyles(c: any) {
       flex: 1,
     },
     heroTitle: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 20,
       fontWeight: "900",
       marginBottom: 4,
     },
     heroText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 14,
       lineHeight: 20,
       fontWeight: "800",
-      opacity: 0.82,
+      opacity: 0.84,
     },
-
+    lifecycleCard: {
+      backgroundColor: c.card,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: c.border,
+      padding: 16,
+      marginBottom: 16,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 11,
+    },
+    unassignedCard: {
+      borderColor: "rgba(249,115,22,0.55)",
+      backgroundColor:
+        c.mode === "dark"
+          ? "rgba(249,115,22,0.12)"
+          : "rgba(249,115,22,0.08)",
+    },
+    lifecycleCopy: {
+      flex: 1,
+    },
+    lifecycleTitle: {
+      color: c.gold,
+      fontWeight: "900",
+      fontSize: 16,
+      marginBottom: 4,
+    },
+    lifecycleText: {
+      color: c.text2 || c.textSecondary,
+      fontWeight: "700",
+      lineHeight: 20,
+    },
+    lockedCard: {
+      backgroundColor:
+        c.mode === "dark"
+          ? "rgba(239,68,68,0.12)"
+          : "rgba(239,68,68,0.08)",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "rgba(239,68,68,0.46)",
+      padding: 16,
+      marginBottom: 16,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 11,
+    },
+    lockedTitle: {
+      color: c.danger,
+      fontWeight: "900",
+      fontSize: 16,
+      marginBottom: 4,
+    },
+    lockedText: {
+      color: c.text2 || c.textSecondary,
+      fontWeight: "700",
+      lineHeight: 20,
+    },
+    pendingRequestCard: {
+      backgroundColor:
+        c.mode === "dark"
+          ? "rgba(245,158,11,0.11)"
+          : "rgba(245,158,11,0.07)",
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: "rgba(245,158,11,0.42)",
+      padding: 16,
+      marginBottom: 16,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 11,
+    },
+    pendingRequestTitle: {
+      color: c.warning,
+      fontWeight: "900",
+      fontSize: 16,
+      marginBottom: 4,
+    },
+    pendingRequestText: {
+      color: c.text2 || c.textSecondary,
+      fontWeight: "700",
+      lineHeight: 20,
+    },
     card: {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
@@ -912,7 +1230,7 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 22,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       padding: 20,
       marginBottom: 18,
       ...v5Shadow(c),
@@ -929,11 +1247,10 @@ function createStyles(c: any) {
       fontWeight: "900",
       flex: 1,
     },
-
     summaryRow: {
       marginBottom: 13,
       borderBottomWidth: 1,
-      borderBottomColor: c.borderSoft,
+      borderBottomColor: c.borderSoft || c.lightBorder,
       paddingBottom: 10,
     },
     summaryLabel: {
@@ -949,12 +1266,11 @@ function createStyles(c: any) {
       lineHeight: 22,
       fontWeight: "800",
     },
-
     option: {
-      minHeight: 78,
+      minHeight: 86,
       backgroundColor: c.card2,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       borderRadius: 18,
       padding: 14,
       marginBottom: 12,
@@ -965,6 +1281,9 @@ function createStyles(c: any) {
     selectedOption: {
       backgroundColor: c.gold,
       borderColor: c.gold,
+    },
+    disabledOption: {
+      opacity: 0.52,
     },
     optionIcon: {
       width: 44,
@@ -990,17 +1309,17 @@ function createStyles(c: any) {
       marginBottom: 4,
     },
     optionTitleActive: {
-      color: c.navy,
+      color: c.onGold || c.navy,
     },
     optionSubtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 13,
       lineHeight: 19,
       fontWeight: "700",
     },
     optionSubtitleActive: {
-      color: c.navy,
-      opacity: 0.78,
+      color: c.onGold || c.navy,
+      opacity: 0.82,
     },
     optionArrow: {
       color: c.gold,
@@ -1009,11 +1328,10 @@ function createStyles(c: any) {
       marginTop: -2,
     },
     optionArrowActive: {
-      color: c.navy,
+      color: c.onGold || c.navy,
     },
-
     helperText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 14.5,
       lineHeight: 22,
       marginBottom: 14,
@@ -1021,15 +1339,18 @@ function createStyles(c: any) {
     },
     input: {
       backgroundColor: c.input,
-      color: c.inputText,
+      color: c.text,
       borderRadius: 16,
       padding: 16,
-      minHeight: 128,
+      minHeight: 138,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       textAlignVertical: "top",
       fontSize: 16,
       fontWeight: "700",
+    },
+    disabledInput: {
+      opacity: 0.55,
     },
     characterCount: {
       color: c.muted,
@@ -1038,7 +1359,6 @@ function createStyles(c: any) {
       textAlign: "right",
       marginTop: 8,
     },
-
     noticeCard: {
       backgroundColor: c.card,
       borderRadius: 22,
@@ -1060,12 +1380,11 @@ function createStyles(c: any) {
       fontWeight: "900",
     },
     noticeText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 14.5,
       lineHeight: 22,
       fontWeight: "700",
     },
-
     submitButton: {
       backgroundColor: c.gold,
       borderRadius: 16,
@@ -1076,13 +1395,13 @@ function createStyles(c: any) {
       ...v5Shadow(c),
     },
     submitButtonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 16,
       fontWeight: "900",
       textTransform: "uppercase",
     },
     buttonDisabled: {
-      opacity: 0.65,
+      opacity: 0.54,
     },
     backTripsButton: {
       borderWidth: 1,

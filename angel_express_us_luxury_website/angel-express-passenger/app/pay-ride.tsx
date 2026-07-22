@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,6 +18,7 @@ import {
   BadgeCheck,
   CreditCard,
   DollarSign,
+  HeartHandshake,
   LockKeyhole,
   ReceiptText,
   ShieldCheck,
@@ -53,7 +55,8 @@ export default function PayRideScreen() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [booking, setBooking] = useState<any>(null);
-  const [clientSecret, setClientSecret] = useState("");
+  const [tipPreset, setTipPreset] = useState<number | "custom">(0);
+  const [customTipText, setCustomTipText] = useState("");
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
@@ -169,37 +172,6 @@ export default function PayRideScreen() {
       }
 
       setBooking(data);
-
-      const res = await fetch(
-        `${PAYMENT_WORKER_URL}/create-ride-payment-intent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            booking_id: bookingId,
-          }),
-        }
-      );
-
-      const paymentData = await res.json();
-
-      if (!res.ok || !paymentData.client_secret) {
-        throw new Error(
-          paymentData.error || "Could not start secure payment."
-        );
-      }
-
-      setClientSecret(paymentData.client_secret);
-
-      const { error: sheetError } = await initPaymentSheet({
-        merchantDisplayName: "Angel Express Mobility",
-        paymentIntentClientSecret: paymentData.client_secret,
-        allowsDelayedPaymentMethods: false,
-      });
-
-      if (sheetError) throw sheetError;
     } catch (error: any) {
       Alert.alert(
         "Payment Error",
@@ -211,15 +183,72 @@ export default function PayRideScreen() {
   }
 
   async function payRide() {
-    if (!clientSecret || paying || !booking) return;
+    if (paying || !booking) return;
 
     try {
       setPaying(true);
 
+      const rideBalance = numberValue(
+        booking.balance_due,
+        booking.total_fare,
+        booking.final_fare,
+        booking.total,
+        booking.amount,
+        0
+      );
+
+      const tipAmount = selectedTipAmount;
+      const paymentTotal = rideBalance + tipAmount;
+
+      const res = await fetch(
+        `${PAYMENT_WORKER_URL}/create-ride-payment-intent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            booking_id: bookingId,
+            tip_amount: Number(tipAmount.toFixed(2)),
+            ride_amount: Number(rideBalance.toFixed(2)),
+            total_amount: Number(paymentTotal.toFixed(2)),
+          }),
+        }
+      );
+
+      const paymentData = await res.json();
+
+      if (!res.ok || !paymentData.client_secret) {
+        throw new Error(
+          paymentData.error ||
+            "Could not start secure payment."
+        );
+      }
+
+      const { error: sheetError } = await initPaymentSheet({
+        merchantDisplayName: "Angel Express Mobility",
+        paymentIntentClientSecret: paymentData.client_secret,
+        allowsDelayedPaymentMethods: false,
+        defaultBillingDetails: {
+          name:
+            booking.passenger_name ||
+            booking.name ||
+            undefined,
+          email:
+            booking.email ||
+            booking.passenger_email ||
+            undefined,
+        },
+      });
+
+      if (sheetError) throw sheetError;
+
       const { error } = await presentPaymentSheet();
 
       if (error) {
-        Alert.alert("Payment Cancelled", error.message);
+        if (error.code !== "Canceled") {
+          Alert.alert("Payment Cancelled", error.message);
+        }
         return;
       }
 
@@ -227,10 +256,17 @@ export default function PayRideScreen() {
        * Temporary client-side compatibility update.
        *
        * Production recommendation:
-       * Stripe webhook -> secure backend -> bookings.payment_status = paid.
+       * Stripe webhook -> secure backend -> bookings payment fields.
        *
-       * Keep this until the payment worker webhook is connected.
+       * The driver receives 100% of the tip. The original company
+       * share remains unchanged.
        */
+      const originalDriverShare = numberValue(
+        booking.driver_share,
+        booking.driver_payout,
+        rideBalance * 0.7
+      );
+
       const { error: updateError } = await supabase
         .from("bookings")
         .update({
@@ -239,6 +275,14 @@ export default function PayRideScreen() {
           invoice_status: "Paid",
           paid_at: new Date().toISOString(),
           balance_due: 0,
+
+          tip_amount: Number(tipAmount.toFixed(2)),
+          driver_tip: Number(tipAmount.toFixed(2)),
+          total_paid: Number(paymentTotal.toFixed(2)),
+          driver_payout_total: Number(
+            (originalDriverShare + tipAmount).toFixed(2)
+          ),
+
           updated_at: new Date().toISOString(),
         })
         .eq("id", bookingId)
@@ -248,11 +292,16 @@ export default function PayRideScreen() {
 
       Alert.alert(
         "Payment Successful",
-        "Your ride payment has been completed successfully.",
+        tipAmount > 0
+          ? `Your ride payment was completed successfully. Your $${tipAmount.toFixed(
+              2
+            )} tip will go directly to your driver.`
+          : "Your ride payment has been completed successfully.",
         [
           {
             text: "View My Trips",
-            onPress: () => router.replace("/my-trips" as any),
+            onPress: () =>
+              router.replace("/my-trips" as any),
           },
         ]
       );
@@ -303,6 +352,23 @@ export default function PayRideScreen() {
     0
   );
 
+  const selectedTipAmount = useMemo(() => {
+    if (tipPreset === "custom") {
+      const cleaned = customTipText.replace(/[^0-9.]/g, "");
+      const parsed = Number(cleaned || 0);
+
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return 0;
+      }
+
+      return Math.min(parsed, 500);
+    }
+
+    return totalFare * tipPreset;
+  }, [tipPreset, customTipText, totalFare]);
+
+  const paymentTotal = totalFare + selectedTipAmount;
+
   const driverShare = numberValue(
     booking?.driver_share,
     booking?.driver_payout,
@@ -314,6 +380,8 @@ export default function PayRideScreen() {
     totalFare - driverShare,
     totalFare * 0.3
   );
+
+  const driverReceives = driverShare + selectedTipAmount;
 
   const bookingNumber = String(
     firstValue(
@@ -415,8 +483,8 @@ export default function PayRideScreen() {
             <Text style={styles.title}>Pay Ride</Text>
 
             <Text style={styles.subtitle}>
-              Your ride has been completed. Review the stored booking balance
-              and complete secure payment through Stripe.
+              Your ride has been completed. Review the fare, add an optional
+              driver tip, and complete secure payment through Stripe.
             </Text>
 
             <View style={styles.heroCard}>
@@ -427,10 +495,10 @@ export default function PayRideScreen() {
               <View style={styles.heroCopy}>
                 <Text style={styles.heroTitle}>Balance Due</Text>
                 <Text style={styles.heroPrice}>
-                  ${totalFare.toFixed(2)}
+                  ${paymentTotal.toFixed(2)}
                 </Text>
                 <Text style={styles.heroText}>
-                  Secure payment powered by Stripe.
+                  Ride fare plus your selected driver tip.
                 </Text>
               </View>
             </View>
@@ -531,6 +599,140 @@ export default function PayRideScreen() {
               />
             </View>
 
+
+            <View style={styles.tipCard}>
+              <View style={styles.cardHeader}>
+                <HeartHandshake size={22} color={colors.gold} />
+                <Text style={styles.cardTitle}>
+                  Tip Your Driver
+                </Text>
+              </View>
+
+              <Text style={styles.tipIntro}>
+                Tips are optional. Angel Express sends 100% of your tip
+                directly to the driver.
+              </Text>
+
+              <View style={styles.tipOptions}>
+                {[
+                  { label: "No Tip", value: 0 },
+                  { label: "10%", value: 0.1 },
+                  { label: "15%", value: 0.15 },
+                  { label: "20%", value: 0.2 },
+                ].map((option) => {
+                  const active = tipPreset === option.value;
+
+                  return (
+                    <TouchableOpacity
+                      key={option.label}
+                      style={[
+                        styles.tipOption,
+                        active && styles.tipOptionActive,
+                      ]}
+                      onPress={() => {
+                        setTipPreset(option.value);
+                        setCustomTipText("");
+                      }}
+                      activeOpacity={0.86}
+                    >
+                      <Text
+                        style={[
+                          styles.tipOptionLabel,
+                          active && styles.tipOptionLabelActive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+
+                      {option.value > 0 ? (
+                        <Text
+                          style={[
+                            styles.tipOptionAmount,
+                            active && styles.tipOptionAmountActive,
+                          ]}
+                        >
+                          ${(totalFare * option.value).toFixed(2)}
+                        </Text>
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+
+                <TouchableOpacity
+                  style={[
+                    styles.tipOption,
+                    tipPreset === "custom" &&
+                      styles.tipOptionActive,
+                  ]}
+                  onPress={() => setTipPreset("custom")}
+                  activeOpacity={0.86}
+                >
+                  <Text
+                    style={[
+                      styles.tipOptionLabel,
+                      tipPreset === "custom" &&
+                        styles.tipOptionLabelActive,
+                    ]}
+                  >
+                    Custom
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.tipOptionAmount,
+                      tipPreset === "custom" &&
+                        styles.tipOptionAmountActive,
+                    ]}
+                  >
+                    Other
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {tipPreset === "custom" ? (
+                <View style={styles.customTipWrap}>
+                  <Text style={styles.customTipCurrency}>$</Text>
+
+                  <TextInput
+                    value={customTipText}
+                    onChangeText={(value) => {
+                      const cleaned = value
+                        .replace(/[^0-9.]/g, "")
+                        .replace(/(\..*)\./g, "$1");
+
+                      setCustomTipText(cleaned);
+                    }}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    placeholderTextColor={colors.muted}
+                    style={styles.customTipInput}
+                    maxLength={7}
+                  />
+                </View>
+              ) : null}
+
+              <View style={styles.tipSummary}>
+                <Row
+                  label="Ride Balance"
+                  value={`$${totalFare.toFixed(2)}`}
+                  styles={styles}
+                />
+
+                <Row
+                  label="Driver Tip"
+                  value={`$${selectedTipAmount.toFixed(2)}`}
+                  styles={styles}
+                />
+
+                <Row
+                  label="Total Payment"
+                  value={`$${paymentTotal.toFixed(2)}`}
+                  strong
+                  styles={styles}
+                />
+              </View>
+            </View>
+
             <View style={styles.card}>
               <View style={styles.cardHeader}>
                 <DollarSign size={22} color={colors.gold} />
@@ -540,8 +742,21 @@ export default function PayRideScreen() {
               </View>
 
               <Row
-                label="Driver Share"
+                label="Driver Fare Share"
                 value={`$${driverShare.toFixed(2)}`}
+                styles={styles}
+              />
+
+              <Row
+                label="Driver Tip"
+                value={`$${selectedTipAmount.toFixed(2)}`}
+                styles={styles}
+              />
+
+              <Row
+                label="Driver Receives"
+                value={`$${driverReceives.toFixed(2)}`}
+                strong
                 styles={styles}
               />
 
@@ -552,8 +767,8 @@ export default function PayRideScreen() {
               />
 
               <Text style={styles.smallNotice}>
-                These amounts come from the confirmed booking record. The
-                Passenger App does not recalculate the fare or discounts.
+                The company share is calculated from the original ride fare.
+                One hundred percent of the selected tip goes to the driver.
               </Text>
             </View>
 
@@ -610,7 +825,7 @@ export default function PayRideScreen() {
                 <ActivityIndicator color={colors.navy} />
               ) : (
                 <Text style={styles.payButtonText}>
-                  Pay ${totalFare.toFixed(2)}
+                  Pay ${paymentTotal.toFixed(2)}
                 </Text>
               )}
             </TouchableOpacity>
@@ -942,6 +1157,93 @@ function createStyles(c: any) {
       lineHeight: 20,
       marginTop: 4,
       fontWeight: "700",
+    },
+
+    tipCard: {
+      backgroundColor: c.card,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      padding: 20,
+      marginBottom: 18,
+      ...v5Shadow(c),
+    },
+    tipIntro: {
+      color: c.text2,
+      fontSize: 14,
+      lineHeight: 21,
+      fontWeight: "700",
+      marginBottom: 16,
+    },
+    tipOptions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 9,
+      marginBottom: 14,
+    },
+    tipOption: {
+      width: "48%",
+      minHeight: 66,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+    },
+    tipOptionActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    tipOptionLabel: {
+      color: c.gold,
+      fontSize: 14,
+      fontWeight: "900",
+      marginBottom: 3,
+    },
+    tipOptionLabelActive: {
+      color: c.navy,
+    },
+    tipOptionAmount: {
+      color: c.text2,
+      fontSize: 11.5,
+      fontWeight: "800",
+    },
+    tipOptionAmountActive: {
+      color: c.navy,
+      opacity: 0.8,
+    },
+    customTipWrap: {
+      minHeight: 56,
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.soft,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 15,
+      marginBottom: 15,
+    },
+    customTipCurrency: {
+      color: c.gold,
+      fontSize: 22,
+      fontWeight: "900",
+      marginRight: 8,
+    },
+    customTipInput: {
+      flex: 1,
+      color: c.text,
+      fontSize: 21,
+      fontWeight: "900",
+      paddingVertical: 12,
+    },
+    tipSummary: {
+      borderTopWidth: 1,
+      borderTopColor: c.borderSoft,
+      paddingTop: 15,
+      marginTop: 2,
     },
 
     noticeCard: {

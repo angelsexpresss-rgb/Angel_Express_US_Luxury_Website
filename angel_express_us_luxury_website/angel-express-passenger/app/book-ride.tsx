@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -89,8 +89,23 @@ function detectAirportDetails(pickup: string, dropoff: string) {
 }
 
 export default function BookRideScreen() {
+  const params = useLocalSearchParams<{
+    ride_category?: string;
+    student_mode?: string;
+    shared_ride?: string;
+    create_student_pool?: string;
+    pickup?: string;
+    seats_requested?: string;
+    passenger_type?: string;
+    student_pool_id?: string;
+  }>();
+
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const placeholderColor =
+    themeMode === "dark"
+      ? "rgba(255,255,255,0.45)"
+      : "rgba(7,20,38,0.45)";
 
   const [pickupAddress, setPickupAddress] = useState("");
   const [dropoffAddress, setDropoffAddress] = useState("");
@@ -129,6 +144,11 @@ export default function BookRideScreen() {
   const [studentDiscountEligible, setStudentDiscountEligible] = useState(false);
   const [studentCampus, setStudentCampus] = useState("");
   const [studentSharedRide, setStudentSharedRide] = useState(false);
+  const [studentPoolMode, setStudentPoolMode] = useState<
+    "none" | "create" | "join"
+  >("none");
+  const [expectedPoolSize, setExpectedPoolSize] = useState("3");
+  const [studentPoolId, setStudentPoolId] = useState("");
 
   const [referralCode, setReferralCode] = useState("");
   const [referralApplied, setReferralApplied] = useState(false);
@@ -136,12 +156,22 @@ export default function BookRideScreen() {
   const [referrerUserId, setReferrerUserId] = useState("");
   const [referralMessage, setReferralMessage] = useState("");
   const [creatingDraft, setCreatingDraft] = useState(false);
+  const [passengerProfile, setPassengerProfile] = useState<Record<string, any> | null>(null);
+  const [flightNumber, setFlightNumber] = useState("");
+  const [airportTerminal, setAirportTerminal] = useState("");
 
   const bgScale = useRef(new Animated.Value(1)).current;
   const pageFade = useRef(new Animated.Value(0)).current;
+  const pickupSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropoffSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pickupAbortRef = useRef<AbortController | null>(null);
+  const dropoffAbortRef = useRef<AbortController | null>(null);
+  const pickupRequestRef = useRef(0);
+  const dropoffRequestRef = useRef(0);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
-    Animated.loop(
+    const backgroundAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(bgScale, {
           toValue: 1.04,
@@ -154,16 +184,102 @@ export default function BookRideScreen() {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
 
-    Animated.timing(pageFade, {
+    const entranceAnimation = Animated.timing(pageFade, {
       toValue: 1,
       duration: 650,
       useNativeDriver: true,
-    }).start();
+    });
 
-    loadPassengerProfile();
+    backgroundAnimation.start();
+    entranceAnimation.start();
+    void loadPassengerProfile();
+
+    return () => {
+      backgroundAnimation.stop();
+      entranceAnimation.stop();
+
+      if (pickupSearchTimerRef.current) {
+        clearTimeout(pickupSearchTimerRef.current);
+      }
+
+      if (dropoffSearchTimerRef.current) {
+        clearTimeout(dropoffSearchTimerRef.current);
+      }
+
+      pickupAbortRef.current?.abort();
+      dropoffAbortRef.current?.abort();
+    };
   }, []);
+
+
+  useEffect(() => {
+    const requestedCategory = String(params.ride_category || "")
+      .trim()
+      .toLowerCase();
+
+    const requestedStudentMode =
+      String(params.student_mode || "").toLowerCase() === "true";
+
+    const requestedSharedRide =
+      String(params.shared_ride || "").toLowerCase() === "true";
+
+    const requestedPoolCreation =
+      String(params.create_student_pool || "").toLowerCase() === "true";
+
+    const requestedPoolId = String(params.student_pool_id || "").trim();
+
+    if (params.pickup && !pickupAddress) {
+      setPickupAddress(String(params.pickup));
+    }
+
+    if (params.seats_requested) {
+      const requestedSeats = Number.parseInt(
+        String(params.seats_requested),
+        10
+      );
+
+      if (
+        Number.isInteger(requestedSeats) &&
+        requestedSeats >= 1 &&
+        requestedSeats <= 4
+      ) {
+        setPassengers(String(requestedSeats));
+      }
+    }
+
+    if (
+      requestedCategory === "student_pool" ||
+      requestedSharedRide ||
+      requestedPoolCreation ||
+      requestedPoolId
+    ) {
+      setRideCategory("Student Pool Ride");
+      setStudentSharedRide(true);
+      setStudentPoolMode(requestedPoolId ? "join" : "create");
+      setStudentPoolId(requestedPoolId);
+      return;
+    }
+
+    if (
+      requestedCategory === "student" ||
+      requestedCategory === "student_private" ||
+      requestedStudentMode
+    ) {
+      setRideCategory("Standard Ride");
+      setStudentSharedRide(false);
+      setStudentPoolMode("none");
+    }
+  }, [
+    params.ride_category,
+    params.student_mode,
+    params.shared_ride,
+    params.create_student_pool,
+    params.pickup,
+    params.seats_requested,
+    params.student_pool_id,
+  ]);
 
   async function loadPassengerProfile() {
     try {
@@ -175,92 +291,225 @@ export default function BookRideScreen() {
       if (userError) throw userError;
       if (!user) return;
 
-      const { data, error } = await supabase
-        .from("passenger_profiles")
-        .select(
-          "student_verified,student_verification_status,student_discount_eligible,student_university,student_campus"
-        )
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const [passengerResult, profileResult] = await Promise.all([
+        supabase
+          .from("passengers")
+          .select(
+            "id,first_name,last_name,email,phone,student_verified"
+          )
+          .eq("id", user.id)
+          .maybeSingle(),
 
-      if (error) throw error;
-      if (!data) return;
+        supabase
+          .from("passenger_profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
+
+      if (passengerResult.error) {
+        throw passengerResult.error;
+      }
+
+      if (profileResult.error) {
+        console.log(
+          "Optional passenger profile load skipped:",
+          profileResult.error.message
+        );
+      }
+
+      const passenger = (passengerResult.data || {}) as Record<string, any>;
+      const profile = (profileResult.data || {}) as Record<string, any>;
+
+      const mergedProfile = {
+        ...profile,
+        ...passenger,
+        user_id: user.id,
+        email: passenger.email || profile.email || user.email || "",
+      };
+
+      setPassengerProfile(mergedProfile);
+
+      const verificationStatus = String(
+        profile.student_verification_status ||
+          profile.verification_status ||
+          ""
+      )
+        .trim()
+        .toLowerCase();
 
       const approvedStudent = Boolean(
-        data.student_verified || data.student_discount_eligible
+        passenger.student_verified ||
+          profile.student_verified ||
+          profile.student_discount_eligible ||
+          ["approved", "verified", "active"].includes(verificationStatus)
       );
 
       setStudentVerified(approvedStudent);
       setStudentDiscountEligible(approvedStudent);
-      setStudentStatus(data.student_verification_status || "Not Submitted");
-      setStudentCampus(data.student_campus || data.student_university || "");
+      setStudentStatus(
+        profile.student_verification_status ||
+          (approvedStudent ? "Verified" : "Not Submitted")
+      );
+      setStudentCampus(
+        profile.student_campus ||
+          profile.student_university ||
+          profile.school_name ||
+          ""
+      );
     } catch (error: any) {
-      console.log("Student profile load skipped:", error?.message);
+      console.log("Passenger profile load skipped:", error?.message);
     }
   }
 
-  async function searchAddress(text: string, type: "pickup" | "dropoff") {
+  function searchAddress(text: string, type: "pickup" | "dropoff") {
+    const trimmedText = text.trimStart();
+
     if (type === "pickup") {
-      setPickupAddress(text);
+      setPickupAddress(trimmedText);
       setPickupLat(null);
       setPickupLng(null);
       setPickupCity("");
       setPickupState("TX");
       setPickupPostalCode("");
+      setPickupSuggestions([]);
+
+      if (pickupSearchTimerRef.current) {
+        clearTimeout(pickupSearchTimerRef.current);
+      }
+
+      pickupAbortRef.current?.abort();
     } else {
-      setDropoffAddress(text);
+      setDropoffAddress(trimmedText);
       setDropoffLat(null);
       setDropoffLng(null);
       setDropoffCity("");
       setDropoffState("TX");
       setDropoffPostalCode("");
+      setDropoffSuggestions([]);
+
+      if (dropoffSearchTimerRef.current) {
+        clearTimeout(dropoffSearchTimerRef.current);
+      }
+
+      dropoffAbortRef.current?.abort();
     }
 
-    if (text.length < 4) {
-      type === "pickup" ? setPickupSuggestions([]) : setDropoffSuggestions([]);
+    if (trimmedText.trim().length < 4) {
       return;
     }
 
-    try {
-      const response = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=5`
-      );
+    const timer = setTimeout(async () => {
+      const requestId =
+        type === "pickup"
+          ? ++pickupRequestRef.current
+          : ++dropoffRequestRef.current;
 
-      const data = await response.json();
+      const controller = new AbortController();
 
-      const suggestions =
-        data.features?.map((item: any) => {
-          const props = item.properties;
-          const address = [
-            props.name,
-            props.street,
-            props.city,
-            props.state,
-            props.country,
-          ]
-            .filter(Boolean)
-            .join(", ");
+      if (type === "pickup") {
+        pickupAbortRef.current = controller;
+      } else {
+        dropoffAbortRef.current = controller;
+      }
 
-          return {
-            label: address,
-            longitude: item.geometry.coordinates[0],
-            latitude: item.geometry.coordinates[1],
-            city: props.city || props.town || props.village || props.county || "",
-            state: normalizeStateCode(props.state),
-            postalCode: props.postcode || "",
-            country: props.country || "",
-          };
-        }) || [];
+      try {
+        const response = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(
+            `${trimmedText}, Texas, USA`
+          )}&limit=6&lang=en`,
+          {
+            signal: controller.signal,
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
 
-      if (type === "pickup") setPickupSuggestions(suggestions);
-      else setDropoffSuggestions(suggestions);
-    } catch {
-      type === "pickup" ? setPickupSuggestions([]) : setDropoffSuggestions([]);
+        if (!response.ok) {
+          throw new Error("Address search is temporarily unavailable.");
+        }
+
+        const data = await response.json();
+
+        const suggestions: AddressSuggestion[] = (data.features || [])
+          .map((item: any) => {
+            const props = item.properties || {};
+            const coordinates = item.geometry?.coordinates || [];
+
+            const label = [
+              props.name,
+              props.housenumber && props.street
+                ? `${props.housenumber} ${props.street}`
+                : props.street,
+              props.city || props.town || props.village,
+              props.state,
+              props.postcode,
+              props.country,
+            ]
+              .filter(Boolean)
+              .join(", ");
+
+            return {
+              label,
+              longitude: Number(coordinates[0]),
+              latitude: Number(coordinates[1]),
+              city:
+                props.city ||
+                props.town ||
+                props.village ||
+                props.county ||
+                "",
+              state: normalizeStateCode(props.state),
+              postalCode: props.postcode || "",
+              country: props.country || "",
+            };
+          })
+          .filter(
+            (item: AddressSuggestion) =>
+              item.label &&
+              Number.isFinite(item.latitude) &&
+              Number.isFinite(item.longitude)
+          );
+
+        const isLatest =
+          type === "pickup"
+            ? requestId === pickupRequestRef.current
+            : requestId === dropoffRequestRef.current;
+
+        if (!isLatest) return;
+
+        if (type === "pickup") {
+          setPickupSuggestions(suggestions);
+        } else {
+          setDropoffSuggestions(suggestions);
+        }
+      } catch (error: any) {
+        if (error?.name === "AbortError") return;
+
+        console.log("Address search error:", error?.message);
+
+        if (type === "pickup") {
+          setPickupSuggestions([]);
+        } else {
+          setDropoffSuggestions([]);
+        }
+      }
+    }, 450);
+
+    if (type === "pickup") {
+      pickupSearchTimerRef.current = timer;
+    } else {
+      dropoffSearchTimerRef.current = timer;
     }
   }
 
   function formatDate(date: Date) {
-    return date.toISOString().split("T")[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
   }
 
   function formatTime(date: Date) {
@@ -277,7 +526,7 @@ export default function BookRideScreen() {
   }
 
   function getNormalizedRideCategory(activeCategory: string) {
-    if (activeCategory === "Student Shared Ride") return "student_pool";
+    if (activeCategory === "Student Pool Ride") return "student_pool";
     if (activeCategory === "Airport Transfer") return "airport";
     if (activeCategory === "Tourist/Event Ride") return "tourist_event";
 
@@ -336,14 +585,23 @@ export default function BookRideScreen() {
 
       const userEmail = user.email?.trim().toLowerCase() || "";
 
-      const { data: previousUse } = await supabase
+      const { data: previousUse, error: previousUseError } = await supabase
         .from("bookings")
         .select("id")
-        .ilike("email", userEmail)
+        .or(
+          `user_id.eq.${user.id},passenger_user_id.eq.${user.id},email.ilike.${userEmail}`
+        )
         .eq("referral_applied", true)
         .limit(1);
 
-      if (previousUse && previousUse.length > 0) {
+      if (previousUseError) {
+        console.log(
+          "Referral usage lookup skipped:",
+          previousUseError.message
+        );
+      }
+
+      if (!previousUseError && previousUse && previousUse.length > 0) {
         setReferralMessage("Referral already used by this account.");
         Alert.alert(
           "Referral Already Used",
@@ -369,26 +627,31 @@ export default function BookRideScreen() {
   }
 
   function selectRideCategory(category: string) {
-    setRideCategory(category);
-
-    if (category === "Student Shared Ride") {
+    if (category === "Student Pool Ride") {
       if (!studentVerified) {
         setStudentSharedRide(false);
+        setStudentPoolMode("none");
         Alert.alert(
           "Student Verification Required",
-          "Student Shared Ride is available after your student status is approved by Angel Express."
+          "Student Pool Ride is available after your student status is approved by Angel Express."
         );
         return;
       }
 
+      setRideCategory(category);
       setStudentSharedRide(true);
-    } else {
-      setStudentSharedRide(false);
+      setStudentPoolMode(studentPoolId ? "join" : "create");
+      return;
     }
+
+    setRideCategory(category);
+    setStudentSharedRide(false);
+    setStudentPoolMode("none");
+    setStudentPoolId("");
   }
 
   async function continueToFareEstimate() {
-    if (creatingDraft) return;
+    if (creatingDraft || submitLockRef.current) return;
 
     if (!pickupAddress || !dropoffAddress) {
       Alert.alert("Missing Information", "Please enter pickup and drop-off addresses.");
@@ -421,10 +684,23 @@ export default function BookRideScreen() {
       return;
     }
 
+    const poolSize = Number.parseInt(expectedPoolSize, 10);
+
+    if (
+      studentSharedRide &&
+      (!Number.isInteger(poolSize) || poolSize < 2 || poolSize > 4)
+    ) {
+      Alert.alert(
+        "Pool Size",
+        "Choose a Student Pool size between 2 and 4 seats."
+      );
+      return;
+    }
+
     if (studentSharedRide && !studentVerified) {
       Alert.alert(
         "Student Verification Required",
-        "Please complete and get approved for Student Verification before booking a Student Shared Ride."
+        "Please complete and get approved for Student Verification before booking a Student Pool Ride."
       );
       return;
     }
@@ -440,7 +716,7 @@ export default function BookRideScreen() {
     }
 
     const activeRideCategory = studentSharedRide
-      ? "Student Shared Ride"
+      ? "Student Pool Ride"
       : rideCategory;
 
     const normalizedRideCategory = getNormalizedRideCategory(activeRideCategory);
@@ -459,6 +735,7 @@ export default function BookRideScreen() {
     }
 
     try {
+      submitLockRef.current = true;
       setCreatingDraft(true);
 
       const {
@@ -471,8 +748,37 @@ export default function BookRideScreen() {
         throw new Error("Please sign in again before booking your ride.");
       }
 
+      const passengerFirstName =
+        passengerProfile?.first_name ||
+        user.user_metadata?.first_name ||
+        "";
+
+      const passengerLastName =
+        passengerProfile?.last_name ||
+        user.user_metadata?.last_name ||
+        "";
+
+      const passengerName = [passengerFirstName, passengerLastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
       const payload = {
         source_platform: "passenger_app",
+        user_id: user.id,
+        passenger_user_id: user.id,
+        passenger_id: user.id,
+        passenger_name: passengerName || "Passenger",
+        first_name: passengerFirstName || null,
+        last_name: passengerLastName || null,
+        email:
+          passengerProfile?.email ||
+          user.email ||
+          null,
+        phone:
+          passengerProfile?.phone ||
+          user.user_metadata?.phone ||
+          null,
 
         pickup_address: pickupAddress.trim(),
         pickup_city: pickupCity.trim(),
@@ -500,16 +806,58 @@ export default function BookRideScreen() {
 
         airport_code: airportCode || null,
         airport_action: airportAction || null,
+        flight_number:
+          activeRideCategory === "Airport Transfer"
+            ? flightNumber.trim() || null
+            : null,
+        airport_terminal:
+          activeRideCategory === "Airport Transfer"
+            ? airportTerminal.trim() || null
+            : null,
 
         student_verified: studentVerified,
         student_discount_eligible: studentDiscountEligible,
         student_campus: studentCampus.trim(),
 
-        expected_pool_size: normalizedRideCategory === "student_pool" ? 3 : null,
+        student_pool_requested:
+          normalizedRideCategory === "student_pool",
+
+        shared_ride:
+          normalizedRideCategory === "student_pool",
+
+        student_pool_mode:
+          normalizedRideCategory === "student_pool"
+            ? studentPoolMode || "create"
+            : null,
+
+        create_student_pool:
+          normalizedRideCategory === "student_pool" &&
+          studentPoolMode !== "join",
+
+        student_pool_id:
+          normalizedRideCategory === "student_pool" &&
+          studentPoolId
+            ? studentPoolId
+            : null,
+
+        seats_requested:
+          normalizedRideCategory === "student_pool"
+            ? passengerCount
+            : 1,
+
+        expected_pool_size:
+          normalizedRideCategory === "student_pool"
+            ? poolSize
+            : null,
 
         student_pool_route:
           normalizedRideCategory === "student_pool"
             ? `${pickupAddress.trim()} → ${dropoffAddress.trim()}`
+            : null,
+
+        pool_member_status:
+          normalizedRideCategory === "student_pool"
+            ? "pending"
             : null,
 
         referral_code: referralApplied
@@ -527,6 +875,17 @@ export default function BookRideScreen() {
           legacy_trip_type_label: tripType,
           legacy_ride_category_label: activeRideCategory,
           referral_discount_preview: referralApplied ? REFERRAL_DISCOUNT : 0,
+          client_request_id: `${user.id}-${Date.now()}`,
+          local_timezone:
+            Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+          student_pool_entry_point:
+            normalizedRideCategory === "student_pool"
+              ? "passenger_app_book_ride"
+              : null,
+          student_pool_requested_from_mode:
+            normalizedRideCategory === "student_pool"
+              ? studentPoolMode
+              : null,
         },
       };
 
@@ -559,6 +918,7 @@ export default function BookRideScreen() {
           "Angel Express could not save your ride details. Please try again."
       );
     } finally {
+      submitLockRef.current = false;
       setCreatingDraft(false);
     }
   }
@@ -616,7 +976,7 @@ export default function BookRideScreen() {
 
             <View style={styles.heroCard}>
               <View style={styles.heroIcon}>
-                <Route size={30} color={colors.navy} />
+                <Route size={30} color={colors.onGold || colors.navy} />
               </View>
 
               <View style={styles.heroCopy}>
@@ -655,7 +1015,7 @@ export default function BookRideScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Start typing pickup address"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={placeholderColor}
                 value={pickupAddress}
                 onChangeText={(text) => searchAddress(text, "pickup")}
               />
@@ -691,7 +1051,7 @@ export default function BookRideScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Start typing drop-off address"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={placeholderColor}
                 value={dropoffAddress}
                 onChangeText={(text) => searchAddress(text, "dropoff")}
               />
@@ -791,7 +1151,7 @@ export default function BookRideScreen() {
               {[
                 "Standard Ride",
                 "Airport Transfer",
-                "Student Shared Ride",
+                "Student Pool Ride",
                 "Tourist/Event Ride",
               ].map((item) => (
                 <OptionButton
@@ -800,7 +1160,7 @@ export default function BookRideScreen() {
                   title={item}
                   active={
                     rideCategory === item ||
-                    (item === "Student Shared Ride" && studentSharedRide)
+                    (item === "Student Pool Ride" && studentSharedRide)
                   }
                   onPress={() => selectRideCategory(item)}
                   styles={styles}
@@ -813,7 +1173,7 @@ export default function BookRideScreen() {
                   <View style={styles.studentBoxText}>
                     <Text style={styles.studentTitle}>Student Travel Mode Active</Text>
                     <Text style={styles.studentText}>
-                      Verified student-private pricing is active. Student Shared Ride can also be selected.
+                      Verified student-private pricing is active. Student Pool Ride can also be selected.
                     </Text>
                   </View>
                 </View>
@@ -825,7 +1185,7 @@ export default function BookRideScreen() {
                       Student Verification: {studentStatus || "Not Submitted"}
                     </Text>
                     <Text style={styles.studentText}>
-                      Student discount and Student Shared Ride unlock after owner approval.
+                      Student discount and Student Pool Ride unlock after owner approval.
                     </Text>
                   </View>
                 </View>
@@ -835,12 +1195,77 @@ export default function BookRideScreen() {
                 <View style={styles.sharedRideBox}>
                   <Users size={20} color="#22c55e" />
                   <View style={styles.studentBoxText}>
-                    <Text style={styles.studentTitle}>Student Shared Ride Enabled</Text>
+                    <Text style={styles.studentTitle}>Student Pool Ride Enabled</Text>
                     <Text style={styles.studentText}>
-                      Your booking will be saved as a student pool request for matching route/date.
+                      This request will use the same Student Pool system as the website, Driver App, and Owner App. Operations will review and publish a new pool before other students can join.
                     </Text>
                   </View>
                 </View>
+              ) : null}
+
+              {studentSharedRide ? (
+                <View style={styles.poolSetupBox}>
+                  <Text style={styles.poolSetupTitle}>
+                    {studentPoolMode === "join"
+                      ? "Joining Existing Student Pool"
+                      : "Create New Student Pool"}
+                  </Text>
+
+                  <Text style={styles.poolSetupText}>
+                    {studentPoolMode === "join"
+                      ? "Your booking will reserve seats in the selected pool."
+                      : "Choose the total pool capacity. Angel Express Operations can adjust the final capacity before publishing."}
+                  </Text>
+
+                  {studentPoolMode !== "join" ? (
+                    <View style={styles.optionRow}>
+                      {["2", "3", "4"].map((size) => (
+                        <OptionButton
+                          key={size}
+                          title={`${size} Seats`}
+                          active={expectedPoolSize === size}
+                          onPress={() => setExpectedPoolSize(size)}
+                          styles={styles}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+
+                  <Text style={styles.poolSetupFootnote}>
+                    Your passenger count is the number of seats you are reserving.
+                    Pool capacity is the total number of passenger seats available
+                    across the shared ride.
+                  </Text>
+                </View>
+              ) : null}
+
+              {rideCategory === "Airport Transfer" ? (
+                <>
+                  <Section
+                    title="Airport Details"
+                    icon={<ShieldCheck size={19} color={colors.gold} />}
+                    styles={styles}
+                  />
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Flight number (optional)"
+                    placeholderTextColor={placeholderColor}
+                    value={flightNumber}
+                    onChangeText={setFlightNumber}
+                    autoCapitalize="characters"
+                    maxLength={20}
+                  />
+
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Terminal or airline (optional)"
+                    placeholderTextColor={placeholderColor}
+                    value={airportTerminal}
+                    onChangeText={setAirportTerminal}
+                    maxLength={80}
+                  />
+                </>
               ) : null}
 
               <Section
@@ -852,7 +1277,7 @@ export default function BookRideScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Number of Passengers"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={placeholderColor}
                 value={passengers}
                 onChangeText={setPassengers}
                 keyboardType="numeric"
@@ -861,7 +1286,7 @@ export default function BookRideScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Luggage Count"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={placeholderColor}
                 value={luggageCount}
                 onChangeText={setLuggageCount}
                 keyboardType="numeric"
@@ -876,7 +1301,7 @@ export default function BookRideScreen() {
               <TextInput
                 style={[styles.input, styles.notesInput]}
                 placeholder="Notes e.g. flight number, pickup instructions, luggage details"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={placeholderColor}
                 value={notes}
                 onChangeText={setNotes}
                 multiline
@@ -891,7 +1316,7 @@ export default function BookRideScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter referral code"
-                placeholderTextColor={colors.placeholder}
+                placeholderTextColor={placeholderColor}
                 value={referralCode}
                 onChangeText={(text) => {
                   setReferralCode(text.toUpperCase());
@@ -946,7 +1371,7 @@ export default function BookRideScreen() {
               >
                 {creatingDraft ? (
                   <View style={styles.submitLoadingRow}>
-                    <ActivityIndicator color={colors.navy} />
+                    <ActivityIndicator color={colors.onGold || colors.navy} />
                     <Text style={styles.submitButtonText}>
                       Saving Ride Details
                     </Text>
@@ -1116,7 +1541,7 @@ function createStyles(c: any) {
       marginBottom: 10,
     },
     subtitle: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 15.5,
       lineHeight: 23,
       marginBottom: 22,
@@ -1145,13 +1570,13 @@ function createStyles(c: any) {
       flex: 1,
     },
     heroTitle: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 22,
       fontWeight: "900",
       marginBottom: 6,
     },
     heroText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 14.5,
       lineHeight: 21,
       fontWeight: "800",
@@ -1167,7 +1592,7 @@ function createStyles(c: any) {
       minHeight: 76,
       borderRadius: 17,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       backgroundColor: c.card,
       alignItems: "center",
       justifyContent: "center",
@@ -1192,7 +1617,7 @@ function createStyles(c: any) {
       backgroundColor: c.card,
       borderRadius: 24,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       ...v5Shadow(c),
     },
     sectionHeader: {
@@ -1215,7 +1640,7 @@ function createStyles(c: any) {
       fontSize: 16,
       marginBottom: 15,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       fontWeight: "700",
     },
     inputText: {
@@ -1251,7 +1676,7 @@ function createStyles(c: any) {
     optionButton: {
       backgroundColor: c.card2,
       borderWidth: 1,
-      borderColor: c.borderSoft,
+      borderColor: c.borderSoft || c.lightBorder,
       borderRadius: 16,
       paddingVertical: 16,
       paddingHorizontal: 14,
@@ -1274,7 +1699,7 @@ function createStyles(c: any) {
       textAlign: "center",
     },
     optionTextActive: {
-      color: c.navy,
+      color: c.onGold || c.navy,
     },
     studentBox: {
       flexDirection: "row",
@@ -1322,10 +1747,38 @@ function createStyles(c: any) {
       marginBottom: 5,
     },
     studentText: {
-      color: c.text2,
+      color: c.text2 || c.textSecondary,
       fontSize: 13,
       lineHeight: 19,
       fontWeight: "700",
+    },
+    poolSetupBox: {
+      backgroundColor: c.soft,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderRadius: 18,
+      padding: 16,
+      marginBottom: 12,
+    },
+    poolSetupTitle: {
+      color: c.gold,
+      fontSize: 16,
+      fontWeight: "900",
+      marginBottom: 6,
+    },
+    poolSetupText: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 13,
+      lineHeight: 19,
+      fontWeight: "700",
+      marginBottom: 12,
+    },
+    poolSetupFootnote: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 11.5,
+      lineHeight: 17,
+      fontWeight: "700",
+      marginTop: 2,
     },
     notesInput: {
       height: 105,
@@ -1398,7 +1851,7 @@ function createStyles(c: any) {
       gap: 10,
     },
     submitButtonText: {
-      color: c.navy,
+      color: c.onGold || c.navy,
       fontSize: 16,
       fontWeight: "900",
       textTransform: "uppercase",
