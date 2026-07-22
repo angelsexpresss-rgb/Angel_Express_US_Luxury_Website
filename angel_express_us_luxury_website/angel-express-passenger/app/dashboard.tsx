@@ -52,6 +52,7 @@ import {
 import { registerForPushNotifications } from "../lib/notifications";
 import { supabase } from "../lib/supabase";
 import { AngelThemeColors, useAngelTheme } from "../lib/angelTheme";
+import { usePassengerApp } from "../lib/passengerAppProvider";
 
 type BookingSummary = {
   [key: string]: any;
@@ -77,6 +78,7 @@ type BookingSummary = {
 
 export default function DashboardScreen() {
   const { colors, themeMode, toggleTheme } = useAngelTheme();
+  const { t } = usePassengerApp();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -943,7 +945,7 @@ export default function DashboardScreen() {
 
                 <View style={styles.statsRow}>
                   <StatBlock
-                    label="Trips"
+                    label={t("nav.trips", "Trips")}
                     value={String(totalTrips)}
                     styles={styles}
                   />
@@ -1384,14 +1386,14 @@ export default function DashboardScreen() {
         <View style={styles.bottomMenuGrid}>
           <MenuOption
             icon={<Home size={27} color={colors.gold} strokeWidth={2.7} />}
-            title="Home"
+            title={t("nav.home", "Home")}
             onPress={() => setMenuOpen(false)}
             styles={styles}
           />
 
           <MenuOption
             icon={<CarFront size={27} color={colors.gold} strokeWidth={2.7} />}
-            title="Book"
+            title={t("nav.book", "Book")}
             onPress={() => goTo("/book-ride")}
             styles={styles}
           />
@@ -1400,7 +1402,7 @@ export default function DashboardScreen() {
             icon={
               <CalendarDays size={27} color={colors.gold} strokeWidth={2.7} />
             }
-            title="Trips"
+            title={t("nav.trips", "Trips")}
             onPress={() => goTo("/my-trips")}
             styles={styles}
           />
@@ -1423,7 +1425,7 @@ export default function DashboardScreen() {
 
           <MenuOption
             icon={<UserRound size={27} color={colors.gold} strokeWidth={2.7} />}
-            title="Account"
+            title={t("nav.account", "Account")}
             onPress={() => goTo("/profile")}
             styles={styles}
           />
@@ -1442,14 +1444,14 @@ export default function DashboardScreen() {
       <View style={styles.bottomNav}>
         <BottomTab
           icon={<Home size={23} color={colors.gold} strokeWidth={2.7} />}
-          label="Home"
+          label={t("nav.home", "Home")}
           active
           styles={styles}
         />
 
         <BottomTab
           icon={<Ticket size={23} color={colors.muted} strokeWidth={2.7} />}
-          label="Book"
+          label={t("nav.book", "Book")}
           onPress={() => goTo("/book-ride")}
           styles={styles}
         />
@@ -1478,14 +1480,14 @@ export default function DashboardScreen() {
           icon={
             <CalendarDays size={23} color={colors.muted} strokeWidth={2.7} />
           }
-          label="Trips"
+          label={t("nav.trips", "Trips")}
           onPress={() => goTo("/my-trips")}
           styles={styles}
         />
 
         <BottomTab
           icon={<UserRound size={23} color={colors.muted} strokeWidth={2.7} />}
-          label="Account"
+          label={t("nav.account", "Account")}
           onPress={() => goTo("/profile")}
           styles={styles}
         />

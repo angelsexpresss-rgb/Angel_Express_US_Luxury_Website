@@ -12,6 +12,7 @@ import {
   AngelThemeProvider,
   useAngelTheme,
 } from "../lib/angelTheme";
+import { PassengerAppProvider } from "../lib/passengerAppProvider";
 
 const stripeKey =
   process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -27,7 +28,9 @@ const STRIPE_PUBLISHABLE_KEY: string = stripeKey;
 export default function RootLayout() {
   return (
     <AngelThemeProvider>
-      <PassengerAppNavigator />
+      <PassengerAppProvider>
+        <PassengerAppNavigator />
+      </PassengerAppProvider>
     </AngelThemeProvider>
   );
 }
@@ -114,6 +117,8 @@ function PassengerAppNavigator() {
           {/* Passenger Account */}
           <Stack.Screen name="profile" />
           <Stack.Screen name="passenger-card" />
+          <Stack.Screen name="wallet" />
+          <Stack.Screen name="settings" />
           <Stack.Screen name="privacy-account" />
           <Stack.Screen name="notification-preferences" />
           <Stack.Screen name="passenger-notifications" />

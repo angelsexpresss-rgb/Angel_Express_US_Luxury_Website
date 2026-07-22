@@ -52,7 +52,22 @@ type SettingsSection =
   | "face-id"
   | "preferences";
 
+type LanguageCode =
+  | "en"
+  | "pidgin"
+  | "yo"
+  | "ig"
+  | "ha"
+  | "sw"
+  | "es"
+  | "fr"
+  | "ar"
+  | "pt"
+  | "hi"
+  | "zh";
+
 type PassengerSettings = {
+  preferredLanguage: LanguageCode;
   notificationsEnabled: boolean;
   tripUpdates: boolean;
   paymentAlerts: boolean;
@@ -70,9 +85,15 @@ type PassengerSettings = {
   allowDriverCalls: boolean;
   allowDriverMessages: boolean;
   autoShareTrip: boolean;
+  wheelchairSupport: boolean;
+  extraBoardingTime: boolean;
+  hearingAssistance: boolean;
+  visionAssistance: boolean;
+  serviceAnimalNotice: boolean;
 };
 
 const DEFAULT_SETTINGS: PassengerSettings = {
+  preferredLanguage: "en",
   notificationsEnabled: true,
   tripUpdates: true,
   paymentAlerts: true,
@@ -90,7 +111,30 @@ const DEFAULT_SETTINGS: PassengerSettings = {
   allowDriverCalls: true,
   allowDriverMessages: true,
   autoShareTrip: false,
+  wheelchairSupport: false,
+  extraBoardingTime: false,
+  hearingAssistance: false,
+  visionAssistance: false,
+  serviceAnimalNotice: false,
 };
+
+const APP_LANGUAGES: Array<{
+  key: LanguageCode;
+  name: string;
+}> = [
+  { key: "en", name: "English" },
+  { key: "pidgin", name: "Nigerian Pidgin" },
+  { key: "yo", name: "Yoruba" },
+  { key: "ig", name: "Igbo" },
+  { key: "ha", name: "Hausa" },
+  { key: "sw", name: "Swahili" },
+  { key: "es", name: "Spanish" },
+  { key: "fr", name: "French" },
+  { key: "ar", name: "Arabic" },
+  { key: "pt", name: "Portuguese" },
+  { key: "hi", name: "Hindi" },
+  { key: "zh", name: "Chinese" },
+];
 
 const SETTINGS_STORAGE_KEY = "angel_passenger_settings";
 const REMEMBER_LOGIN_KEY = "angel_remember_login";
@@ -237,10 +281,55 @@ export default function PassengerSettingsScreen() {
         ? (JSON.parse(localSettingsRaw) as Partial<PassengerSettings>)
         : {};
 
+      const { data: rideProfile, error: rideProfileError } = await supabase
+        .from("passenger_profiles")
+        .select(
+          "preferred_language, wheelchair_support, extra_boarding_time, hearing_assistance, vision_assistance, service_animal_notice"
+        )
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (rideProfileError) {
+        console.log(
+          "Accessibility ride profile could not be loaded:",
+          rideProfileError.message
+        );
+      }
+
       const merged = {
         ...DEFAULT_SETTINGS,
         ...metadataSettings,
         ...localSettings,
+        preferredLanguage:
+          (rideProfile?.preferred_language as LanguageCode | undefined) ||
+          localSettings.preferredLanguage ||
+          metadataSettings.preferredLanguage ||
+          "en",
+        wheelchairSupport: Boolean(
+          rideProfile?.wheelchair_support ??
+            localSettings.wheelchairSupport ??
+            metadataSettings.wheelchairSupport
+        ),
+        extraBoardingTime: Boolean(
+          rideProfile?.extra_boarding_time ??
+            localSettings.extraBoardingTime ??
+            metadataSettings.extraBoardingTime
+        ),
+        hearingAssistance: Boolean(
+          rideProfile?.hearing_assistance ??
+            localSettings.hearingAssistance ??
+            metadataSettings.hearingAssistance
+        ),
+        visionAssistance: Boolean(
+          rideProfile?.vision_assistance ??
+            localSettings.visionAssistance ??
+            metadataSettings.visionAssistance
+        ),
+        serviceAnimalNotice: Boolean(
+          rideProfile?.service_animal_notice ??
+            localSettings.serviceAnimalNotice ??
+            metadataSettings.serviceAnimalNotice
+        ),
       };
 
       setSettings(merged);
@@ -589,19 +678,59 @@ export default function PassengerSettingsScreen() {
     }
   }
 
+  async function updateLanguage(language: LanguageCode) {
+    const next = {
+      ...settings,
+      preferredLanguage: language,
+    };
+
+    await setAndPersist(next, `Language changed to ${
+      APP_LANGUAGES.find((item) => item.key === language)?.name || language
+    }`);
+
+    DeviceEventEmitter.emit("angel:language-changed", language);
+  }
+
   async function saveSettings() {
     try {
       setSaving(true);
 
       await persistLocal(settings);
 
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) throw userError;
+      if (!user) throw new Error("Please sign in again.");
+
       const { error } = await supabase.auth.updateUser({
         data: {
           passenger_settings: settings,
+          preferred_language: settings.preferredLanguage,
         },
       });
 
       if (error) throw error;
+
+      const { error: profileError } = await supabase
+        .from("passenger_profiles")
+        .upsert(
+          {
+            user_id: user.id,
+            preferred_language: settings.preferredLanguage,
+            wheelchair_support: settings.wheelchairSupport,
+            extra_boarding_time: settings.extraBoardingTime,
+            hearing_assistance: settings.hearingAssistance,
+            vision_assistance: settings.visionAssistance,
+            service_animal_notice: settings.serviceAnimalNotice,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" }
+        );
+
+      if (profileError) throw profileError;
 
       await feedback("Settings saved");
 
@@ -871,13 +1000,47 @@ export default function PassengerSettingsScreen() {
                 </SettingsCard>
 
                 <SettingsCard
-                  title="Language"
+                  title="App Language"
                   icon={<Languages size={21} color={colors.gold} />}
                   styles={styles}
                 >
+                  <Text style={styles.languageHelp}>
+                    Choose the passenger app language. The global app provider
+                    uses this selection across supported screens.
+                  </Text>
+
+                  <View style={styles.languageGrid}>
+                    {APP_LANGUAGES.map((language) => {
+                      const selected =
+                        settings.preferredLanguage === language.key;
+
+                      return (
+                        <TouchableOpacity
+                          key={language.key}
+                          style={[
+                            styles.languagePill,
+                            selected && styles.languagePillActive,
+                          ]}
+                          onPress={() => updateLanguage(language.key)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                        >
+                          <Text
+                            style={[
+                              styles.languagePillText,
+                              selected && styles.languagePillTextActive,
+                            ]}
+                          >
+                            {language.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
                   <ActionRow
-                    title="Language Assistant"
-                    subtitle="Translation and travel-language support."
+                    title="Open Language Assistant"
+                    subtitle="Use ready-made travel phrases and translations."
                     onPress={() => router.push("/language-assistant" as any)}
                     styles={styles}
                     colors={colors}
@@ -956,6 +1119,70 @@ export default function PassengerSettingsScreen() {
                   value={settings.soundFeedback}
                   onValueChange={(value) =>
                     updateSetting("soundFeedback", value)
+                  }
+                  styles={styles}
+                  colors={colors}
+                  settings={settings}
+                />
+
+                <Text style={styles.subsectionTitle}>
+                  Accessibility Ride Profile
+                </Text>
+
+                <SwitchRow
+                  title="Wheelchair Support"
+                  subtitle="Tell Operations and the assigned driver that wheelchair support may be required."
+                  value={settings.wheelchairSupport}
+                  onValueChange={(value) =>
+                    updateSetting("wheelchairSupport", value)
+                  }
+                  styles={styles}
+                  colors={colors}
+                  settings={settings}
+                />
+
+                <SwitchRow
+                  title="Extra Boarding Time"
+                  subtitle="Request additional time for safe boarding and vehicle entry."
+                  value={settings.extraBoardingTime}
+                  onValueChange={(value) =>
+                    updateSetting("extraBoardingTime", value)
+                  }
+                  styles={styles}
+                  colors={colors}
+                  settings={settings}
+                />
+
+                <SwitchRow
+                  title="Hearing Assistance Preference"
+                  subtitle="Ask drivers to prefer written or visual communication where possible."
+                  value={settings.hearingAssistance}
+                  onValueChange={(value) =>
+                    updateSetting("hearingAssistance", value)
+                  }
+                  styles={styles}
+                  colors={colors}
+                  settings={settings}
+                />
+
+                <SwitchRow
+                  title="Vision Assistance"
+                  subtitle="Request clear verbal pickup, boarding, and arrival guidance."
+                  value={settings.visionAssistance}
+                  onValueChange={(value) =>
+                    updateSetting("visionAssistance", value)
+                  }
+                  styles={styles}
+                  colors={colors}
+                  settings={settings}
+                />
+
+                <SwitchRow
+                  title="Service-Animal Notice"
+                  subtitle="Tell Operations and the assigned driver that a service animal may travel with you."
+                  value={settings.serviceAnimalNotice}
+                  onValueChange={(value) =>
+                    updateSetting("serviceAnimalNotice", value)
                   }
                   styles={styles}
                   colors={colors}
@@ -1136,6 +1363,7 @@ export default function PassengerSettingsScreen() {
 
 function settingLabel(key: keyof PassengerSettings) {
   const labels: Record<keyof PassengerSettings, string> = {
+    preferredLanguage: "Language",
     notificationsEnabled: "Notifications",
     tripUpdates: "Trip updates",
     paymentAlerts: "Payment alerts",
@@ -1153,6 +1381,11 @@ function settingLabel(key: keyof PassengerSettings) {
     allowDriverCalls: "Driver calls",
     allowDriverMessages: "Driver messages",
     autoShareTrip: "Automatic safety share",
+    wheelchairSupport: "Wheelchair support",
+    extraBoardingTime: "Extra boarding time",
+    hearingAssistance: "Hearing assistance",
+    visionAssistance: "Vision assistance",
+    serviceAnimalNotice: "Service-animal notice",
   };
 
   return labels[key];
@@ -1528,6 +1761,46 @@ function createStyles(
       fontSize: 12.5 * textScale,
       lineHeight: 18 * textScale,
       fontWeight: "700",
+    },
+    languageHelp: {
+      color: c.text2 || c.textSecondary,
+      fontSize: 12.5 * textScale,
+      lineHeight: 18 * textScale,
+      fontWeight: "700",
+      marginBottom: 12,
+    },
+    languageGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    languagePill: {
+      borderWidth,
+      borderColor: softBorder,
+      backgroundColor: c.soft,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+    },
+    languagePillActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    languagePillText: {
+      color: c.text,
+      fontSize: 12 * textScale,
+      fontWeight: "900",
+    },
+    languagePillTextActive: {
+      color: c.onGold || c.navy,
+    },
+    subsectionTitle: {
+      color: c.gold,
+      fontSize: 16 * textScale,
+      fontWeight: "900",
+      marginTop: 18,
+      marginBottom: 6,
     },
     infoBox: {
       flexDirection: "row",

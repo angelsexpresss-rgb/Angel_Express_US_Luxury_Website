@@ -1,20 +1,28 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "react-native";
-import { DriverThemeProvider, useDriverTheme } from "../lib/driverTheme";
 
-function AppStack() {
+import {
+  DriverThemeProvider,
+  useDriverTheme,
+} from "../lib/driverTheme";
+
+function DriverAppStack() {
   const { themeMode, colors } = useDriverTheme();
+
+  const isDarkMode = themeMode === "dark";
 
   return (
     <>
       <StatusBar
-        barStyle={themeMode === "dark" ? "light-content" : "dark-content"}
+        animated
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
         backgroundColor={colors.bg}
       />
 
       <Stack
         screenOptions={{
           headerShown: false,
+          animation: "fade",
           contentStyle: {
             backgroundColor: colors.bg,
           },
@@ -27,7 +35,7 @@ function AppStack() {
 export default function RootLayout() {
   return (
     <DriverThemeProvider>
-      <AppStack />
+      <DriverAppStack />
     </DriverThemeProvider>
   );
 }
