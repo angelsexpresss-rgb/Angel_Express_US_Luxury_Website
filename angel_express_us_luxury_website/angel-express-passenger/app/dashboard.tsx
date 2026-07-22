@@ -39,6 +39,7 @@ import {
   Trophy,
   UserRound,
   Users,
+  WalletCards,
   X,
   Settings,
   SunMoon,
@@ -194,18 +195,34 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (!userId) return;
 
+    let disposed = false;
+
+    // Expo Router and React development mode can briefly mount the dashboard
+    // more than once. A unique suffix prevents Supabase from reusing an
+    // already-subscribed channel and throwing:
+    // "cannot add postgres_changes callbacks after subscribe()".
+    const channelInstance = `${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 9)}`;
+
     const scheduleRealtimeReload = () => {
+      if (disposed) return;
+
       if (realtimeReloadTimerRef.current) {
         clearTimeout(realtimeReloadTimerRef.current);
       }
 
       realtimeReloadTimerRef.current = setTimeout(() => {
-        void loadDashboardData({ silent: true });
+        if (!disposed) {
+          void loadDashboardData({ silent: true });
+        }
       }, 250);
     };
 
     const bookingChannel = supabase
-      .channel(`passenger-dashboard-bookings-${userId}`)
+      .channel(
+        `passenger-dashboard-bookings-${userId}-${channelInstance}`,
+      )
       .on(
         "postgres_changes",
         {
@@ -215,15 +232,20 @@ export default function DashboardScreen() {
         },
         (payload) => {
           const row = (payload.new || payload.old) as Record<string, unknown>;
-          if (row?.user_id === userId || row?.passenger_user_id === userId) {
+
+          if (
+            row?.user_id === userId ||
+            row?.passenger_user_id === userId
+          ) {
             scheduleRealtimeReload();
           }
         },
-      )
-      .subscribe();
+      );
 
     const notificationChannel = supabase
-      .channel(`passenger-dashboard-notifications-${userId}`)
+      .channel(
+        `passenger-dashboard-notifications-${userId}-${channelInstance}`,
+      )
       .on(
         "postgres_changes",
         {
@@ -233,11 +255,12 @@ export default function DashboardScreen() {
           filter: `passenger_id=eq.${userId}`,
         },
         scheduleRealtimeReload,
-      )
-      .subscribe();
+      );
 
     const rewardChannel = supabase
-      .channel(`passenger-dashboard-rewards-${userId}`)
+      .channel(
+        `passenger-dashboard-rewards-${userId}-${channelInstance}`,
+      )
       .on(
         "postgres_changes",
         {
@@ -247,11 +270,12 @@ export default function DashboardScreen() {
           filter: `referrer_user_id=eq.${userId}`,
         },
         scheduleRealtimeReload,
-      )
-      .subscribe();
+      );
 
     const passengerChannel = supabase
-      .channel(`passenger-dashboard-profile-${userId}`)
+      .channel(
+        `passenger-dashboard-profile-${userId}-${channelInstance}`,
+      )
       .on(
         "postgres_changes",
         {
@@ -261,11 +285,27 @@ export default function DashboardScreen() {
           filter: `id=eq.${userId}`,
         },
         scheduleRealtimeReload,
+      );
+
+    const passengerProfileChannel = supabase
+      .channel(
+        `passenger-dashboard-passenger-profile-${userId}-${channelInstance}`,
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "passenger_profiles",
+          filter: `user_id=eq.${userId}`,
+        },
+        scheduleRealtimeReload,
+      );
 
     const studentChannel = supabase
-      .channel(`passenger-dashboard-student-${userId}`)
+      .channel(
+        `passenger-dashboard-student-${userId}-${channelInstance}`,
+      )
       .on(
         "postgres_changes",
         {
@@ -275,17 +315,38 @@ export default function DashboardScreen() {
           filter: `user_id=eq.${userId}`,
         },
         scheduleRealtimeReload,
-      )
-      .subscribe();
+      );
+
+    bookingChannel.subscribe();
+    notificationChannel.subscribe();
+    rewardChannel.subscribe();
+    passengerChannel.subscribe();
+    passengerProfileChannel.subscribe();
+    studentChannel.subscribe();
 
     return () => {
+      disposed = true;
+
       if (realtimeReloadTimerRef.current) {
         clearTimeout(realtimeReloadTimerRef.current);
+        realtimeReloadTimerRef.current = null;
       }
+
+      // Unsubscribe immediately before removing the channels. This prevents
+      // a profile save + router.replace from leaving a subscribed channel
+      // behind while the next dashboard instance is mounting.
+      void bookingChannel.unsubscribe();
+      void notificationChannel.unsubscribe();
+      void rewardChannel.unsubscribe();
+      void passengerChannel.unsubscribe();
+      void passengerProfileChannel.unsubscribe();
+      void studentChannel.unsubscribe();
+
       void supabase.removeChannel(bookingChannel);
       void supabase.removeChannel(notificationChannel);
       void supabase.removeChannel(rewardChannel);
       void supabase.removeChannel(passengerChannel);
+      void supabase.removeChannel(passengerProfileChannel);
       void supabase.removeChannel(studentChannel);
     };
   }, [userId]);
@@ -469,6 +530,12 @@ export default function DashboardScreen() {
         .eq("id", user.id)
         .maybeSingle();
 
+      const passengerProfileResult = await supabase
+        .from("passenger_profiles")
+        .select("first_name, last_name, email")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
       if (requestId !== requestIdRef.current) {
         return;
       }
@@ -478,27 +545,56 @@ export default function DashboardScreen() {
           "Passenger dashboard profile error:",
           passengerResult.error,
         );
-        throw passengerResult.error;
+      }
+
+      if (passengerProfileResult.error) {
+        console.log(
+          "Passenger profile fallback error:",
+          passengerProfileResult.error,
+        );
       }
 
       const passenger = passengerResult.data;
+      const passengerProfile = passengerProfileResult.data;
 
       const metadataFullName = String(
-  user.user_metadata?.full_name ||
-  user.user_metadata?.name ||
-  ""
-).trim();
+        user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          ""
+      ).trim();
 
-const resolvedFirstName = String(
-  passenger?.first_name ||
-    user.user_metadata?.first_name ||
-    metadataFullName.split(/\s+/)[0] ||
-    "Passenger"
-).trim();
+      const metadataFirstName = String(
+        user.user_metadata?.first_name || ""
+      ).trim();
 
-setFirstName(
-  resolvedFirstName || "Passenger"
-);
+      const emailAddress = String(user.email || "")
+        .trim()
+        .toLowerCase();
+
+      const emailUsername = emailAddress.split("@")[0];
+
+      const firstNameCandidates = [
+        passengerProfile?.first_name,
+        passenger?.first_name,
+        metadataFirstName,
+        metadataFullName ? metadataFullName.split(/\s+/)[0] : "",
+      ];
+
+      const resolvedFirstName =
+        firstNameCandidates
+          .map((value) => String(value || "").trim())
+          .find((value) => {
+            const normalized = value.toLowerCase();
+
+            return (
+              value.length > 0 &&
+              !value.includes("@") &&
+              normalized !== emailAddress &&
+              normalized !== emailUsername
+            );
+          }) || "Passenger";
+
+      setFirstName(resolvedFirstName);
       const safeRating = Number(passenger?.rating);
       setRating(Number.isFinite(safeRating) ? safeRating : 5);
 
@@ -1045,6 +1141,19 @@ setFirstName(
                     <Gift size={21} color={colors.gold} strokeWidth={2.7} />
                   }
                   onPress={() => goTo("/rewards")}
+                  styles={styles}
+                />
+
+                <ListItem
+                  title="Angel Wallet"
+                  icon={
+                    <WalletCards
+                      size={21}
+                      color={colors.gold}
+                      strokeWidth={2.7}
+                    />
+                  }
+                  onPress={() => goTo("/wallet")}
                   styles={styles}
                 />
               </DropdownPanel>

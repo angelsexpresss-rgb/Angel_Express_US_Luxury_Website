@@ -12,6 +12,7 @@ import {
   Vibration,
   View,
 } from "react-native";
+import { Accelerometer } from "expo-sensors";
 import {
   ArrowLeft,
   CarFront,
@@ -19,14 +20,13 @@ import {
   ChevronRight,
   Crown,
   Gamepad2,
-  Heart,
   Home,
+  MoveHorizontal,
   RotateCcw,
   Rocket,
   Shield,
   Sparkles,
   Target,
-  Trophy,
   Zap,
 } from "lucide-react-native";
 
@@ -35,6 +35,16 @@ import { usePassengerTheme, v5Shadow } from "../lib/angelTheme";
 const { width } = Dimensions.get("window");
 const BOARD_WIDTH = Math.min(width - 44, 390);
 const BOARD_HEIGHT = 440;
+
+/**
+ * TILT CONTROLS
+ * Requires: npx expo install expo-sensors
+ * If left/right feels inverted on your device, flip TILT_SIGN to 1.
+ */
+const TILT_SIGN = -1;
+const SHIP_TILT_SPEED = 16; // spaceship tilt sensitivity
+const LANE_TILT_THRESHOLD = 0.16; // how far to tilt before the car changes lane
+const LANE_TILT_COOLDOWN = 260; // ms between tilt lane-changes
 
 type GameScreen = "hub" | "tap" | "space" | "drive";
 type TapMode = "classic" | "speed" | "shield" | "god";
@@ -63,6 +73,10 @@ type RoadObject = {
   speed: number;
   kind: "car" | "truck" | "cone" | "coin" | "fuel" | "shield";
 };
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
 
 export default function AngelArcadeScreen() {
   const { colors, themeMode, toggleTheme } = usePassengerTheme();
@@ -218,8 +232,8 @@ function ArcadeHub({
         <Text style={styles.kicker}>ANGEL EXPRESS ENTERTAINMENT</Text>
         <Text style={styles.title}>Angel Arcade</Text>
         <Text style={styles.subtitle}>
-          Three polished games built for quick passenger entertainment:
-          precision tapping, space combat, and highway driving.
+          Three polished games with tilt controls, auto-firing lasers, and God
+          Mode: precision tapping, space combat, and highway driving.
         </Text>
       </View>
 
@@ -238,7 +252,7 @@ function ArcadeHub({
       <GameCard
         number="02"
         title="Galaxy Defender"
-        description="Pilot the Angel spacecraft, fire lasers, destroy falling threats, and collect power cells."
+        description="Tilt your phone to steer the Angel spacecraft. Lasers fire automatically — destroy threats and collect power cells."
         badge="Space Shooter"
         best={bestSpace}
         icon={<Rocket size={29} color={colors.navy} />}
@@ -250,7 +264,7 @@ function ArcadeHub({
       <GameCard
         number="03"
         title="Angel Highway Run"
-        description="Change lanes, avoid traffic, collect fares and fuel, and survive an increasingly fast highway."
+        description="Tilt to change lanes, avoid traffic, collect fares and fuel, and survive an increasingly fast highway."
         badge="Driving Arcade"
         best={bestDrive}
         icon={<CarFront size={29} color={colors.navy} />}
@@ -262,8 +276,8 @@ function ArcadeHub({
       <View style={styles.arcadeInfo}>
         <Text style={styles.arcadeInfoTitle}>One Arcade. Three Experiences.</Text>
         <Text style={styles.arcadeInfoText}>
-          Each game has its own score, difficulty progression, restart controls,
-          and best-score tracking for the current app session.
+          Each game has its own score, difficulty progression, tilt or button
+          controls, God Mode, and best-score tracking for the current session.
         </Text>
       </View>
 
@@ -356,6 +370,46 @@ function GameHeader({
   );
 }
 
+function ControlToggles({
+  tilt,
+  setTilt,
+  god,
+  toggleGod,
+  styles,
+  colors,
+}: {
+  tilt: boolean;
+  setTilt: (v: boolean) => void;
+  god: boolean;
+  toggleGod: () => void;
+  styles: any;
+  colors: any;
+}) {
+  return (
+    <View style={styles.toggleRow}>
+      <TouchableOpacity
+        style={[styles.toggleBtn, tilt && styles.toggleBtnActive]}
+        onPress={() => setTilt(!tilt)}
+      >
+        <MoveHorizontal size={16} color={tilt ? colors.navy : colors.gold} />
+        <Text style={[styles.toggleText, tilt && styles.toggleTextActive]}>
+          Tilt {tilt ? "On" : "Off"}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.toggleBtn, god && styles.godBtnActive]}
+        onPress={toggleGod}
+      >
+        <Crown size={16} color={god ? "#1F1300" : colors.gold} />
+        <Text style={[styles.toggleText, god && styles.godTextActive]}>
+          {god ? "GOD MODE ON" : "God Mode"}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* GAME 1 — ANGEL ROAD TAP                                                    */
 /* -------------------------------------------------------------------------- */
@@ -388,6 +442,8 @@ function AngelRoadTap({
     kind: "angel" as TapTargetKind,
   });
 
+  const scoreRef = useRef(0);
+
   function modeTime(m: TapMode) {
     return m === "speed" ? 20 : m === "shield" ? 35 : m === "god" ? 60 : 30;
   }
@@ -396,7 +452,7 @@ function AngelRoadTap({
     return m === "speed" ? 2 : m === "shield" ? 5 : m === "god" ? 9 : 3;
   }
 
-  function spawnTarget(forceAngel = false) {
+  function spawnTarget(forceAngel = false, m: TapMode = mode) {
     const roll = Math.random();
     const kind: TapTargetKind = forceAngel
       ? "angel"
@@ -408,7 +464,7 @@ function AngelRoadTap({
       ? "shield"
       : "angel";
 
-    const size = mode === "speed" ? 54 : mode === "god" ? 58 : 68;
+    const size = m === "speed" ? 54 : m === "god" ? 58 : 68;
 
     setTarget({
       x: Math.floor(Math.random() * (BOARD_WIDTH - size - 20)) + 10,
@@ -421,20 +477,20 @@ function AngelRoadTap({
   function start(selectedMode = mode) {
     setMode(selectedMode);
     setScore(0);
+    scoreRef.current = 0;
     setCombo(0);
     setTime(modeTime(selectedMode));
     setLives(modeLives(selectedMode));
     setShield(selectedMode === "shield" || selectedMode === "god");
     setGameOver(false);
     setActive(true);
-    setTimeout(() => spawnTarget(true), 50);
+    setTimeout(() => spawnTarget(true, selectedMode), 50);
   }
 
   function finish() {
     setActive(false);
     setGameOver(true);
-    const nextBest = Math.max(score, bestScore);
-    if (nextBest > bestScore) setBestScore(nextBest);
+    if (scoreRef.current > bestScore) setBestScore(scoreRef.current);
     Vibration.vibrate([0, 80, 60, 80]);
   }
 
@@ -459,13 +515,24 @@ function AngelRoadTap({
     return () => clearTimeout(timer);
   }, [active, target]);
 
+  function addScore(points: number) {
+    scoreRef.current += points;
+    setScore(scoreRef.current);
+  }
+
   function tapTarget() {
     if (!active) return;
 
     if (target.kind === "trap") {
       setCombo(0);
-      if (shield) setShield(false);
-      else setLives((v) => Math.max(0, v - 1));
+      if (mode === "god") {
+        // God mode: traps can't hurt you — they pay out instead.
+        addScore(5);
+      } else if (shield) {
+        setShield(false);
+      } else {
+        setLives((v) => Math.max(0, v - 1));
+      }
       Vibration.vibrate(40);
       spawnTarget();
       return;
@@ -473,13 +540,14 @@ function AngelRoadTap({
 
     if (target.kind === "shield") {
       setShield(true);
-      setScore((v) => v + 2);
+      addScore(2);
     } else {
       const nextCombo = combo + 1;
-      const multiplier = mode === "god" ? 3 : nextCombo >= 10 ? 3 : nextCombo >= 5 ? 2 : 1;
+      const multiplier =
+        mode === "god" ? 3 : nextCombo >= 10 ? 3 : nextCombo >= 5 ? 2 : 1;
       const base = target.kind === "bonus" ? 4 : 1;
       setCombo(nextCombo);
-      setScore((v) => v + base * multiplier);
+      addScore(base * multiplier);
     }
 
     Vibration.vibrate(8);
@@ -489,6 +557,7 @@ function AngelRoadTap({
   function miss() {
     if (!active) return;
     setCombo(0);
+    if (mode === "god") return; // God mode: empty taps are forgiven
     if (shield) setShield(false);
     else setLives((v) => Math.max(0, v - 1));
   }
@@ -532,14 +601,16 @@ function AngelRoadTap({
           ["Score", score],
           ["Best", bestScore],
           ["Time", `${time}s`],
-          ["Lives", lives],
+          ["Lives", mode === "god" ? "∞" : lives],
         ]}
         styles={styles}
       />
 
       <View style={styles.statusStrip}>
         <Text style={styles.statusText}>Combo: {combo}x</Text>
-        <Text style={styles.statusText}>Shield: {shield ? "Active" : "Off"}</Text>
+        <Text style={styles.statusText}>
+          {mode === "god" ? "👑 GOD MODE" : `Shield: ${shield ? "Active" : "Off"}`}
+        </Text>
       </View>
 
       <TouchableOpacity
@@ -550,7 +621,7 @@ function AngelRoadTap({
         {!active ? (
           <StartOverlay
             title={gameOver ? "Play Again?" : "Ready to Tap?"}
-            text="Gold scores. Purple gives bonus points. Blue activates a shield. Red costs a life."
+            text="Gold scores. Purple gives bonus points. Blue activates a shield. Red costs a life. God mode: invincible, 3x scoring, 60 seconds."
             button={gameOver ? "Restart Game" : "Start Game"}
             icon={<Target size={35} color={colors.navy} />}
             onPress={() => start()}
@@ -598,7 +669,7 @@ function AngelRoadTap({
         onHelp={() =>
           Alert.alert(
             "Angel Road Tap",
-            "Tap gold and purple targets. Blue targets activate a shield. Avoid red traps and empty taps."
+            "Tap gold and purple targets. Blue targets activate a shield. Avoid red traps and empty taps. God mode makes you invincible with 3x scoring."
           )
         }
         styles={styles}
@@ -610,7 +681,12 @@ function AngelRoadTap({
 
 /* -------------------------------------------------------------------------- */
 /* GAME 2 — GALAXY DEFENDER                                                   */
+/* Tilt your phone to steer. Lasers auto-fire. God Mode = invincible +        */
+/* rapid triple-shot.                                                         */
 /* -------------------------------------------------------------------------- */
+
+const SHIP_WIDTH = 52;
+const SHIP_TOP = BOARD_HEIGHT - 72; // ship occupies bottom 12..72
 
 function GalaxyDefender({
   colors,
@@ -627,6 +703,8 @@ function GalaxyDefender({
 }) {
   const [active, setActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [tilt, setTilt] = useState(true);
+  const [god, setGod] = useState(false);
   const [shipX, setShipX] = useState(BOARD_WIDTH / 2 - 26);
   const [objects, setObjects] = useState<FallingObject[]>([]);
   const [lasers, setLasers] = useState<Laser[]>([]);
@@ -634,172 +712,263 @@ function GalaxyDefender({
   const [health, setHealth] = useState(5);
   const [level, setLevel] = useState(1);
   const [shield, setShield] = useState(false);
+
+  // Refs are the source of truth inside the game loop (no stale closures).
+  const shipXRef = useRef(BOARD_WIDTH / 2 - 26);
+  const objectsRef = useRef<FallingObject[]>([]);
+  const lasersRef = useRef<Laser[]>([]);
+  const scoreRef = useRef(0);
+  const healthRef = useRef(5);
+  const shieldRef = useRef(false);
+  const godRef = useRef(false);
+  const tiltXRef = useRef(0);
   const idRef = useRef(0);
+  const lastShotRef = useRef(0);
+  const lastSpawnRef = useRef(0);
 
   function start() {
-    setActive(true);
-    setGameOver(false);
-    setShipX(BOARD_WIDTH / 2 - 26);
+    shipXRef.current = BOARD_WIDTH / 2 - 26;
+    objectsRef.current = [];
+    lasersRef.current = [];
+    scoreRef.current = 0;
+    healthRef.current = 5;
+    shieldRef.current = false;
+    lastShotRef.current = 0;
+    lastSpawnRef.current = 0;
+    setShipX(shipXRef.current);
     setObjects([]);
     setLasers([]);
     setScore(0);
     setHealth(5);
     setLevel(1);
     setShield(false);
+    setGameOver(false);
+    setActive(true);
   }
 
   function finish() {
     setActive(false);
     setGameOver(true);
-    const nextBest = Math.max(score, bestScore);
-    if (nextBest > bestScore) setBestScore(nextBest);
+    if (scoreRef.current > bestScore) setBestScore(scoreRef.current);
     Vibration.vibrate([0, 80, 50, 100]);
   }
 
+  function toggleGod() {
+    godRef.current = !godRef.current;
+    setGod(godRef.current);
+    if (godRef.current) {
+      healthRef.current = 5;
+      setHealth(5);
+      Vibration.vibrate([0, 30, 30, 30, 30, 60]);
+    }
+  }
+
+  // Tilt: phone movement steers the spaceship.
   useEffect(() => {
-    setLevel(Math.max(1, Math.floor(score / 150) + 1));
-  }, [score]);
+    if (!active || !tilt) {
+      tiltXRef.current = 0;
+      return;
+    }
+    Accelerometer.setUpdateInterval(40);
+    const sub = Accelerometer.addListener(({ x }) => {
+      tiltXRef.current = x;
+    });
+    return () => sub.remove();
+  }, [active, tilt]);
 
-  useEffect(() => {
-    if (!active) return;
-
-    const spawn = setInterval(() => {
-      const roll = Math.random();
-      const kind: FallingObject["kind"] =
-        roll < 0.5
-          ? "asteroid"
-          : roll < 0.7
-          ? "alien"
-          : roll < 0.8
-          ? "crystal"
-          : roll < 0.9
-          ? "fuel"
-          : "bomb";
-
-      const size = kind === "asteroid" ? 34 : kind === "alien" ? 38 : 30;
-      setObjects((prev) => [
-        ...prev.slice(-18),
-        {
-          id: ++idRef.current,
-          x: Math.random() * (BOARD_WIDTH - size - 10) + 5,
-          y: -size,
-          size,
-          speed: 3 + level * 0.55 + Math.random() * 1.8,
-          kind,
-          health: kind === "asteroid" ? 2 : 1,
-        },
-      ]);
-    }, Math.max(320, 850 - level * 55));
-
-    return () => clearInterval(spawn);
-  }, [active, level]);
-
+  // Single game loop — movement, auto-fire, spawning, physics, collisions.
   useEffect(() => {
     if (!active) return;
 
     const loop = setInterval(() => {
-      setLasers((prev) =>
-        prev
-          .map((laser) => ({ ...laser, y: laser.y - 11 }))
-          .filter((laser) => laser.y > -20)
-      );
+      const now = Date.now();
+      const lvl = Math.max(1, Math.floor(scoreRef.current / 150) + 1);
 
-      setObjects((prev) => {
-        const next: FallingObject[] = [];
-        let damage = 0;
+      // 1) Tilt steering (dead zone so the ship doesn't drift when flat)
+      const tiltDelta = tiltXRef.current * TILT_SIGN * SHIP_TILT_SPEED;
+      if (Math.abs(tiltDelta) > 0.6) {
+        shipXRef.current = clamp(
+          shipXRef.current + tiltDelta,
+          5,
+          BOARD_WIDTH - SHIP_WIDTH - 5
+        );
+      }
 
-        for (const object of prev) {
-          const moved = { ...object, y: object.y + object.speed };
+      // 2) Auto-fire lasers (God Mode: rapid triple-shot)
+      const fireRate = godRef.current ? 150 : 380;
+      if (now - lastShotRef.current >= fireRate) {
+        lastShotRef.current = now;
+        const cx = shipXRef.current + SHIP_WIDTH / 2 - 2;
+        const shots = godRef.current ? [-15, 0, 15] : [0];
+        for (const offset of shots) {
+          lasersRef.current.push({
+            id: ++idRef.current,
+            x: clamp(cx + offset, 4, BOARD_WIDTH - 8),
+            y: BOARD_HEIGHT - 82,
+          });
+        }
+      }
 
-          const hitsShip =
-            moved.y + moved.size >= BOARD_HEIGHT - 66 &&
-            moved.y <= BOARD_HEIGHT - 10 &&
-            moved.x + moved.size >= shipX &&
-            moved.x <= shipX + 52;
+      // 3) Spawn falling objects
+      const spawnEvery = Math.max(300, 850 - lvl * 55);
+      if (now - lastSpawnRef.current >= spawnEvery) {
+        lastSpawnRef.current = now;
+        const roll = Math.random();
+        const kind: FallingObject["kind"] =
+          roll < 0.5
+            ? "asteroid"
+            : roll < 0.7
+            ? "alien"
+            : roll < 0.8
+            ? "crystal"
+            : roll < 0.9
+            ? "fuel"
+            : "bomb";
+        const size = kind === "asteroid" ? 34 : kind === "alien" ? 38 : 30;
+        objectsRef.current = [
+          ...objectsRef.current.slice(-18),
+          {
+            id: ++idRef.current,
+            x: Math.random() * (BOARD_WIDTH - size - 10) + 5,
+            y: -size,
+            size,
+            speed: 3 + lvl * 0.55 + Math.random() * 1.8,
+            kind,
+            health: kind === "asteroid" ? 2 : 1,
+          },
+        ];
+      }
 
-          if (hitsShip) {
-            if (moved.kind === "crystal") {
-              setScore((v) => v + 50);
-            } else if (moved.kind === "fuel") {
-              setHealth((v) => Math.min(5, v + 1));
-            } else if (shield) {
-              setShield(false);
-            } else {
-              damage += moved.kind === "bomb" ? 2 : 1;
-            }
-            continue;
+      // 4) Move lasers
+      lasersRef.current = lasersRef.current
+        .map((laser) => ({ ...laser, y: laser.y - 14 }))
+        .filter((laser) => laser.y > -24);
+
+      // 5) Move objects + ship collisions + escapes
+      let damage = 0;
+      const survivors: FallingObject[] = [];
+
+      for (const object of objectsRef.current) {
+        const moved = { ...object, y: object.y + object.speed };
+
+        const hitsShip =
+          moved.y + moved.size >= SHIP_TOP &&
+          moved.y <= BOARD_HEIGHT - 10 &&
+          moved.x + moved.size >= shipXRef.current &&
+          moved.x <= shipXRef.current + SHIP_WIDTH;
+
+        if (hitsShip) {
+          if (moved.kind === "crystal") {
+            scoreRef.current += 50;
+          } else if (moved.kind === "fuel") {
+            healthRef.current = Math.min(5, healthRef.current + 1);
+          } else if (godRef.current) {
+            scoreRef.current += 5; // God Mode: threats vaporize on contact
+          } else if (shieldRef.current) {
+            shieldRef.current = false;
+          } else {
+            damage += moved.kind === "bomb" ? 2 : 1;
           }
-
-          if (moved.y > BOARD_HEIGHT + 20) {
-            if (moved.kind === "asteroid" || moved.kind === "alien") damage += 1;
-            continue;
-          }
-
-          next.push(moved);
+          continue;
         }
 
-        if (damage > 0) setHealth((v) => Math.max(0, v - damage));
-        return next;
-      });
-
-      setObjects((currentObjects) => {
-        let nextObjects = [...currentObjects];
-        let nextLasers = [...lasers];
-        let gained = 0;
-
-        for (const laser of lasers) {
-          const hitIndex = nextObjects.findIndex(
-            (object) =>
-              laser.x >= object.x &&
-              laser.x <= object.x + object.size &&
-              laser.y >= object.y &&
-              laser.y <= object.y + object.size
-          );
-
-          if (hitIndex >= 0) {
-            const hit = nextObjects[hitIndex];
-
-            if (hit.kind === "crystal") gained += 50;
-            else if (hit.kind === "fuel") setHealth((v) => Math.min(5, v + 1));
-            else if (hit.kind === "bomb") gained += 5;
-            else if (hit.health > 1) {
-              nextObjects[hitIndex] = { ...hit, health: hit.health - 1 };
-              gained += 5;
-              nextLasers = nextLasers.filter((l) => l.id !== laser.id);
-              continue;
-            } else {
-              gained += hit.kind === "alien" ? 25 : 10;
-            }
-
-            nextObjects.splice(hitIndex, 1);
-            nextLasers = nextLasers.filter((l) => l.id !== laser.id);
+        if (moved.y > BOARD_HEIGHT + 20) {
+          if (
+            !godRef.current &&
+            (moved.kind === "asteroid" || moved.kind === "alien")
+          ) {
+            damage += 1;
           }
+          continue;
         }
 
-        if (gained > 0) setScore((v) => v + gained);
-        setLasers(nextLasers);
-        return nextObjects;
-      });
-    }, 45);
+        survivors.push(moved);
+      }
+
+      // 6) Laser vs object collisions
+      let remainingObjects = survivors;
+      const remainingLasers: Laser[] = [];
+
+      for (const laser of lasersRef.current) {
+        const hitIndex = remainingObjects.findIndex(
+          (object) =>
+            laser.x >= object.x - 3 &&
+            laser.x <= object.x + object.size + 3 &&
+            laser.y <= object.y + object.size &&
+            laser.y + 18 >= object.y
+        );
+
+        if (hitIndex < 0) {
+          remainingLasers.push(laser);
+          continue;
+        }
+
+        const hit = remainingObjects[hitIndex];
+
+        if (hit.kind === "crystal") {
+          scoreRef.current += 50;
+        } else if (hit.kind === "fuel") {
+          healthRef.current = Math.min(5, healthRef.current + 1);
+        } else if (hit.kind === "bomb") {
+          scoreRef.current += 5;
+        } else if (hit.health > 1 && !godRef.current) {
+          // Asteroid takes 2 hits (God Mode lasers one-shot everything)
+          remainingObjects = [...remainingObjects];
+          remainingObjects[hitIndex] = { ...hit, health: hit.health - 1 };
+          scoreRef.current += 5;
+          continue; // laser consumed
+        } else {
+          scoreRef.current += hit.kind === "alien" ? 25 : 10;
+        }
+
+        remainingObjects = remainingObjects.filter((_, i) => i !== hitIndex);
+      }
+
+      objectsRef.current = remainingObjects;
+      lasersRef.current = remainingLasers;
+
+      if (damage > 0) {
+        healthRef.current = Math.max(0, healthRef.current - damage);
+        Vibration.vibrate(30);
+      }
+
+      // 7) Commit to state for rendering
+      setShipX(shipXRef.current);
+      setObjects(objectsRef.current);
+      setLasers([...lasersRef.current]);
+      setScore(scoreRef.current);
+      setHealth(healthRef.current);
+      setLevel(lvl);
+      setShield(shieldRef.current);
+
+      if (healthRef.current <= 0) finish();
+    }, 33);
 
     return () => clearInterval(loop);
-  }, [active, shipX, shield, lasers]);
-
-  useEffect(() => {
-    if (active && health <= 0) finish();
-  }, [health, active]);
+  }, [active]);
 
   function move(direction: -1 | 1) {
     if (!active) return;
-    setShipX((x) => Math.max(5, Math.min(BOARD_WIDTH - 57, x + direction * 34)));
+    shipXRef.current = clamp(
+      shipXRef.current + direction * 34,
+      5,
+      BOARD_WIDTH - SHIP_WIDTH - 5
+    );
+    setShipX(shipXRef.current);
   }
 
   function fire() {
     if (!active) return;
-    setLasers((prev) => [
-      ...prev,
-      { id: ++idRef.current, x: shipX + 24, y: BOARD_HEIGHT - 82 },
-    ]);
+    // Manual burst on top of auto-fire
+    const cx = shipXRef.current + SHIP_WIDTH / 2 - 2;
+    for (const offset of [-15, 0, 15]) {
+      lasersRef.current.push({
+        id: ++idRef.current,
+        x: clamp(cx + offset, 4, BOARD_WIDTH - 8),
+        y: BOARD_HEIGHT - 82,
+      });
+    }
+    setLasers([...lasersRef.current]);
     Vibration.vibrate(6);
   }
 
@@ -807,9 +976,18 @@ function GalaxyDefender({
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <GameHeader
         title="Galaxy Defender"
-        subtitle="Pilot the Angel spacecraft and destroy threats before they reach your ship."
+        subtitle="Tilt your phone to steer. Lasers fire automatically — destroy every threat."
         icon={<Rocket size={29} color={colors.navy} />}
         onExit={onExit}
+        styles={styles}
+        colors={colors}
+      />
+
+      <ControlToggles
+        tilt={tilt}
+        setTilt={setTilt}
+        god={god}
+        toggleGod={toggleGod}
         styles={styles}
         colors={colors}
       />
@@ -819,14 +997,18 @@ function GalaxyDefender({
           ["Score", score],
           ["Best", bestScore],
           ["Level", level],
-          ["Health", health],
+          ["Health", god ? "∞" : health],
         ]}
         styles={styles}
       />
 
       <View style={styles.statusStrip}>
-        <Text style={styles.statusText}>Weapon: Laser</Text>
-        <Text style={styles.statusText}>Shield: {shield ? "Active" : "Off"}</Text>
+        <Text style={styles.statusText}>
+          Weapon: {god ? "Triple Laser" : "Auto Laser"}
+        </Text>
+        <Text style={styles.statusText}>
+          {god ? "👑 GOD MODE" : `Shield: ${shield ? "Active" : "Off"}`}
+        </Text>
       </View>
 
       <View style={[styles.spaceBoard, { width: BOARD_WIDTH, height: BOARD_HEIGHT }]}>
@@ -849,7 +1031,7 @@ function GalaxyDefender({
         {!active ? (
           <StartOverlay
             title={gameOver ? "Mission Failed" : "Defend The Galaxy"}
-            text="Move left and right. Fire lasers at asteroids and alien ships. Collect crystals and fuel."
+            text="Tilt your phone left and right to steer. Lasers fire automatically. Collect crystals and fuel. God Mode: invincible with rapid triple-shot."
             button={gameOver ? "Retry Mission" : "Launch Ship"}
             icon={<Rocket size={35} color={colors.navy} />}
             onPress={start}
@@ -885,10 +1067,18 @@ function GalaxyDefender({
             ))}
 
             {lasers.map((laser) => (
-              <View key={laser.id} style={[styles.laser, { left: laser.x, top: laser.y }]} />
+              <View
+                key={laser.id}
+                style={[
+                  styles.laser,
+                  god && styles.laserGod,
+                  { left: laser.x, top: laser.y },
+                ]}
+              />
             ))}
 
             <View style={[styles.ship, { left: shipX }]}>
+              {(shield || god) && <View style={styles.shieldRing} />}
               <Text style={styles.shipEmoji}>🚀</Text>
             </View>
           </>
@@ -902,7 +1092,7 @@ function GalaxyDefender({
 
         <TouchableOpacity style={styles.fireButton} onPress={fire}>
           <Zap size={22} color={colors.navy} />
-          <Text style={styles.fireText}>FIRE</Text>
+          <Text style={styles.fireText}>BURST</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.controlButton} onPress={() => move(1)}>
@@ -915,7 +1105,7 @@ function GalaxyDefender({
         onHelp={() =>
           Alert.alert(
             "Galaxy Defender",
-            "Destroy asteroids and aliens. Crystals award bonus points. Fuel restores health. Do not let threats reach the ship."
+            "Tilt your phone to steer the ship (or use the arrow buttons). Lasers fire automatically; tap BURST for extra shots. Crystals award bonus points, fuel restores health. God Mode makes you invincible with rapid triple-shot lasers."
           )
         }
         styles={styles}
@@ -927,6 +1117,7 @@ function GalaxyDefender({
 
 /* -------------------------------------------------------------------------- */
 /* GAME 3 — ANGEL HIGHWAY RUN                                                 */
+/* Tilt your phone to change lanes. God Mode = invincible + infinite fuel.    */
 /* -------------------------------------------------------------------------- */
 
 function AngelHighwayRun({
@@ -944,6 +1135,8 @@ function AngelHighwayRun({
 }) {
   const [active, setActive] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [tilt, setTilt] = useState(true);
+  const [god, setGod] = useState(false);
   const [lane, setLane] = useState(1);
   const [objects, setObjects] = useState<RoadObject[]>([]);
   const [score, setScore] = useState(0);
@@ -952,13 +1145,32 @@ function AngelHighwayRun({
   const [lives, setLives] = useState(3);
   const [shield, setShield] = useState(false);
   const [speedLevel, setSpeedLevel] = useState(1);
+
+  const laneRef = useRef(1);
+  const objectsRef = useRef<RoadObject[]>([]);
+  const scoreRef = useRef(0);
+  const distanceRef = useRef(0);
+  const fuelRef = useRef(100);
+  const livesRef = useRef(3);
+  const shieldRef = useRef(false);
+  const godRef = useRef(false);
+  const tiltXRef = useRef(0);
+  const lastLaneChangeRef = useRef(0);
+  const lastSpawnRef = useRef(0);
   const idRef = useRef(0);
 
   const laneWidth = BOARD_WIDTH / 3;
 
   function start() {
-    setActive(true);
-    setGameOver(false);
+    laneRef.current = 1;
+    objectsRef.current = [];
+    scoreRef.current = 0;
+    distanceRef.current = 0;
+    fuelRef.current = 100;
+    livesRef.current = 3;
+    shieldRef.current = false;
+    lastLaneChangeRef.current = 0;
+    lastSpawnRef.current = 0;
     setLane(1);
     setObjects([]);
     setScore(0);
@@ -967,117 +1179,188 @@ function AngelHighwayRun({
     setLives(3);
     setShield(false);
     setSpeedLevel(1);
+    setGameOver(false);
+    setActive(true);
   }
 
   function finish() {
     setActive(false);
     setGameOver(true);
-    const nextBest = Math.max(score, bestScore);
-    if (nextBest > bestScore) setBestScore(nextBest);
+    if (scoreRef.current > bestScore) setBestScore(scoreRef.current);
     Vibration.vibrate([0, 80, 60, 100]);
   }
 
+  function toggleGod() {
+    godRef.current = !godRef.current;
+    setGod(godRef.current);
+    if (godRef.current) {
+      fuelRef.current = 100;
+      livesRef.current = Math.max(livesRef.current, 3);
+      setFuel(100);
+      setLives(livesRef.current);
+      Vibration.vibrate([0, 30, 30, 30, 30, 60]);
+    }
+  }
+
+  // Tilt: phone movement steers the car between lanes.
   useEffect(() => {
-    setSpeedLevel(Math.max(1, Math.floor(distance / 500) + 1));
-  }, [distance]);
+    if (!active || !tilt) {
+      tiltXRef.current = 0;
+      return;
+    }
+    Accelerometer.setUpdateInterval(40);
+    const sub = Accelerometer.addListener(({ x }) => {
+      tiltXRef.current = x;
+    });
+    return () => sub.remove();
+  }, [active, tilt]);
 
-  useEffect(() => {
-    if (!active) return;
+  function shiftLane(direction: -1 | 1) {
+    const next = clamp(laneRef.current + direction, 0, 2);
+    if (next !== laneRef.current) {
+      laneRef.current = next;
+      setLane(next);
+      Vibration.vibrate(6);
+    }
+  }
 
-    const spawn = setInterval(() => {
-      const roll = Math.random();
-      const kind: RoadObject["kind"] =
-        roll < 0.35
-          ? "car"
-          : roll < 0.53
-          ? "truck"
-          : roll < 0.67
-          ? "cone"
-          : roll < 0.82
-          ? "coin"
-          : roll < 0.93
-          ? "fuel"
-          : "shield";
-
-      setObjects((prev) => [
-        ...prev.slice(-16),
-        {
-          id: ++idRef.current,
-          lane: Math.floor(Math.random() * 3),
-          y: -70,
-          speed: 4 + speedLevel * 0.7 + Math.random() * 1.5,
-          kind,
-        },
-      ]);
-    }, Math.max(350, 920 - speedLevel * 65));
-
-    return () => clearInterval(spawn);
-  }, [active, speedLevel]);
-
+  // Single game loop — tilt steering, spawning, physics, collisions.
   useEffect(() => {
     if (!active) return;
 
     const loop = setInterval(() => {
-      setDistance((v) => v + speedLevel * 2);
-      setFuel((v) => Math.max(0, v - 0.28 - speedLevel * 0.015));
+      const now = Date.now();
+      const lvl = Math.max(1, Math.floor(distanceRef.current / 500) + 1);
 
-      setObjects((prev) => {
-        const next: RoadObject[] = [];
+      // 1) Tilt lane changes (threshold + cooldown so it feels deliberate)
+      const tiltValue = tiltXRef.current * TILT_SIGN;
+      if (
+        Math.abs(tiltValue) > LANE_TILT_THRESHOLD &&
+        now - lastLaneChangeRef.current > LANE_TILT_COOLDOWN
+      ) {
+        lastLaneChangeRef.current = now;
+        shiftLane(tiltValue > 0 ? 1 : -1);
+      }
 
-        for (const object of prev) {
-          const moved = { ...object, y: object.y + object.speed };
-          const collision = moved.lane === lane && moved.y > BOARD_HEIGHT - 125 && moved.y < BOARD_HEIGHT - 38;
+      // 2) Distance + fuel (God Mode never runs dry)
+      distanceRef.current += lvl * 2;
+      if (!godRef.current) {
+        fuelRef.current = Math.max(
+          0,
+          fuelRef.current - 0.28 - lvl * 0.015
+        );
+      }
 
-          if (collision) {
-            if (moved.kind === "coin") {
-              setScore((v) => v + 25);
-            } else if (moved.kind === "fuel") {
-              setFuel((v) => Math.min(100, v + 32));
-            } else if (moved.kind === "shield") {
-              setShield(true);
-            } else if (shield) {
-              setShield(false);
-            } else {
-              setLives((v) => Math.max(0, v - 1));
-              Vibration.vibrate(45);
-            }
-            continue;
+      // 3) Spawn road objects
+      const spawnEvery = Math.max(350, 920 - lvl * 65);
+      if (now - lastSpawnRef.current >= spawnEvery) {
+        lastSpawnRef.current = now;
+        const roll = Math.random();
+        const kind: RoadObject["kind"] =
+          roll < 0.35
+            ? "car"
+            : roll < 0.53
+            ? "truck"
+            : roll < 0.67
+            ? "cone"
+            : roll < 0.82
+            ? "coin"
+            : roll < 0.93
+            ? "fuel"
+            : "shield";
+
+        objectsRef.current = [
+          ...objectsRef.current.slice(-16),
+          {
+            id: ++idRef.current,
+            lane: Math.floor(Math.random() * 3),
+            y: -70,
+            speed: 4 + lvl * 0.7 + Math.random() * 1.5,
+            kind,
+          },
+        ];
+      }
+
+      // 4) Move objects + collisions
+      const survivors: RoadObject[] = [];
+
+      for (const object of objectsRef.current) {
+        const moved = { ...object, y: object.y + object.speed };
+        const collision =
+          moved.lane === laneRef.current &&
+          moved.y > BOARD_HEIGHT - 125 &&
+          moved.y < BOARD_HEIGHT - 38;
+
+        if (collision) {
+          if (moved.kind === "coin") {
+            scoreRef.current += 25;
+          } else if (moved.kind === "fuel") {
+            fuelRef.current = Math.min(100, fuelRef.current + 32);
+          } else if (moved.kind === "shield") {
+            shieldRef.current = true;
+          } else if (godRef.current) {
+            scoreRef.current += 10; // God Mode: smash through traffic for points
+          } else if (shieldRef.current) {
+            shieldRef.current = false;
+          } else {
+            livesRef.current = Math.max(0, livesRef.current - 1);
+            Vibration.vibrate(45);
           }
-
-          if (moved.y > BOARD_HEIGHT + 70) {
-            if (moved.kind === "car" || moved.kind === "truck" || moved.kind === "cone") {
-              setScore((v) => v + 5);
-            }
-            continue;
-          }
-
-          next.push(moved);
+          continue;
         }
 
-        return next;
-      });
-    }, 50);
+        if (moved.y > BOARD_HEIGHT + 70) {
+          if (
+            moved.kind === "car" ||
+            moved.kind === "truck" ||
+            moved.kind === "cone"
+          ) {
+            scoreRef.current += 5; // near-miss bonus
+          }
+          continue;
+        }
+
+        survivors.push(moved);
+      }
+
+      objectsRef.current = survivors;
+
+      // 5) Commit to state for rendering
+      setObjects(objectsRef.current);
+      setScore(scoreRef.current);
+      setDistance(distanceRef.current);
+      setFuel(fuelRef.current);
+      setLives(livesRef.current);
+      setShield(shieldRef.current);
+      setSpeedLevel(lvl);
+
+      if (livesRef.current <= 0 || fuelRef.current <= 0) finish();
+    }, 40);
 
     return () => clearInterval(loop);
-  }, [active, lane, shield, speedLevel]);
-
-  useEffect(() => {
-    if (active && (lives <= 0 || fuel <= 0)) finish();
-  }, [active, lives, fuel]);
+  }, [active]);
 
   function move(direction: -1 | 1) {
     if (!active) return;
-    setLane((v) => Math.max(0, Math.min(2, v + direction)));
-    Vibration.vibrate(6);
+    shiftLane(direction);
   }
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <GameHeader
         title="Angel Highway Run"
-        subtitle="A lane-based driving challenge built around safety, timing, fuel, and distance."
+        subtitle="Tilt your phone to change lanes. Manage fuel, dodge traffic, go the distance."
         icon={<CarFront size={29} color={colors.navy} />}
         onExit={onExit}
+        styles={styles}
+        colors={colors}
+      />
+
+      <ControlToggles
+        tilt={tilt}
+        setTilt={setTilt}
+        god={god}
+        toggleGod={toggleGod}
         styles={styles}
         colors={colors}
       />
@@ -1087,7 +1370,7 @@ function AngelHighwayRun({
           ["Score", score],
           ["Best", bestScore],
           ["Distance", `${distance}m`],
-          ["Lives", lives],
+          ["Lives", god ? "∞" : lives],
         ]}
         styles={styles}
       />
@@ -1095,13 +1378,16 @@ function AngelHighwayRun({
       <View style={styles.fuelCard}>
         <View style={styles.fuelTop}>
           <Text style={styles.statusText}>Fuel</Text>
-          <Text style={styles.statusText}>{Math.round(fuel)}%</Text>
+          <Text style={styles.statusText}>
+            {god ? "∞" : `${Math.round(fuel)}%`}
+          </Text>
         </View>
         <View style={styles.fuelTrack}>
-          <View style={[styles.fuelFill, { width: `${fuel}%` }]} />
+          <View style={[styles.fuelFill, { width: `${god ? 100 : fuel}%` }]} />
         </View>
         <Text style={styles.speedText}>
-          Speed Level {speedLevel} • Shield {shield ? "Active" : "Off"}
+          Speed Level {speedLevel} •{" "}
+          {god ? "👑 GOD MODE" : `Shield ${shield ? "Active" : "Off"}`}
         </Text>
       </View>
 
@@ -1112,7 +1398,7 @@ function AngelHighwayRun({
         {!active ? (
           <StartOverlay
             title={gameOver ? "Drive Again?" : "Ready For The Highway?"}
-            text="Change lanes to avoid traffic. Collect coins, fuel cells, and shields. Speed increases with distance."
+            text="Tilt your phone left and right to change lanes. Collect coins, fuel cells, and shields. God Mode: smash through traffic with infinite fuel."
             button={gameOver ? "Restart Drive" : "Start Driving"}
             icon={<CarFront size={35} color={colors.navy} />}
             onPress={start}
@@ -1153,6 +1439,7 @@ function AngelHighwayRun({
                 { left: lane * laneWidth + laneWidth / 2 - 30 },
               ]}
             >
+              {(shield || god) && <View style={styles.shieldRing} />}
               <Text style={styles.playerCarEmoji}>🚘</Text>
             </View>
           </>
@@ -1176,7 +1463,7 @@ function AngelHighwayRun({
         onHelp={() =>
           Alert.alert(
             "Angel Highway Run",
-            "Use the lane buttons to avoid cars, trucks, and road barriers. Collect coins for points, fuel to continue, and shields for protection."
+            "Tilt your phone (or use the lane buttons) to avoid cars, trucks, and road barriers. Collect coins for points, fuel to continue, and shields for protection. God Mode: invincible with infinite fuel."
           )
         }
         styles={styles}
@@ -1516,6 +1803,45 @@ function createStyles(c: any) {
       fontWeight: "700",
     },
 
+    toggleRow: {
+      width: "100%",
+      flexDirection: "row",
+      gap: 8,
+      marginBottom: 14,
+    },
+    toggleBtn: {
+      flex: 1,
+      minHeight: 46,
+      flexDirection: "row",
+      gap: 7,
+      borderWidth: 1,
+      borderColor: c.borderSoft,
+      backgroundColor: c.card,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 10,
+    },
+    toggleBtnActive: {
+      backgroundColor: c.gold,
+      borderColor: c.gold,
+    },
+    godBtnActive: {
+      backgroundColor: "#FACC15",
+      borderColor: "#FACC15",
+    },
+    toggleText: {
+      color: c.text,
+      fontSize: 12,
+      fontWeight: "900",
+    },
+    toggleTextActive: {
+      color: c.navy,
+    },
+    godTextActive: {
+      color: "#1F1300",
+    },
+
     modeGrid: {
       width: "100%",
       flexDirection: "row",
@@ -1696,6 +2022,12 @@ function createStyles(c: any) {
       shadowOpacity: 1,
       shadowRadius: 7,
     },
+    laserGod: {
+      backgroundColor: "#F97316",
+      shadowColor: "#F97316",
+      width: 6,
+      height: 22,
+    },
     ship: {
       position: "absolute",
       bottom: 12,
@@ -1707,6 +2039,15 @@ function createStyles(c: any) {
     shipEmoji: {
       fontSize: 43,
       transform: [{ rotate: "-45deg" }],
+    },
+    shieldRing: {
+      position: "absolute",
+      width: 66,
+      height: 66,
+      borderRadius: 33,
+      borderWidth: 2,
+      borderColor: "#38BDF8",
+      backgroundColor: "rgba(56,189,248,0.12)",
     },
     controlRow: {
       width: "100%",

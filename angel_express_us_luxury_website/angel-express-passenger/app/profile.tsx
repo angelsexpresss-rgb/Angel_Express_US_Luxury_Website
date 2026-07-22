@@ -216,7 +216,7 @@ export default function ProfileScreen() {
       const cleanEmail = currentEmail.trim().toLowerCase();
 
       const filter = cleanEmail
-        ? `user_id.eq.${currentUserId},email.ilike.${cleanEmail},passenger_email.ilike.${cleanEmail}`
+        ? `user_id.eq.${currentUserId},email.ilike.${cleanEmail}`
         : `user_id.eq.${currentUserId}`;
 
       const { data, error } = await supabase
@@ -460,8 +460,20 @@ Thank you.`;
     try {
       setSaving(true);
 
-      const supports = (column: string) =>
-        profileColumns.length === 0 || profileColumns.includes(column);
+      const completedProfile =
+        Boolean(firstName.trim()) &&
+        Boolean(lastName.trim()) &&
+        Boolean(phone.trim()) &&
+        Boolean(email.trim()) &&
+        Boolean(emergencyName.trim()) &&
+        Boolean(emergencyPhone.trim()) &&
+        Boolean(emergencyEmail.trim()) &&
+        Boolean(emergencyRelationship.trim()) &&
+        Boolean(preferredRoute.trim()) &&
+        Boolean(favoritePickup.trim()) &&
+        Boolean(favoriteDropoff.trim()) &&
+        Boolean(preferredPaymentMethod.trim()) &&
+        termsAccepted;
 
       const profileData: Record<string, any> = {
         user_id: userId,
@@ -471,58 +483,41 @@ Thank you.`;
         email: email.trim().toLowerCase(),
         emergency_name: emergencyName.trim(),
         emergency_phone: emergencyPhone.trim(),
-        terms_accepted: termsAccepted,
-        profile_completed: true,
-      };
-
-      if (supports("emergency_contact_email")) {
-        profileData.emergency_contact_email = emergencyEmail.trim().toLowerCase();
-      } else if (supports("emergency_email")) {
-        profileData.emergency_email = emergencyEmail.trim().toLowerCase();
-      }
-
-      if (supports("emergency_relationship")) {
-        profileData.emergency_relationship = emergencyRelationship.trim();
-      } else if (supports("emergency_contact_relationship")) {
-        profileData.emergency_contact_relationship =
-          emergencyRelationship.trim();
-      }
-
-      const optionalValues: Record<string, any> = {
+        emergency_contact_email: emergencyEmail.trim().toLowerCase(),
+        emergency_relationship: emergencyRelationship.trim(),
         student_status: studentStatus,
         preferred_route: preferredRoute.trim(),
         luggage_preference: luggagePreference.trim(),
         music_preference: musicPreference.trim(),
         ac_preference: acPreference.trim(),
         conversation_preference: conversationPreference.trim(),
+        favorite_pickup: favoritePickup.trim(),
+        favorite_dropoff: favoriteDropoff.trim(),
         preferred_payment_method: preferredPaymentMethod.trim(),
+        terms_accepted: termsAccepted,
+        profile_completed: completedProfile,
+        updated_at: new Date().toISOString(),
       };
-
-      Object.entries(optionalValues).forEach(([column, value]) => {
-        if (supports(column)) profileData[column] = value;
-      });
-
-      if (supports("favorite_pickup")) {
-        profileData.favorite_pickup = favoritePickup.trim();
-      } else if (supports("favorite_pickup_location")) {
-        profileData.favorite_pickup_location = favoritePickup.trim();
-      } else if (supports("preferred_pickup")) {
-        profileData.preferred_pickup = favoritePickup.trim();
-      }
-
-      if (supports("favorite_dropoff")) {
-        profileData.favorite_dropoff = favoriteDropoff.trim();
-      } else if (supports("favorite_dropoff_location")) {
-        profileData.favorite_dropoff_location = favoriteDropoff.trim();
-      } else if (supports("preferred_dropoff")) {
-        profileData.preferred_dropoff = favoriteDropoff.trim();
-      }
 
       const { error } = await supabase
         .from("passenger_profiles")
         .upsert(profileData, { onConflict: "user_id" });
 
       if (error) throw error;
+
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+        },
+      });
+
+      if (metadataError) {
+        console.log("Profile metadata sync skipped:", metadataError.message);
+      }
+
+      await loadProfile(false);
 
       Alert.alert(
         "Profile Saved",
@@ -544,27 +539,26 @@ Thank you.`;
     }
   }
 
-  const completionFields = [
-    firstName,
-    lastName,
-    phone,
-    email,
-    emergencyName,
-    emergencyPhone,
-    emergencyEmail,
-    emergencyRelationship,
-    preferredRoute,
-    favoritePickup,
-    favoriteDropoff,
-    preferredPaymentMethod,
+  const completionChecks = [
+    Boolean(firstName.trim()),
+    Boolean(lastName.trim()),
+    Boolean(phone.trim()),
+    Boolean(email.trim()),
+    Boolean(emergencyName.trim()),
+    Boolean(emergencyPhone.trim()),
+    Boolean(emergencyEmail.trim()),
+    Boolean(emergencyRelationship.trim()),
+    Boolean(preferredRoute.trim()),
+    Boolean(favoritePickup.trim()),
+    Boolean(favoriteDropoff.trim()),
+    Boolean(preferredPaymentMethod.trim()),
+    termsAccepted,
   ];
 
-  const completedFieldCount = completionFields.filter(
-    (value) => String(value || "").trim().length > 0
-  ).length;
+  const completedFieldCount = completionChecks.filter(Boolean).length;
 
   const completionPercent = Math.round(
-    (completedFieldCount / completionFields.length) * 100
+    (completedFieldCount / completionChecks.length) * 100
   );
 
   const verificationText = verificationLabel(

@@ -231,8 +231,10 @@ export default function RewardsScreen() {
 
       setProfile(profileData);
 
+      // The bookings table uses user_id and email.
+      // Do not query passenger_email because that column does not exist.
       const bookingFilter = userEmail
-        ? `user_id.eq.${user.id},email.ilike.${userEmail},passenger_email.ilike.${userEmail}`
+        ? `user_id.eq.${user.id},email.ilike.${userEmail}`
         : `user_id.eq.${user.id}`;
 
       const { data: trips, error: tripsError } = await supabase
